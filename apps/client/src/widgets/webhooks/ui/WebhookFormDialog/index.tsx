@@ -245,7 +245,7 @@ const WebhookFormDialog = ({
                   />
                   <div className={cn('flex-1')}>
                     <label htmlFor={`${mode}-${event.value}`} className={cn('block cursor-pointer')}>
-                      <p className={cn('text-ms font-mono leading-none')}>{event.label}</p>
+                      <p className={cn('text-sm font-mono leading-none')}>{event.label}</p>
                       <p className={cn('text-muted-foreground mt-0.5 text-xs')}>
                         {event.description}
                       </p>
