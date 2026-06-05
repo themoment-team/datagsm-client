@@ -137,13 +137,11 @@ const WebhookFormDialog = ({
         target_url: data.targetUrl,
         events: data.events,
       });
+    } else if (mode === 'edit') {
+      pendingFormData.current = data;
+      setIsConfirmOpen(true);
     }
   };
-
-  const onSaveClick = handleSubmit((data) => {
-    pendingFormData.current = data;
-    setIsConfirmOpen(true);
-  });
 
   const onConfirmSave = () => {
     const data = pendingFormData.current;
@@ -276,7 +274,7 @@ const WebhookFormDialog = ({
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-                <Button type="button" disabled={isPending} onClick={onSaveClick}>
+                <Button type="submit" disabled={isPending}>
                   저장
                 </Button>
               </>
