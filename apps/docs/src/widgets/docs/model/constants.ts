@@ -79,36 +79,6 @@ export const docsSections: DocsSection[] = [
           },
         ],
       },
-      {
-        label: 'Webhook',
-        href: '/api/webhook',
-        children: [
-          {
-            label: 'Webhook 등록',
-            href: '/api/webhook/register',
-          },
-          {
-            label: 'Webhook 목록 조회',
-            href: '/api/webhook/list',
-          },
-          {
-            label: 'Webhook 수정',
-            href: '/api/webhook/update',
-          },
-          {
-            label: 'Webhook 삭제',
-            href: '/api/webhook/delete',
-          },
-          {
-            label: '이벤트 페이로드 명세',
-            href: '/api/webhook/events',
-          },
-          {
-            label: '서명 검증 가이드',
-            href: '/api/webhook/signature',
-          },
-        ],
-      },
     ],
   },
   {
