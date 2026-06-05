@@ -106,19 +106,28 @@ const WebhookFormDialog = ({
 
   const { handleEventToggle, isEventChecked } = useWebhookEventSelection({ watch, setValue });
 
+  const isInitialized = useRef(false);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      isInitialized.current = false;
+      return;
+    }
+
+    if (isInitialized.current) return;
 
     if (mode === 'edit' && webhook) {
       reset({
         targetUrl: webhook.target_url,
         events: [...webhook.events],
       });
+      isInitialized.current = true;
     } else if (mode === 'create') {
       reset({
         targetUrl: '',
         events: [],
       });
+      isInitialized.current = true;
     }
   }, [mode, webhook, open, reset]);
 
