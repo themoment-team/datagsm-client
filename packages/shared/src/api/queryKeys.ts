@@ -111,6 +111,13 @@ export const applicationQueryKeys = {
   postApplicationScope: () => ['applications', 'scopes', 'create'] as const,
 } as const;
 
+export const webhookQueryKeys = {
+  getWebhooks: () => ['webhooks', 'my'] as const,
+  postWebhook: () => ['webhooks', 'create'] as const,
+  patchWebhook: () => ['webhooks', 'update'] as const,
+  deleteWebhook: () => ['webhooks', 'delete'] as const,
+} as const;
+
 export const healthQueryKeys = {
   getHealth: () => ['health', 'check'] as const,
 } as const;
