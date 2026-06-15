@@ -10,47 +10,53 @@
 ## 개요
 
 Turborepo + pnpm 모노레포(앱 5개 `client`/`admin`/`docs`/`status`/`oauth`, 공유 패키지 4개)를 대상으로
-보안 · 정합성 · 중복 · 추상화 · 접근성 · 환경설정 · **아키텍처(레이어 경계)** 관점에서 점검한 결과를 정리한다.
-총 **24건**을 식별했으며 심각도별로 분류한다.
+보안 · 정합성 · 중복 · 추상화 · 접근성 · 환경설정 · **아키텍처(레이어 경계)** · **디자인 시스템** 관점에서 점검한 결과를 정리한다.
+총 **30건**을 식별했으며 심각도별로 분류한다. (A5~A7·D1~D3은 팀 피드백을 코드로 검증해 반영)
 
 ### 심각도 요약
 
 | 심각도         | 건수 | 의미                                                       |
 | -------------- | ---- | ---------------------------------------------------------- |
 | 🔴 Critical    | 6    | 보안 취약점 또는 실제 동작 버그 / 죽은 코드                |
-| 🟠 Important   | 9    | 견고성 · 일관성 · 레이어 경계 결함 (잠재적 버그/구조 부채) |
-| 🟡 Improvement | 9    | 품질 · 유지보수 · 접근성 개선                              |
+| 🟠 Important   | 12   | 견고성 · 일관성 · 레이어 경계 결함 (잠재적 버그/구조 부채) |
+| 🟡 Improvement | 12   | 품질 · 유지보수 · 접근성 · 디자인 일관성 개선              |
 
-> ID 접두사: **C**=Critical, **I**=Important, **Q**=Improvement, **A**=Architecture(레이어 경계).
+> ID 접두사: **C**=Critical, **I**=Important, **Q**=Improvement, **A**=Architecture(레이어 경계), **D**=Design System.
 
 ### 전체 항목 색인
 
-| ID  | 제목                                                | 심각도 | 주요 위치                                                   |
-| --- | --------------------------------------------------- | ------ | ----------------------------------------------------------- |
-| C1  | `client_secret`이 `NEXT_PUBLIC_`로 노출             | 🔴     | `shared/lib/axios.ts:75`                                    |
-| C2  | 토큰을 `httpOnly:false` 쿠키에 저장 (XSS)           | 🔴     | `*/api/callback/route.ts`                                   |
-| C3  | OAuth 토큰 응답 파싱 불일치                         | 🔴     | `oauth/token/route.ts` ↔ `callback/route.ts`                |
-| C4  | CI ↔ 코드 환경변수 네이밍 불일치                    | 🔴     | `.github/workflows/ci.yml`                                  |
-| C5  | `useExchangeToken` 실행 불가능한 죽은 코드          | 🔴     | `shared/hooks/useExchangeToken.ts:22`                       |
-| C6  | 로그아웃이 서버 토큰을 폐기하지 않음                | 🔴     | `shared/ui/Header/index.tsx:839`                            |
-| I1  | 라우트 핸들러 · 미들웨어 대량 중복                  | 🟠     | `admin`/`client`/`oauth`                                    |
-| I2  | 서버 fetch 헬퍼 에러 처리 불일치 + 무음 실패        | 🟠     | `client/views/*/api/*.ts`                                   |
-| I3  | 토큰 갱신 후 쿠키가 세션 쿠키로 강등                | 🟠     | `shared/lib/axios.ts:82`                                    |
-| I4  | `apiUrls`/`queryKeys` 위치 인자 컨벤션 혼재         | 🟠     | `shared/api/apiUrls.ts:7`                                   |
-| I5  | `queryKeys` 추상화 18곳 전면 우회                   | 🟠     | 위젯 다수                                                   |
-| I6  | `useGetOAuthSession` 캐시 설계 문제                 | 🟠     | `oauth/.../useGetOAuthSession.ts`                           |
-| Q1  | 테스트 전무                                         | 🟡     | 전체                                                        |
-| Q2  | `console.error` 산재 (14곳)                         | 🟡     | 전체                                                        |
-| Q3  | 루트 문서/README 빈약, `.env.example` 부재          | 🟡     | 루트                                                        |
-| Q4  | OAuth `state`를 CSRF 토큰으로 사용하지 않음         | 🟡     | `*/middleware.ts:37`                                        |
-| Q5  | `StudentFormDialog` 707줄 + 보일러플레이트 반복     | 🟡     | `admin/.../StudentFormDialog`                               |
-| Q6  | `CommonPagination`을 `<a href="#">`로 구현          | 🟡     | `shared/ui/CommonPagination`                                |
-| Q7  | 비활성 필드를 빈 `<div>`로 대체 (접근성)            | 🟡     | `admin/.../StudentFormDialog`                               |
-| Q8  | 모바일 메뉴 접근성 미흡 (focus trap 등)             | 🟡     | `shared/ui/Header/index.tsx:919`                            |
-| A1  | `shared/ui`에 도메인·API·비즈니스 로직 혼입         | 🟠     | `shared/ui/ApiKey*`, `SignInForm`, `Header`                 |
-| A2  | `shared/types`에 런타임 Zod 스키마 혼입             | 🟠     | `shared/types/auth.ts:33,70`                                |
-| A3  | `shared/hooks` 15개 중 12개가 도메인 결합           | 🟠     | `shared/hooks/useApiKey*`, `useExchangeToken` 등            |
-| A4  | `utils`/`constants`/`lib`의 경미한 도메인·설정 누수 | 🟡     | `utils/email.ts`, `constants/navigation.ts`, `lib/axios.ts` |
+| ID  | 제목                                                 | 심각도 | 주요 위치                                                   |
+| --- | ---------------------------------------------------- | ------ | ----------------------------------------------------------- |
+| C1  | `client_secret`이 `NEXT_PUBLIC_`로 노출              | 🔴     | `shared/lib/axios.ts:75`                                    |
+| C2  | 토큰을 `httpOnly:false` 쿠키에 저장 (XSS)            | 🔴     | `*/api/callback/route.ts`                                   |
+| C3  | OAuth 토큰 응답 파싱 불일치                          | 🔴     | `oauth/token/route.ts` ↔ `callback/route.ts`                |
+| C4  | CI ↔ 코드 환경변수 네이밍 불일치                     | 🔴     | `.github/workflows/ci.yml`                                  |
+| C5  | `useExchangeToken` 실행 불가능한 죽은 코드           | 🔴     | `shared/hooks/useExchangeToken.ts:22`                       |
+| C6  | 로그아웃이 서버 토큰을 폐기하지 않음                 | 🔴     | `shared/ui/Header/index.tsx:839`                            |
+| I1  | 라우트 핸들러 · 미들웨어 대량 중복                   | 🟠     | `admin`/`client`/`oauth`                                    |
+| I2  | 서버 fetch 헬퍼 에러 처리 불일치 + 무음 실패         | 🟠     | `client/views/*/api/*.ts`                                   |
+| I3  | 토큰 갱신 후 쿠키가 세션 쿠키로 강등                 | 🟠     | `shared/lib/axios.ts:82`                                    |
+| I4  | `apiUrls`/`queryKeys` 위치 인자 컨벤션 혼재          | 🟠     | `shared/api/apiUrls.ts:7`                                   |
+| I5  | `queryKeys` 추상화 18곳 전면 우회                    | 🟠     | 위젯 다수                                                   |
+| I6  | `useGetOAuthSession` 캐시 설계 문제                  | 🟠     | `oauth/.../useGetOAuthSession.ts`                           |
+| Q1  | 테스트 전무                                          | 🟡     | 전체                                                        |
+| Q2  | `console.error` 산재 (14곳)                          | 🟡     | 전체                                                        |
+| Q3  | 루트 문서/README 빈약, `.env.example` 부재           | 🟡     | 루트                                                        |
+| Q4  | OAuth `state`를 CSRF 토큰으로 사용하지 않음          | 🟡     | `*/middleware.ts:37`                                        |
+| Q5  | `StudentFormDialog` 707줄 + 보일러플레이트 반복      | 🟡     | `admin/.../StudentFormDialog`                               |
+| Q6  | `CommonPagination`을 `<a href="#">`로 구현           | 🟡     | `shared/ui/CommonPagination`                                |
+| Q7  | 비활성 필드를 빈 `<div>`로 대체 (접근성)             | 🟡     | `admin/.../StudentFormDialog`                               |
+| Q8  | 모바일 메뉴 접근성 미흡 (focus trap 등)              | 🟡     | `shared/ui/Header/index.tsx:919`                            |
+| A1  | `shared/ui`에 도메인·API·비즈니스 로직 혼입          | 🟠     | `shared/ui/ApiKey*`, `SignInForm`, `Header`                 |
+| A2  | `shared/types`에 런타임 Zod 스키마 혼입              | 🟠     | `shared/types/auth.ts:33,70`                                |
+| A3  | `shared/hooks` 15개 중 12개가 도메인 결합            | 🟠     | `shared/hooks/useApiKey*`, `useExchangeToken` 등            |
+| A4  | `utils`/`constants`/`lib`의 경미한 도메인·설정 누수  | 🟡     | `utils/email.ts`, `constants/navigation.ts`, `lib/axios.ts` |
+| A5  | `features` 레이어 부재 → 로직이 widgets/views에 집중 | 🟠     | `admin`/`client`/`oauth` `src/`                             |
+| A6  | 앱 `src/shared` ↔ `@repo/shared` 역할 경계 모호      | 🟠     | `apps/*/src/shared`                                         |
+| A7  | 공통 UI 미활용 (raw `<button>` 등 직접 구현)         | 🟡     | 앱 전반, `shared/ui/ApiKeyForm`·`Header`                    |
+| D1  | 타이포그래피 semantic 스케일 부재 (매직넘버 51곳)    | 🟡     | 앱 전반 (`text-[Npx]`)                                      |
+| D2  | semantic 컬러 토큰 우회 (직접 hex/팔레트)            | 🟠     | 앱 전반 (`bg-[#FFFFFF]`, `text-gray-*`)                     |
+| D3  | pixel 테두리/그림자 유틸 혼용·미활용                 | 🟡     | 앱 전반 (`pixel-shadow` ↔ `shadow-*`)                       |
 
 ---
 
@@ -376,13 +382,94 @@ auth/apikey 스키마만 `types/`에 있다.
 
 ---
 
+### A5. `features` 레이어 부재 → 인터랙션 로직이 widgets/views에 집중
+
+**위치**: `apps/admin/src`, `apps/client/src`, `apps/oauth/src` (모두 `app · entities · shared · views · widgets` 로 구성, **`features/` 없음**)
+
+FSD에서 사용자 인터랙션 단위 로직은 `features` 레이어가 담당해야 하는데, 이 레이어가 없어
+폼 제출·검증·다단계 mutation 같은 인터랙션 로직이 `widgets`/`views`로 몰려 컴포넌트가 비대해진다.
+대표 증상이 Q5(`StudentFormDialog` 707줄), A1(`ApiKeyForm` 346줄)이다.
+
+**조치**: `features/` 레이어 도입 후 인터랙션 로직(폼 핸들링·도메인 액션)을 이관. 위젯은 표현에 집중.
+
+---
+
+### A6. 앱 `src/shared` ↔ `@repo/shared` 역할 경계 모호
+
+**위치**: `apps/*/src/shared` vs `packages/shared`
+
+각 앱이 `src/shared/{api,lib,utils,hooks}`를 만들어 `@repo/shared`의 모듈 구조를 그대로 미러링한다.
+그런데 실제 내용은 들쭉날쭉하다 — `admin/src/shared/lib/index.ts`·`api/index.ts`는 **빈 파일(스캐폴딩만)**,
+`client/src/shared`에는 `GoogleAnalytics`·`useGetMy`·`sound-mode`가 섞여 있다.
+"무엇을 앱 `src/shared`에, 무엇을 `@repo/shared`에 둘지" 기준이 없어 코드 배치에 혼선이 생긴다.
+
+**조치**: 배치 기준 문서화 — 예) _2개 이상 앱이 공유 → `@repo/shared`_, _단일 앱 전용 횡단 코드 → 앱 `src/shared`_. 빈 스캐폴딩 제거.
+
+---
+
+### A7. 이미 존재하는 공통 UI를 활용하지 않고 직접 구현
+
+**위치**: 앱 전반(raw `<button>` 10개 파일·24곳), `shared/ui/ApiKeyForm`·`Header` 내부도 `Button` 대신 raw `<button>` 사용
+
+`@repo/shared/ui`에 `Button` 등 공통 컴포넌트가 있는데도 일부 화면은 `<button className="...">`로 직접 구현하고,
+레이아웃도 페이지마다 Tailwind 클래스를 개별 작성한다. 심지어 디자인 시스템 패키지 내부(`ApiKeyForm`, `Header`)조차
+공통 `Button`을 쓰지 않는다. 그 결과 버튼·간격·레이아웃 스타일이 화면마다 미세하게 달라진다.
+
+**조치**: 공통 컴포넌트 사용을 기본값으로 강제(리뷰 체크리스트), 반복되는 레이아웃은 레이아웃 프리미티브로 추출.
+
+---
+
+## 🎨 Design System — 디자인 토큰 일관성
+
+> **전제(중요)**: `packages/shared/src/styles/globals.css`에는 이미 **semantic 컬러 토큰(라이트/다크 oklch)**,
+> `pixel-shadow`/`pixel-shadow-sm`/`pixel-shadow-lg`/`pixel-border` 유틸리티, 폰트 토큰이 정의되어 있다.
+> 즉 문제는 "체계가 없음"이 아니라 **정의된 체계를 다수 코드가 우회**한다는 것이다.
+
+### D1. 타이포그래피 semantic 스케일 부재 (매직넘버)
+
+**위치**: 앱 전반 — `text-[Npx]` 임의값 **51곳** (`text-[14px]`×11, `text-[11px]`×11, `text-[9px]`×6, `text-[10px]`×6, `text-[96px]`, `text-[22px]` …)
+
+테마에 타이포그래피 토큰(`--text-*` / 의미 기반 스케일)이 정의돼 있지 않고, 컴포넌트들이 픽셀 값을 직접 박는다.
+같은 역할의 텍스트가 화면마다 다른 px로 작성돼 위계가 흐트러진다.
+
+**조치**: 의미 기반 타입 스케일 정의(예: `text-heading`/`text-body`/`text-caption`) 후 매직넘버 치환.
+
+---
+
+### D2. semantic 컬러 토큰 우회 (직접 값 / 하드코딩 hex)
+
+**위치**: 앱 전반 — `bg-[#FFFFFF]`(3), `bg-[#000000]`(2), `text-[#000000]`(2), `text-gray-400`(4), `bg-black/50`(4), `text-red-600`/`green-600` 등
+
+`--foreground`/`--muted-foreground`/`--destructive` 등 **semantic 토큰과 다크모드(`.dark`)가 정의돼 있는데도**,
+다수 컴포넌트가 Tailwind 팔레트(`gray-*`, `red-*`)나 **하드코딩 hex**를 직접 사용한다.
+특히 `bg-[#FFFFFF]`·`bg-[#000000]`은 다크모드에서 **토큰처럼 반전되지 않아 테마가 깨진다**.
+상태별(에러/성공/비활성) 색도 토큰 없이 `red-600`/`green-600`을 직접 써 일관성이 없다.
+
+**조치**: 직접 값을 semantic 토큰으로 치환(`text-destructive` 등), 상태 색을 토큰화. (다크모드 실제 활성화 여부는 확인 필요)
+
+---
+
+### D3. Pixel Art 테두리/그림자 유틸 혼용·미활용
+
+**위치**: 앱 전반 — `pixel-shadow*`(54) ↔ 기본 `shadow-sm/md/lg`(12) 혼용, `pixel-border` 유틸 정의됐으나 `border-2 border-foreground`(63)로 대체
+
+Pixel 콘셉트 유틸(`pixel-shadow`, `pixel-border`)이 중앙에 정의돼 있지만,
+기본 Tailwind 그림자(`shadow-lg` 등)가 섞여 쓰이고 `pixel-border`는 거의 안 쓰여 `border-2`를 매번 직접 적는다.
+그 결과 모듈마다 테두리·그림자 질감이 달라 픽셀 테마 일관성이 떨어진다.
+
+**조치**: pixel 유틸로 단일화(기본 `shadow-*` 사용 금지), `pixel-border` 사용 강제.
+
+---
+
 ## 권장 수정 순서
 
 1. **즉시 정리 가능 (저위험)**: C5(죽은 코드 삭제), I5(queryKey 통일), Q2(console 정리), A2(Zod 스키마 이동)
 2. **버그성 (우선순위 높음)**: C3(토큰 파싱 불일치), I3(쿠키 만료 강등), I5(캐시 무효화)
 3. **보안 (설계 변경 필요)**: C1, C2, C6
-4. **구조 개선(레이어 정리)**: A1·A3(도메인 코드 분리) → I1(중복 제거) → Q5(폼 컴포넌트 분해) → A4
-5. **품질/온보딩**: Q1(테스트), Q3(문서), Q4·Q6·Q7·Q8(접근성)
+4. **구조 개선(레이어 정리)**: A1·A3(도메인 코드 분리) → A5(features 도입) → A6(배치 기준 문서화) → I1(중복 제거) → Q5(폼 분해) → A4
+5. **디자인 시스템 정립**: D1(타입 스케일) · D2(컬러 토큰화) · D3(pixel 유틸 단일화) → A7(공통 컴포넌트 활용 강제)
+6. **품질/온보딩**: Q1(테스트), Q3(문서), Q4·Q6·Q7·Q8(접근성)
 
 > ⚠️ C3는 백엔드 응답 스펙 확인이 선행되어야 정확히 수정 가능.
 > ⚠️ A1·A2·A3은 공통 원인(shared가 도메인을 앎)이라 함께 묶어 리팩터링하는 것이 효율적.
+> ⚠️ D1~D3은 디자인 토큰이 이미 존재하므로 "신규 정의"보다 "우회 코드 치환"이 작업의 핵심.
