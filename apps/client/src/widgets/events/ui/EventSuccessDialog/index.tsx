@@ -5,20 +5,20 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Label } from 
 import { cn } from '@repo/shared/utils';
 import { AlertTriangle, Check, Copy } from 'lucide-react';
 
-import { CreateWebhookData } from '@/entities/webhooks';
+import { CreateEventData } from '@/entities/events';
 
-interface WebhookSuccessDialogProps {
+interface EventSuccessDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  webhook: CreateWebhookData | null;
+  event: CreateEventData | null;
 }
 
-const WebhookSuccessDialog = ({ open, onOpenChange, webhook }: WebhookSuccessDialogProps) => {
+const EventSuccessDialog = ({ open, onOpenChange, event }: EventSuccessDialogProps) => {
   const { copied: copiedSecret, copy: copySecret } = useCopyToClipboard({
     successMessage: 'Secret이 복사되었습니다.',
   });
 
-  if (!webhook) return null;
+  if (!event) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -28,7 +28,7 @@ const WebhookSuccessDialog = ({ open, onOpenChange, webhook }: WebhookSuccessDia
             className={cn('font-pixel flex items-center gap-2 text-[14px] leading-none')}
           >
             <Check className={cn('h-4 w-4')} />
-            WEBHOOK CREATED
+            EVENT CREATED
           </DialogTitle>
         </DialogHeader>
         <div className={cn('space-y-4 px-6 py-6')}>
@@ -54,7 +54,7 @@ const WebhookSuccessDialog = ({ open, onOpenChange, webhook }: WebhookSuccessDia
               >
                 수신 URL
               </Label>
-              <p className={cn('break-all font-mono text-sm')}>{webhook.target_url}</p>
+              <p className={cn('break-all font-mono text-sm')}>{event.target_url}</p>
             </div>
 
             <div className={cn('space-y-1.5')}>
@@ -69,9 +69,9 @@ const WebhookSuccessDialog = ({ open, onOpenChange, webhook }: WebhookSuccessDia
                     'bg-muted border-foreground/30 flex-1 break-all rounded-none border px-3 py-2 font-mono text-sm',
                   )}
                 >
-                  {webhook.secret}
+                  {event.secret}
                 </code>
-                <Button variant="outline" size="icon" onClick={() => copySecret(webhook.secret)}>
+                <Button variant="outline" size="icon" onClick={() => copySecret(event.secret)}>
                   {copiedSecret ? (
                     <Check className={cn('h-4 w-4')} />
                   ) : (
@@ -90,4 +90,4 @@ const WebhookSuccessDialog = ({ open, onOpenChange, webhook }: WebhookSuccessDia
   );
 };
 
-export default WebhookSuccessDialog;
+export default EventSuccessDialog;

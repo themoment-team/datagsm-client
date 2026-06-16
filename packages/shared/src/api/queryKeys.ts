@@ -111,11 +111,11 @@ export const applicationQueryKeys = {
   postApplicationScope: () => ['applications', 'scopes', 'create'] as const,
 } as const;
 
-export const webhookQueryKeys = {
-  getWebhooks: () => ['webhooks', 'my'] as const,
-  postWebhook: () => ['webhooks', 'create'] as const,
-  patchWebhook: () => ['webhooks', 'update'] as const,
-  deleteWebhook: () => ['webhooks', 'delete'] as const,
+export const eventQueryKeys = {
+  getEvents: () => ['events', 'my'] as const,
+  postEvent: () => ['events', 'create'] as const,
+  patchEvent: () => ['events', 'update'] as const,
+  deleteEvent: () => ['events', 'delete'] as const,
 } as const;
 
 export const healthQueryKeys = {

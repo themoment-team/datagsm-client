@@ -2,14 +2,14 @@
 
 import { UseFormSetValue, UseFormWatch } from 'react-hook-form';
 
-import { WebhookFormType } from '@/entities/webhooks';
+import { EventFormType } from '@/entities/events';
 
-interface UseWebhookEventSelectionParams {
-  watch: UseFormWatch<WebhookFormType>;
-  setValue: UseFormSetValue<WebhookFormType>;
+interface UseEventSelectionParams {
+  watch: UseFormWatch<EventFormType>;
+  setValue: UseFormSetValue<EventFormType>;
 }
 
-export const useWebhookEventSelection = ({ watch, setValue }: UseWebhookEventSelectionParams) => {
+export const useEventSelection = ({ watch, setValue }: UseEventSelectionParams) => {
   const fieldName = 'events';
 
   const handleEventToggle = (event: string) => {

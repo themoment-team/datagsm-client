@@ -1,10 +1,10 @@
-export interface WebhookEventOption {
+export interface EventTypeOption {
   value: string;
   label: string;
   description: string;
 }
 
-export const WEBHOOK_EVENTS: WebhookEventOption[] = [
+export const EVENT_TYPES: EventTypeOption[] = [
   { value: 'STUDENT_GRADUATED', label: 'student.graduated', description: '학생 졸업 처리' },
   { value: 'STUDENT_WITHDRAWN', label: 'student.withdrawn', description: '학생 자퇴 처리' },
   {
@@ -20,4 +20,4 @@ export const WEBHOOK_EVENTS: WebhookEventOption[] = [
   { value: 'PROJECT_DELETED', label: 'project.deleted', description: '프로젝트 삭제' },
 ];
 
-export const MAX_WEBHOOKS_PER_ACCOUNT = 10;
+export const MAX_EVENTS_PER_ACCOUNT = 10;

@@ -175,11 +175,11 @@ export const applicationUrl = {
   postApplicationScope: (applicationId: string) => `/v1/applications/${applicationId}/scopes`,
 } as const;
 
-export const webhookUrl = {
-  getWebhooks: () => '/v1/webhooks',
-  postWebhook: () => '/v1/webhooks',
-  patchWebhook: (webhookId: number) => `/v1/webhooks/${webhookId}`,
-  deleteWebhook: (webhookId: number) => `/v1/webhooks/${webhookId}`,
+export const eventUrl = {
+  getEvents: () => '/v1/events',
+  postEvent: () => '/v1/events',
+  patchEvent: (eventId: number) => `/v1/events/${eventId}`,
+  deleteEvent: (eventId: number) => `/v1/events/${eventId}`,
 } as const;
 
 export const healthUrl = {
