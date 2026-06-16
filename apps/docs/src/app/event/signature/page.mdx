@@ -129,12 +129,10 @@ public class EventVerifier {
         for (byte b : hmac) sb.append(String.format("%02x", b));
         String expected = sb.toString();
 
-        if (received.length() != expected.length()) return false;
-        int diff = 0;
-        for (int i = 0; i < received.length(); i++) {
-            diff |= received.charAt(i) ^ expected.charAt(i);
-        }
-        return diff == 0;
+        return java.security.MessageDigest.isEqual(
+            received.getBytes(StandardCharsets.UTF_8),
+            expected.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }`} />
   <CodeTab label="Kotlin / Spring Boot" language="kotlin" code={`import javax.crypto.Mac
