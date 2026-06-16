@@ -163,8 +163,10 @@ class EventController(
         val expected = mac.doFinal(rawBody)
             .joinToString("") { "%02x".format(it) }
 
-        val valid = received.length == expected.length &&
-            received.zip(expected).fold(0) { acc, (a, b) -> acc or (a.code xor b.code) } == 0
+        val valid = java.security.MessageDigest.isEqual(
+            received.toByteArray(Charsets.UTF_8),
+            expected.toByteArray(Charsets.UTF_8)
+        )
         if (!valid) return ResponseEntity.status(401).build()
 
         // rawBody를 파싱하여 payload.event, payload.data 처리
