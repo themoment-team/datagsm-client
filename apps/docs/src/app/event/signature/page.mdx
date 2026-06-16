@@ -68,12 +68,12 @@ app.post(
       .update(req.body) // Buffer
       .digest('hex');
 
+    const receivedBuffer = Buffer.from(received, 'utf8');
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+
     const valid =
-      received.length === expected.length &&
-      crypto.timingSafeEqual(
-        Buffer.from(received, 'utf8'),
-        Buffer.from(expected, 'utf8')
-      );
+      receivedBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 
     if (!valid) return res.status(401).send('invalid signature');
 
