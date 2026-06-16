@@ -6,7 +6,7 @@ export const metadata = { title: '서명 검증 가이드' }
 
 ### 개요
 
-DataGSM이 외부 서버로 Webhook을 전송할 때, 요청이 실제로 DataGSM에서 발송되었는지 검증할 수 있도록 HMAC-SHA256 기반 서명을 HTTP 헤더에 함께 보냅니다. 수신 서버는 이 서명을 검증하여 위조된 요청을 걸러내야 합니다.
+DataGSM이 외부 서버로 이벤트를 전송할 때, 요청이 실제로 DataGSM에서 발송되었는지 검증할 수 있도록 HMAC-SHA256 기반 서명을 HTTP 헤더에 함께 보냅니다. 수신 서버는 이 서명을 검증하여 위조된 요청을 걸러내야 합니다.
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
@@ -16,7 +16,7 @@ DataGSM이 외부 서버로 Webhook을 전송할 때, 요청이 실제로 DataGS
         서명 검증은 선택이 아니라 필수입니다
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm">
-        검증을 건너뛰면 누구나 수신 URL을 알아낸 즉시 위조 페이로드를 보낼 수 있습니다. 학생·동아리·프로젝트 데이터의 신뢰성을 위해 모든 Webhook 핸들러에서 반드시 서명을 검증하세요.
+        검증을 건너뛰면 누구나 수신 URL을 알아낸 즉시 위조 페이로드를 보낼 수 있습니다. 학생·동아리·프로젝트 데이터의 신뢰성을 위해 모든 이벤트 핸들러에서 반드시 서명을 검증하세요.
       </div>
     </div>
   </div>
@@ -24,13 +24,13 @@ DataGSM이 외부 서버로 Webhook을 전송할 때, 요청이 실제로 DataGS
 
 ### 시그니처 헤더
 
-DataGSM 서버는 Webhook을 전송할 때 다음 헤더를 함께 보냅니다.
+DataGSM 서버는 이벤트를 전송할 때 다음 헤더를 함께 보냅니다.
 
 ```http
 X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>
 ```
 
-- `secret`: Webhook을 콘솔에 등록할 때 1회 노출된 64자 hex secret
+- `secret`: Event를 콘솔에 등록할 때 1회 노출된 64자 hex secret
 - `payload`: HTTP 요청 본문(JSON) 원문 바이트(`UTF-8`)
 - 서명 값은 HMAC-SHA256 결과를 소문자 hex로 인코딩한 문자열입니다.
 
@@ -50,11 +50,11 @@ X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>
 const crypto = require('crypto');
 
 const app = express();
-const WEBHOOK_SECRET = process.env.DATAGSM_WEBHOOK_SECRET;
+const EVENT_SECRET = process.env.DATAGSM_EVENT_SECRET;
 
 // 원문 바이트 보존을 위해 raw body 사용
 app.post(
-  '/webhooks/datagsm',
+  '/events/datagsm',
   express.raw({ type: 'application/json' }),
   (req, res) => {
     const signatureHeader = req.header('X-DataGSM-Signature');
@@ -64,7 +64,7 @@ app.post(
     const received = signatureHeader.slice('sha256='.length);
 
     const expected = crypto
-      .createHmac('sha256', WEBHOOK_SECRET)
+      .createHmac('sha256', EVENT_SECRET)
       .update(req.body) // Buffer
       .digest('hex');
 
@@ -88,10 +88,10 @@ import os
 from flask import Flask, request, abort
 
 app = Flask(__name__)
-WEBHOOK_SECRET = os.environ['DATAGSM_WEBHOOK_SECRET']
+EVENT_SECRET = os.environ['DATAGSM_EVENT_SECRET']
 
-@app.post('/webhooks/datagsm')
-def receive_webhook():
+@app.post('/events/datagsm')
+def receive_event():
     signature_header = request.headers.get('X-DataGSM-Signature', '')
     if not signature_header.startswith('sha256='):
         abort(401)
@@ -99,7 +99,7 @@ def receive_webhook():
 
     raw_body = request.get_data()  # bytes
     expected = hmac.new(
-        WEBHOOK_SECRET.encode('utf-8'),
+        EVENT_SECRET.encode('utf-8'),
         raw_body,
         hashlib.sha256,
     ).hexdigest()
@@ -114,8 +114,8 @@ def receive_webhook():
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 
-public class WebhookVerifier {
-    private static final String SECRET = System.getenv("DATAGSM_WEBHOOK_SECRET");
+public class EventVerifier {
+    private static final String SECRET = System.getenv("DATAGSM_EVENT_SECRET");
 
     public static boolean verify(String signatureHeader, byte[] rawBody) throws Exception {
         if (signatureHeader == null || !signatureHeader.startsWith("sha256=")) return false;
@@ -147,11 +147,11 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.http.ResponseEntity
 
 @RestController
-class WebhookController(
-    @Value("\${datagsm.webhook.secret}")
+class EventController(
+    @Value("\${datagsm.event.secret}")
     private val secret: String,
 ) {
-    @PostMapping("/webhooks/datagsm")
+    @PostMapping("/events/datagsm")
     fun receive(
         @RequestHeader("X-DataGSM-Signature") signature: String,
         @RequestBody rawBody: ByteArray,

@@ -1,4 +1,4 @@
-import { BookOpen, Code2, User, Webhook } from 'lucide-react';
+import { BookOpen, Code2, Radio, User } from 'lucide-react';
 
 import { DocsSection } from './types';
 
@@ -163,21 +163,21 @@ export const docsSections: DocsSection[] = [
     ],
   },
   {
-    label: 'Webhook',
-    href: '/webhook',
-    icon: Webhook,
+    label: 'Event',
+    href: '/event',
+    icon: Radio,
     children: [
       {
         label: '웹 콘솔에서 관리',
-        href: '/webhook/console',
+        href: '/event/console',
       },
       {
         label: '이벤트 페이로드 명세',
-        href: '/webhook/events',
+        href: '/event/payloads',
       },
       {
         label: '서명 검증 가이드',
-        href: '/webhook/signature',
+        href: '/event/signature',
       },
     ],
   },
