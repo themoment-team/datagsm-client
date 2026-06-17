@@ -24,18 +24,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Webhook } from '@/entities/webhooks';
-import { useDeleteWebhook } from '@/widgets/webhooks';
+import { Event } from '@/entities/events';
+import { useDeleteEvent } from '@/widgets/events';
 
-interface WebhookListProps {
-  webhooks?: Webhook[];
+interface EventListProps {
+  events?: Event[];
   isLoading?: boolean;
-  onEdit: (webhook: Webhook) => void;
+  onEdit: (event: Event) => void;
 }
 
-interface WebhookListItemProps {
-  webhook: Webhook;
-  onEdit: (webhook: Webhook) => void;
+interface EventListItemProps {
+  event: Event;
+  onEdit: (event: Event) => void;
   onDelete: (id: number) => void;
 }
 
@@ -45,20 +45,20 @@ const formatDate = (value: string) => {
   return date.toLocaleString('ko-KR');
 };
 
-const WebhookListItem = ({ webhook, onEdit, onDelete }: WebhookListItemProps) => {
+const EventListItem = ({ event, onEdit, onDelete }: EventListItemProps) => {
   return (
     <TableRow>
       <TableCell className={cn('max-w-xs truncate font-mono text-sm')}>
-        {webhook.target_url}
+        {event.target_url}
       </TableCell>
       <TableCell>
         <div className={cn('flex flex-wrap gap-1')}>
-          {webhook.events.map((event) => (
+          {event.events.map((eventType) => (
             <span
-              key={event}
+              key={eventType}
               className={cn('bg-foreground text-background px-1.5 py-0.5 font-mono text-xs')}
             >
-              {event}
+              {eventType}
             </span>
           ))}
         </div>
@@ -67,20 +67,20 @@ const WebhookListItem = ({ webhook, onEdit, onDelete }: WebhookListItemProps) =>
         <span
           className={cn(
             'border px-1.5 py-0.5 font-mono text-xs uppercase',
-            webhook.is_active
+            event.is_active
               ? 'border-foreground text-foreground'
               : 'border-muted-foreground/40 text-muted-foreground',
           )}
         >
-          {webhook.is_active ? 'active' : 'inactive'}
+          {event.is_active ? 'active' : 'inactive'}
         </span>
       </TableCell>
       <TableCell className={cn('text-muted-foreground font-mono text-xs')}>
-        {formatDate(webhook.created_at)}
+        {formatDate(event.created_at)}
       </TableCell>
       <TableCell>
         <div className={cn('flex items-center gap-1')}>
-          <PixelIconButton onClick={() => onEdit(webhook)}>
+          <PixelIconButton onClick={() => onEdit(event)}>
             <Pencil className={cn('h-3.5 w-3.5')} />
           </PixelIconButton>
 
@@ -93,17 +93,17 @@ const WebhookListItem = ({ webhook, onEdit, onDelete }: WebhookListItemProps) =>
             <AlertDialogContent className={cn('border-foreground pixel-shadow border-2')}>
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-pixel text-[12px] leading-[1.8]">
-                  웹훅 삭제
+                  이벤트 삭제
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  정말로 이 웹훅을 삭제하시겠습니까? 삭제 후에는 해당 이벤트가 더 이상 전송되지
+                  정말로 이 이벤트를 삭제하시겠습니까? 삭제 후에는 해당 이벤트가 더 이상 전송되지
                   않으며, 이 작업은 되돌릴 수 없습니다.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>취소</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => onDelete(webhook.id)}
+                  onClick={() => onDelete(event.id)}
                   className={cn(
                     'bg-destructive hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 text-white',
                   )}
@@ -119,16 +119,16 @@ const WebhookListItem = ({ webhook, onEdit, onDelete }: WebhookListItemProps) =>
   );
 };
 
-const WebhookList = ({ webhooks, isLoading, onEdit }: WebhookListProps) => {
+const EventList = ({ events, isLoading, onEdit }: EventListProps) => {
   const queryClient = useQueryClient();
 
-  const { mutate: deleteWebhook } = useDeleteWebhook({
+  const { mutate: deleteEvent } = useDeleteEvent({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['webhooks'] });
-      toast.success('웹훅이 삭제되었습니다.');
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('이벤트가 삭제되었습니다.');
     },
     onError: () => {
-      toast.error('웹훅 삭제에 실패했습니다.');
+      toast.error('이벤트 삭제에 실패했습니다.');
     },
   });
 
@@ -164,19 +164,19 @@ const WebhookList = ({ webhooks, isLoading, onEdit }: WebhookListProps) => {
               </TableCell>
             </TableRow>
           ))
-        ) : webhooks && webhooks.length > 0 ? (
-          webhooks.map((webhook) => (
-            <WebhookListItem
-              key={webhook.id}
-              webhook={webhook}
+        ) : events && events.length > 0 ? (
+          events.map((event) => (
+            <EventListItem
+              key={event.id}
+              event={event}
               onEdit={onEdit}
-              onDelete={(id) => deleteWebhook(id)}
+              onDelete={(id) => deleteEvent(id)}
             />
           ))
         ) : (
           <TableRow>
             <TableCell colSpan={5} className={cn('text-muted-foreground h-24 text-center font-mono')}>
-              {'>'} 등록된 웹훅이 없습니다.
+              {'>'} 등록된 이벤트가 없습니다.
             </TableCell>
           </TableRow>
         )}
@@ -185,4 +185,4 @@ const WebhookList = ({ webhooks, isLoading, onEdit }: WebhookListProps) => {
   );
 };
 
-export default WebhookList;
+export default EventList;
