@@ -1,0 +1,185 @@
+import { Shield } from 'lucide-react'
+
+export const metadata = { title: '서명 검증 가이드' }
+
+# 서명 검증 가이드
+
+### 개요
+
+DataGSM이 외부 서버로 이벤트를 전송할 때, 요청이 실제로 DataGSM에서 발송되었는지 검증할 수 있도록 HMAC-SHA256 기반 서명을 HTTP 헤더에 함께 보냅니다. 수신 서버는 이 서명을 검증하여 위조된 요청을 걸러내야 합니다.
+
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
+  <div className="flex items-start gap-3">
+    <Shield className="h-5 w-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
+    <div>
+      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+        서명 검증은 선택이 아니라 필수입니다
+      </div>
+      <div className="text-blue-800 dark:text-blue-200 text-sm">
+        검증을 건너뛰면 누구나 수신 URL을 알아낸 즉시 위조 페이로드를 보낼 수 있습니다. 학생·동아리·프로젝트 데이터의 신뢰성을 위해 모든 이벤트 핸들러에서 반드시 서명을 검증하세요.
+      </div>
+    </div>
+  </div>
+</div>
+
+### 시그니처 헤더
+
+DataGSM 서버는 이벤트를 전송할 때 다음 헤더를 함께 보냅니다.
+
+```http
+X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>
+```
+
+- `secret`: Event를 콘솔에 등록할 때 1회 노출된 64자 hex secret
+- `payload`: HTTP 요청 본문(JSON) 원문 바이트(`UTF-8`)
+- 서명 값은 HMAC-SHA256 결과를 소문자 hex로 인코딩한 문자열입니다.
+
+### 검증 절차
+
+1. 요청 헤더에서 `X-DataGSM-Signature` 값을 읽고 `sha256=` 접두사를 제거합니다.
+2. 등록 시 보관해 둔 `secret`을 사용해 요청 본문 원문에 대한 HMAC-SHA256을 계산합니다.
+3. 계산한 서명과 헤더의 서명을 **상수 시간 비교**로 일치 여부를 확인합니다. 단순 문자열 비교는 타이밍 공격에 취약하므로 언어별 안전한 비교 함수를 사용하세요.
+4. 일치하지 않으면 요청을 거부합니다 (`401` 또는 `403` 응답 권장).
+
+> JSON 파싱 결과가 아닌 **요청 본문 원문 바이트**로 서명을 계산해야 합니다. 프레임워크가 본문을 미리 파싱하면 공백·필드 순서 등이 달라져 서명 검증이 실패할 수 있습니다.
+
+### 검증 예제
+
+<CodeTabs>
+  <CodeTab label="Node.js / Express" language="javascript" code={`const express = require('express');
+const crypto = require('crypto');
+
+const app = express();
+const EVENT_SECRET = process.env.DATAGSM_EVENT_SECRET;
+
+// 원문 바이트 보존을 위해 raw body 사용
+app.post(
+  '/events/datagsm',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    const signatureHeader = req.header('X-DataGSM-Signature');
+    if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
+      return res.status(401).send('missing signature');
+    }
+    const received = signatureHeader.slice('sha256='.length);
+
+    const expected = crypto
+      .createHmac('sha256', EVENT_SECRET)
+      .update(req.body) // Buffer
+      .digest('hex');
+
+    const receivedBuffer = Buffer.from(received, 'utf8');
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+
+    const valid =
+      receivedBuffer.length === expectedBuffer.length &&
+      crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+
+    if (!valid) return res.status(401).send('invalid signature');
+
+    const payload = JSON.parse(req.body.toString('utf8'));
+    // payload.event, payload.data 처리
+    res.sendStatus(200);
+  }
+);`} />
+  <CodeTab label="Python / Flask" language="python" code={`import hmac
+import hashlib
+import os
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+EVENT_SECRET = os.environ['DATAGSM_EVENT_SECRET']
+
+@app.post('/events/datagsm')
+def receive_event():
+    signature_header = request.headers.get('X-DataGSM-Signature', '')
+    if not signature_header.startswith('sha256='):
+        abort(401)
+    received = signature_header[len('sha256='):]
+
+    raw_body = request.get_data()  # bytes
+    expected = hmac.new(
+        EVENT_SECRET.encode('utf-8'),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(received, expected):
+        abort(401)
+
+    payload = request.get_json(force=True)
+    # payload['event'], payload['data'] 처리
+    return '', 200`} />
+  <CodeTab label="Java" language="java" code={`import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+
+public class EventVerifier {
+    private static final String SECRET = System.getenv("DATAGSM_EVENT_SECRET");
+
+    public static boolean verify(String signatureHeader, byte[] rawBody) throws Exception {
+        if (signatureHeader == null || !signatureHeader.startsWith("sha256=")) return false;
+        String received = signatureHeader.substring("sha256=".length());
+
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        byte[] hmac = mac.doFinal(rawBody);
+
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hmac) sb.append(String.format("%02x", b));
+        String expected = sb.toString();
+
+        return java.security.MessageDigest.isEqual(
+            received.getBytes(StandardCharsets.UTF_8),
+            expected.getBytes(StandardCharsets.UTF_8)
+        );
+    }
+}`} />
+  <CodeTab label="Kotlin / Spring Boot" language="kotlin" code={`import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.ResponseEntity
+
+@RestController
+class EventController(
+    @Value("\${datagsm.event.secret}")
+    private val secret: String,
+) {
+    @PostMapping("/events/datagsm")
+    fun receive(
+        @RequestHeader("X-DataGSM-Signature") signature: String,
+        @RequestBody rawBody: ByteArray,
+    ): ResponseEntity<Void> {
+        if (!signature.startsWith("sha256=")) return ResponseEntity.status(401).build()
+        val received = signature.removePrefix("sha256=")
+
+        val mac = Mac.getInstance("HmacSHA256").apply {
+            init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
+        }
+        val expected = mac.doFinal(rawBody)
+            .joinToString("") { "%02x".format(it) }
+
+        val valid = java.security.MessageDigest.isEqual(
+            received.toByteArray(Charsets.UTF_8),
+            expected.toByteArray(Charsets.UTF_8)
+        )
+        if (!valid) return ResponseEntity.status(401).build()
+
+        // rawBody를 파싱하여 payload.event, payload.data 처리
+        return ResponseEntity.ok().build()
+    }
+}`} />
+</CodeTabs>
+
+### 운영 체크리스트
+
+- [ ] secret을 환경 변수·시크릿 매니저 등 안전한 저장소에 보관합니다.
+- [ ] 본문 파싱 전 원문 바이트로 서명을 계산합니다.
+- [ ] 서명 비교는 상수 시간 비교 함수를 사용합니다.
+- [ ] 검증 실패 시 `2xx`가 아닌 응답으로 거부합니다.
+- [ ] 동일 이벤트의 중복 수신 가능성을 고려해 핸들러를 멱등하게 구현합니다.
+- [ ] HTTPS 엔드포인트만 등록합니다. (`http://`는 등록 자체는 가능하지만 평문 노출 위험이 있어 권장하지 않습니다.)

@@ -1,0 +1,305 @@
+export const metadata = { title: '이벤트 페이로드 명세' }
+
+# 이벤트 페이로드 명세
+
+### 개요
+
+DataGSM Event가 외부 서버로 전송하는 이벤트 페이로드의 공통 구조와 각 이벤트별 `data` 필드 명세입니다. 모든 페이로드는 `application/json` Content-Type으로 HTTP POST 요청 본문에 담겨 전송됩니다.
+
+### 공통 구조
+
+모든 이벤트 페이로드는 다음 공통 구조를 따릅니다.
+
+```json
+{
+  "id": "evt_abc123",
+  "event": "student.graduated",
+  "timestamp": "2026-05-13T10:00:00Z",
+  "data": { }
+}
+```
+
+| 필드          | 타입       | 설명                                                | 예시                       |
+|-------------|----------|---------------------------------------------------|--------------------------|
+| `id`        | `String` | 이벤트 식별자                                           | `evt_abc123`             |
+| `event`     | `String` | 이벤트 이름 ([EventType 목록](#eventtype-목록) 참고) | `student.graduated`      |
+| `timestamp` | `String` | 이벤트 발생 시각 (`ISO-8601`)                            | `2026-05-13T10:00:00Z`   |
+| `data`      | `Object` | 이벤트별 상세 데이터                                       | (이벤트별로 다름)               |
+
+### EventType 목록
+
+| 이벤트 이름                  | 설명          |
+|-------------------------|-------------|
+| `student.graduated`     | 학생 졸업 처리    |
+| `student.withdrawn`     | 학생 자퇴 처리    |
+| `student.status_changed` | 학생 상태 변경    |
+| `club.created`          | 동아리 생성      |
+| `club.updated`          | 동아리 정보 수정   |
+| `club.deleted`          | 동아리 삭제      |
+| `project.created`       | 프로젝트 생성     |
+| `project.updated`       | 프로젝트 수정     |
+| `project.deleted`       | 프로젝트 삭제     |
+
+---
+
+### `student.graduated`
+
+학생이 졸업 처리되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명     | 예시                  |
+|--------------|----------|--------|---------------------|
+| `student_id` | `integer` | 학생 ID  | `1`                 |
+| `name`       | `String` | 학생 이름  | `홍길동`               |
+| `email`      | `String` | 학생 이메일 | `s24080@gsm.hs.kr`  |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc123",
+  "event": "student.graduated",
+  "timestamp": "2026-05-13T10:00:00Z",
+  "data": {
+    "student_id": 1,
+    "name": "홍길동",
+    "email": "s24080@gsm.hs.kr"
+  }
+}
+```
+
+---
+
+### `student.withdrawn`
+
+학생이 자퇴 처리되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명     | 예시                  |
+|--------------|----------|--------|---------------------|
+| `student_id` | `integer` | 학생 ID  | `1`                 |
+| `name`       | `String` | 학생 이름  | `홍길동`               |
+| `email`      | `String` | 학생 이메일 | `s24080@gsm.hs.kr`  |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc124",
+  "event": "student.withdrawn",
+  "timestamp": "2026-05-13T10:05:00Z",
+  "data": {
+    "student_id": 1,
+    "name": "홍길동",
+    "email": "s24080@gsm.hs.kr"
+  }
+}
+```
+
+---
+
+### `student.status_changed`
+
+학생의 역할(`StudentRole`) 등 상태가 변경되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명                                                                                       | 예시                  |
+|--------------|----------|------------------------------------------------------------------------------------------|---------------------|
+| `student_id` | `integer` | 학생 ID                                                                                    | `1`                 |
+| `name`       | `String` | 학생 이름                                                                                    | `홍길동`               |
+| `email`      | `String` | 학생 이메일                                                                                   | `s24080@gsm.hs.kr`  |
+| `status`     | `String` | 변경된 학생 역할 (`STUDENT_COUNCIL`, `DORMITORY_MANAGER`, `GENERAL_STUDENT`, `GRADUATE`, `WITHDRAWN`) | `STUDENT_COUNCIL`   |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc125",
+  "event": "student.status_changed",
+  "timestamp": "2026-05-13T10:10:00Z",
+  "data": {
+    "student_id": 1,
+    "name": "홍길동",
+    "email": "s24080@gsm.hs.kr",
+    "status": "STUDENT_COUNCIL"
+  }
+}
+```
+
+---
+
+### `club.created`
+
+동아리가 생성되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드        | 타입       | 설명                                          | 예시           |
+|-----------|----------|---------------------------------------------|--------------|
+| `club_id` | `integer` | 동아리 ID                                      | `1`          |
+| `name`    | `String` | 동아리 이름                                      | `SW개발동아리`    |
+| `type`    | `String` | 동아리 종류 (`MAJOR_CLUB`, `AUTONOMOUS_CLUB`)    | `MAJOR_CLUB` |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc126",
+  "event": "club.created",
+  "timestamp": "2026-05-13T11:00:00Z",
+  "data": {
+    "club_id": 1,
+    "name": "SW개발동아리",
+    "type": "MAJOR_CLUB"
+  }
+}
+```
+
+---
+
+### `club.updated`
+
+동아리 정보가 수정되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드        | 타입       | 설명                                          | 예시           |
+|-----------|----------|---------------------------------------------|--------------|
+| `club_id` | `integer` | 동아리 ID                                      | `1`          |
+| `name`    | `String` | 변경 후 동아리 이름                                 | `SW개발동아리`    |
+| `type`    | `String` | 변경 후 동아리 종류 (`MAJOR_CLUB`, `AUTONOMOUS_CLUB`) | `MAJOR_CLUB` |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc127",
+  "event": "club.updated",
+  "timestamp": "2026-05-13T11:10:00Z",
+  "data": {
+    "club_id": 1,
+    "name": "SW개발동아리(개편)",
+    "type": "MAJOR_CLUB"
+  }
+}
+```
+
+---
+
+### `club.deleted`
+
+동아리가 삭제되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드        | 타입       | 설명            | 예시         |
+|-----------|----------|---------------|------------|
+| `club_id` | `integer` | 동아리 ID        | `1`        |
+| `name`    | `String` | 삭제 시점의 동아리 이름 | `SW개발동아리`  |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc128",
+  "event": "club.deleted",
+  "timestamp": "2026-05-13T11:20:00Z",
+  "data": {
+    "club_id": 1,
+    "name": "SW개발동아리"
+  }
+}
+```
+
+---
+
+### `project.created`
+
+프로젝트가 생성되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명         | 예시              |
+|--------------|----------|------------|-----------------|
+| `project_id` | `integer` | 프로젝트 ID    | `1`             |
+| `name`       | `String` | 프로젝트 이름    | `우주관측 프로젝트`     |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc129",
+  "event": "project.created",
+  "timestamp": "2026-05-13T12:00:00Z",
+  "data": {
+    "project_id": 1,
+    "name": "우주관측 프로젝트"
+  }
+}
+```
+
+---
+
+### `project.updated`
+
+프로젝트 정보가 수정되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명             | 예시              |
+|--------------|----------|----------------|-----------------|
+| `project_id` | `integer` | 프로젝트 ID        | `1`             |
+| `name`       | `String` | 변경 후 프로젝트 이름   | `우주관측 프로젝트 v2`  |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc130",
+  "event": "project.updated",
+  "timestamp": "2026-05-13T12:10:00Z",
+  "data": {
+    "project_id": 1,
+    "name": "우주관측 프로젝트 v2"
+  }
+}
+```
+
+---
+
+### `project.deleted`
+
+프로젝트가 삭제되었을 때 발송됩니다.
+
+#### data 필드
+
+| 필드           | 타입       | 설명             | 예시              |
+|--------------|----------|----------------|-----------------|
+| `project_id` | `integer` | 프로젝트 ID        | `1`             |
+| `name`       | `String` | 삭제 시점의 프로젝트 이름 | `우주관측 프로젝트`     |
+
+#### 예시
+
+```json
+{
+  "id": "evt_abc131",
+  "event": "project.deleted",
+  "timestamp": "2026-05-13T12:20:00Z",
+  "data": {
+    "project_id": 1,
+    "name": "우주관측 프로젝트"
+  }
+}
+```
+
+---
+
+### 페이로드 수신 시 유의사항
+
+- 페이로드 본문 외에 `X-DataGSM-Signature` 헤더가 함께 전달됩니다. 위조 요청을 식별하기 위해 반드시 [서명을 검증](/event/signature)하세요.
+- DataGSM 서버는 응답 본문을 사용하지 않습니다. 수신 서버는 가능한 한 빠르게 `2xx` 응답을 반환하고, 실제 처리는 별도 큐·잡으로 분리하는 것을 권장합니다.
+- 응답이 `2xx`가 아니거나 타임아웃이 발생하면 지수 백오프(1s → 10s → 60s)로 최대 3회 재시도되며, 그 이후에는 영구 손실됩니다.
+- 동일 이벤트가 재시도로 인해 중복 수신될 수 있으므로, 수신 서버는 멱등하게 처리해야 합니다.
