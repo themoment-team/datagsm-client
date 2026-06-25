@@ -1,0 +1,98 @@
+export const metadata = { title: 'project.updated 명세' }
+
+# `project.updated`
+
+프로젝트가 생성·수정·삭제되면 발송됩니다. 세 종류 모두 이 하나의 이벤트로 전달되며, 종류는 `old`/`new`의 `object`가 비었는지로 구분합니다.
+
+봉투(`id`/`event`/`timestamp`/`data`)와 `data`의 `old`/`new` `{index, object}` 구조는 [페이로드 개요](/event/payloads)를 참고하세요. 이 페이지는 `object` 안에 담기는 프로젝트 필드만 다룹니다.
+
+### `object` 필드
+
+| 필드             | 타입               | nullable | 설명                                     |
+|----------------|------------------|:--------:|----------------------------------------|
+| `project_id`   | `integer`        | X        | DataGSM 내부 프로젝트 식별자                    |
+| `name`         | `String`         | X        | 프로젝트 이름                                |
+| `description`  | `String`         | O        | 프로젝트 설명                                |
+| `start_year`   | `integer`        | X        | 시작 연도                                  |
+| `end_year`     | `integer`        | O        | 종료 연도 (진행 중이면 `null`)                  |
+| `status`       | `String(enum)`   | X        | 상태 (`ACTIVE` / `ENDED`)                |
+| `club`         | `Object`         | O        | 소속 동아리 `{ club_id, name }` (없으면 `null`) |
+| `participants` | `Array<Object>`  | X        | 참여자 목록 `[{ student_number, name }]`     |
+
+`club`은 `{ club_id, name }`, `participants`의 학생은 `{ student_number, name }`만 담습니다.
+
+**`status`**
+
+| 값        | 의미   |
+|----------|------|
+| `ACTIVE` | 진행 중 |
+| `ENDED`  | 종료   |
+
+### 생성 · 수정 · 삭제 판별
+
+| 종류     | `old[i].object` | `new[i].object` |
+|--------|-----------------|-----------------|
+| **수정** | 변경 전 프로젝트 정보     | 변경 후 프로젝트 정보     |
+| **생성** | `{}` (빈 객체)      | 생성된 프로젝트 정보      |
+| **삭제** | 삭제 전 프로젝트 정보     | `{}` (빈 객체)      |
+
+---
+
+### 예시 A — 생성 (프로젝트 신규 등록)
+
+`old[i].object`가 빈 `{}`이면 생성입니다.
+
+```json
+{
+  "id": "evt_d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9",
+  "event": "project.updated",
+  "timestamp": "2026-06-23T06:20:00.000Z",
+  "data": {
+    "old": [
+      { "index": 0, "object": {} }
+    ],
+    "new": [
+      { "index": 0, "object": {
+        "project_id": 1, "name": "DataGSM", "description": "학교 정보 API",
+        "start_year": 2025, "end_year": null, "status": "ACTIVE",
+        "club": { "club_id": 1, "name": "더모먼트" },
+        "participants": [ { "student_number": 2106, "name": "김부원" } ]
+      } }
+    ]
+  }
+}
+```
+
+→ `old[0].object`가 빈 `{}`이므로 생성. 생성된 정보는 `new[0].object`에서 확인합니다.
+
+### 예시 B — 수정 (프로젝트 종료)
+
+소속 동아리 해제, `end_year` 부여, 상태가 `ENDED`로 변경된 예시입니다.
+
+```json
+{
+  "id": "evt_e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+  "event": "project.updated",
+  "timestamp": "2026-06-23T06:30:00.000Z",
+  "data": {
+    "old": [
+      { "index": 0, "object": {
+        "project_id": 3, "name": "구 포털", "description": "구 학사 포털",
+        "start_year": 2023, "end_year": null, "status": "ACTIVE",
+        "club": { "club_id": 1, "name": "더모먼트" },
+        "participants": [ { "student_number": 2108, "name": "박참여" } ]
+      } }
+    ],
+    "new": [
+      { "index": 0, "object": {
+        "project_id": 3, "name": "구 포털", "description": "구 학사 포털",
+        "start_year": 2023, "end_year": 2025, "status": "ENDED",
+        "club": null,
+        "participants": [ { "student_number": 2108, "name": "박참여" } ]
+      } }
+    ]
+  }
+}
+```
+
+→ `index 0`의 `old.object`/`new.object`를 비교: `end_year`(null→2025), `status`(ACTIVE→ENDED), `club`(해제)이 변경됨.
