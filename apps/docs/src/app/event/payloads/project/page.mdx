@@ -11,13 +11,13 @@ export const metadata = { title: 'project.updated 명세' }
 | 필드             | 타입               | nullable | 설명                                     |
 |----------------|------------------|:--------:|----------------------------------------|
 | `project_id`   | `integer`        | X        | DataGSM 내부 프로젝트 식별자                    |
-| `name`         | `String`         | X        | 프로젝트 이름                                |
-| `description`  | `String`         | O        | 프로젝트 설명                                |
+| `name`         | `string`         | X        | 프로젝트 이름                                |
+| `description`  | `string`         | O        | 프로젝트 설명                                |
 | `start_year`   | `integer`        | X        | 시작 연도                                  |
 | `end_year`     | `integer`        | O        | 종료 연도 (진행 중이면 `null`)                  |
-| `status`       | `String(enum)`   | X        | 상태 (`ACTIVE` / `ENDED`)                |
-| `club`         | `Object`         | O        | 소속 동아리 `{ club_id, name }` (없으면 `null`) |
-| `participants` | `Array<Object>`  | X        | 참여자 목록 `[{ student_number, name }]`     |
+| `status`       | `string(enum)`   | X        | 상태 (`ACTIVE` / `ENDED`)                |
+| `club`         | `object`         | O        | 소속 동아리 `{ club_id, name }` (없으면 `null`) |
+| `participants` | `array<object>`  | X        | 참여자 목록 `[{ student_number, name }]`     |
 
 `club`은 `{ club_id, name }`, `participants`의 학생은 `{ student_number, name }`만 담습니다.
 
