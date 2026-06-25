@@ -30,6 +30,9 @@
 - [OAuth SDK Java](https://docs.datagsm.kr/oauth/sdk/java): Java/Kotlin 환경용 OAuth 클라이언트 SDK
 - [서드파티 권한 범위](https://docs.datagsm.kr/oauth/thirdparty-scope): 서드파티 애플리케이션의 커스텀 OAuth 권한 범위 정의·등록·JWT 포함 흐름, JWK Set 기반 토큰 검증 방법
 - [OAuth SDK React](https://docs.datagsm.kr/oauth/sdk/react): React 환경용 OAuth 클라이언트 SDK
-- [Event 개요](https://docs.datagsm.kr/event): 학생·동아리·프로젝트 이벤트를 외부 서버로 실시간 전달하는 기능. 지원 이벤트 9종, 전송·재시도 정책, secret 1회 노출, 계정당 최대 10개 제한
-- [이벤트 페이로드 명세](https://docs.datagsm.kr/event/payloads): 이벤트 페이로드 공통 구조(id·event·timestamp·data)와 9종 이벤트별 data 필드 명세 및 예시
+- [Event 개요](https://docs.datagsm.kr/event): 학생·동아리·프로젝트 이벤트를 외부 서버로 실시간 전달하는 기능. 지원 이벤트 3종(student.updated·club.updated·project.updated), 전송·재시도 정책(1s→10s→100s), secret 1회 노출, 계정당 최대 10개 제한
+- [이벤트 페이로드 명세](https://docs.datagsm.kr/event/payloads): 이벤트 페이로드 공통 봉투 구조(id·event·timestamp·data)와 data.old/data.new({index, object}) 구조, 생성·수정·삭제 판별 방법
+- [student.updated 명세](https://docs.datagsm.kr/event/payloads/student): 학생 이벤트 object 전체 필드, sex·major·role enum, 발행 시점, 수정·졸업·일괄 변경 예시
+- [club.updated 명세](https://docs.datagsm.kr/event/payloads/club): 동아리 이벤트 object 필드(type·status·leader·participants), 생성·수정·삭제 판별, 수정·삭제 예시
+- [project.updated 명세](https://docs.datagsm.kr/event/payloads/project): 프로젝트 이벤트 object 필드(status·club·participants), 생성·수정·삭제 판별, 생성·수정 예시
 - [서명 검증 가이드](https://docs.datagsm.kr/event/signature): X-DataGSM-Signature(HMAC-SHA256) 서명 검증 절차, 상수 시간 비교, Node·Python·Java·Kotlin 검증 예제
