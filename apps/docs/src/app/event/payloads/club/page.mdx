@@ -11,13 +11,13 @@ export const metadata = { title: 'club.updated 명세' }
 | 필드               | 타입               | nullable | 설명                                        |
 |------------------|------------------|:--------:|-------------------------------------------|
 | `club_id`        | `integer`        | X        | DataGSM 내부 동아리 식별자                        |
-| `name`           | `String`         | X        | 동아리 이름                                    |
-| `type`           | `String(enum)`   | X        | 종류 (`MAJOR_CLUB` / `AUTONOMOUS_CLUB`)      |
+| `name`           | `string`         | X        | 동아리 이름                                    |
+| `type`           | `string(enum)`   | X        | 종류 (`MAJOR_CLUB` / `AUTONOMOUS_CLUB`)      |
 | `founded_year`   | `integer`        | X        | 창립 연도                                     |
-| `status`         | `String(enum)`   | X        | 상태 (`ACTIVE` / `ABOLISHED`)               |
+| `status`         | `string(enum)`   | X        | 상태 (`ACTIVE` / `ABOLISHED`)               |
 | `abolished_year` | `integer`        | O        | 폐지 연도 (활성 동아리는 `null`)                    |
-| `leader`         | `Object`         | O        | 동아리장 `{ student_number, name }` (없으면 `null`) |
-| `participants`   | `Array<Object>`  | X        | 부원 목록 `[{ student_number, name }]`         |
+| `leader`         | `object`         | O        | 동아리장 `{ student_number, name }` (없으면 `null`) |
+| `participants`   | `array<object>`  | X        | 부원 목록 `[{ student_number, name }]`         |
 
 `leader` / `participants`의 학생은 `{ student_number, name }`만 담습니다.
 
