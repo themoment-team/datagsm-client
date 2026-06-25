@@ -13,21 +13,21 @@ export const metadata = { title: 'student.updated 명세' }
 | 필드                     | 타입            | nullable | 설명                                        |
 |------------------------|---------------|:--------:|-------------------------------------------|
 | `student_id`           | `integer`     | X        | DataGSM 내부 학생 식별자. 같은 학생의 `old`/`new`는 동일  |
-| `name`                 | `String`      | X        | 이름                                        |
-| `email`                | `String`      | X        | 이메일                                       |
-| `sex`                  | `String(enum)`| X        | 성별 (`MAN` / `WOMAN`)                       |
+| `name`                 | `string`      | X        | 이름                                        |
+| `email`                | `string`      | X        | 이메일                                       |
+| `sex`                  | `string(enum)`| X        | 성별 (`MAN` / `WOMAN`)                       |
 | `grade`                | `integer`     | O        | 학년                                        |
 | `class_num`            | `integer`     | O        | 반                                         |
 | `number`               | `integer`     | O        | 번호                                        |
 | `student_number`       | `integer`     | O        | 학번 (학년·반·번호 결합, 예: `2105`)                 |
-| `major`                | `String(enum)`| O        | 학과 (`SW_DEVELOPMENT` / `SMART_IOT` / `AI`) |
-| `specialty`            | `String`      | O        | 전공                                        |
-| `role`                 | `String(enum)`| X        | 소속/상태 (아래 enum 참고)                        |
+| `major`                | `string(enum)`| O        | 학과 (`SW_DEVELOPMENT` / `SMART_IOT` / `AI`) |
+| `specialty`            | `string`      | O        | 전공                                        |
+| `role`                 | `string(enum)`| X        | 소속/상태 (아래 enum 참고)                        |
 | `dormitory_floor`      | `integer`     | O        | 기숙사 층                                     |
 | `dormitory_room`       | `integer`     | O        | 기숙사 호실                                    |
-| `major_club_name`      | `String`      | O        | 전공동아리명                                    |
-| `autonomous_club_name` | `String`      | O        | 창체동아리명                                    |
-| `github_id`            | `String`      | O        | GitHub ID                                 |
+| `major_club_name`      | `string`      | O        | 전공동아리명                                    |
+| `autonomous_club_name` | `string`      | O        | 창체동아리명                                    |
+| `github_id`            | `string`      | O        | GitHub ID                                 |
 
 ### enum 값
 
