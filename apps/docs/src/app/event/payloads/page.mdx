@@ -30,10 +30,10 @@ DataGSM Event가 외부 서버로 전송하는 이벤트 페이로드의 공통 
 
 | 필드          | 타입       | 설명                                                              | 예시                         |
 |-------------|----------|-----------------------------------------------------------------|----------------------------|
-| `id`        | `String` | 이벤트 고유 ID. `evt_` + UUID(하이픈 제거). **멱등성 키로 사용 권장**               | `evt_3f9a...3c2e`          |
-| `event`     | `String` | 이벤트 타입 ([EventType 목록](#eventtype-목록) 참고)                       | `student.updated`          |
-| `timestamp` | `String` | 이벤트 발생 시각 (`ISO-8601`, UTC)                                     | `2026-06-23T05:21:48.123Z` |
-| `data`      | `Object` | 변경 내용. `old` / `new` 두 리스트                                      | (아래 참고)                    |
+| `id`        | `string` | 이벤트 고유 ID. `evt_` + UUID(하이픈 제거). **멱등성 키로 사용 권장**               | `evt_3f9a...3c2e`          |
+| `event`     | `string` | 이벤트 타입 ([EventType 목록](#eventtype-목록) 참고)                       | `student.updated`          |
+| `timestamp` | `string` | 이벤트 발생 시각 (`ISO-8601`, UTC)                                     | `2026-06-23T05:21:48.123Z` |
+| `data`      | `object` | 변경 내용. `old` / `new` 두 리스트                                      | (아래 참고)                    |
 
 ### EventType 목록
 
