@@ -170,6 +170,20 @@ export const docsSections: DocsSection[] = [
       {
         label: '이벤트 페이로드 명세',
         href: '/event/payloads',
+        children: [
+          {
+            label: 'student.updated',
+            href: '/event/payloads/student',
+          },
+          {
+            label: 'club.updated',
+            href: '/event/payloads/club',
+          },
+          {
+            label: 'project.updated',
+            href: '/event/payloads/project',
+          },
+        ],
       },
       {
         label: '서명 검증 가이드',

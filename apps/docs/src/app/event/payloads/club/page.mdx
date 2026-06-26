@@ -1,0 +1,106 @@
+export const metadata = { title: 'club.updated 명세' }
+
+# `club.updated`
+
+동아리가 생성·수정·삭제되면 발송됩니다. 세 종류 모두 이 하나의 이벤트로 전달되며, 종류는 `old`/`new`의 `object`가 비었는지로 구분합니다.
+
+봉투(`id`/`event`/`timestamp`/`data`)와 `data`의 `old`/`new` `{index, object}` 구조는 [페이로드 개요](/event/payloads)를 참고하세요. 이 페이지는 `object` 안에 담기는 동아리 필드만 다룹니다.
+
+### `object` 필드
+
+| 필드               | 타입               | nullable | 설명                                        |
+|------------------|------------------|:--------:|-------------------------------------------|
+| `club_id`        | `integer`        | X        | DataGSM 내부 동아리 식별자                        |
+| `name`           | `string`         | X        | 동아리 이름                                    |
+| `type`           | `string(enum)`   | X        | 종류 (`MAJOR_CLUB` / `AUTONOMOUS_CLUB`)      |
+| `founded_year`   | `integer`        | X        | 창립 연도                                     |
+| `status`         | `string(enum)`   | X        | 상태 (`ACTIVE` / `ABOLISHED`)               |
+| `abolished_year` | `integer`        | O        | 폐지 연도 (활성 동아리는 `null`)                    |
+| `leader`         | `object`         | O        | 동아리장 `{ student_number, name }` (없으면 `null`) |
+| `participants`   | `array<object>`  | X        | 부원 목록 `[{ student_number, name }]`         |
+
+`leader` / `participants`의 학생은 `{ student_number, name }`만 담습니다.
+
+**`type`**
+
+| 값                 | 의미      |
+|-------------------|---------|
+| `MAJOR_CLUB`      | 전공동아리   |
+| `AUTONOMOUS_CLUB` | 창체동아리   |
+
+**`status`**
+
+| 값           | 의미   |
+|-------------|------|
+| `ACTIVE`    | 활성   |
+| `ABOLISHED` | 폐지   |
+
+### 생성 · 수정 · 삭제 판별
+
+| 종류     | `old[i].object` | `new[i].object` |
+|--------|-----------------|-----------------|
+| **수정** | 변경 전 동아리 정보      | 변경 후 동아리 정보      |
+| **생성** | `{}` (빈 객체)      | 생성된 동아리 정보       |
+| **삭제** | 삭제 전 동아리 정보      | `{}` (빈 객체)      |
+
+---
+
+### 예시 A — 수정 (부원·동아리장 변경)
+
+```json
+{
+  "id": "evt_b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
+  "event": "club.updated",
+  "timestamp": "2026-06-23T06:00:00.000Z",
+  "data": {
+    "old": [
+      { "index": 0, "object": {
+        "club_id": 1, "name": "더모먼트", "type": "MAJOR_CLUB", "founded_year": 2024,
+        "status": "ACTIVE", "abolished_year": null,
+        "leader": { "student_number": 2105, "name": "홍길동" },
+        "participants": [ { "student_number": 2106, "name": "김부원" } ]
+      } }
+    ],
+    "new": [
+      { "index": 0, "object": {
+        "club_id": 1, "name": "더모먼트", "type": "MAJOR_CLUB", "founded_year": 2024,
+        "status": "ACTIVE", "abolished_year": null,
+        "leader": { "student_number": 2106, "name": "김부원" },
+        "participants": [
+          { "student_number": 2105, "name": "홍길동" },
+          { "student_number": 2107, "name": "이부원" }
+        ]
+      } }
+    ]
+  }
+}
+```
+
+→ `index 0`의 `old.object`/`new.object`를 비교: 동아리장이 홍길동→김부원으로 바뀌고, 부원이 추가됨.
+
+### 예시 B — 삭제 (동아리 폐지)
+
+`new[i].object`가 빈 `{}`이면 삭제입니다.
+
+```json
+{
+  "id": "evt_c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
+  "event": "club.updated",
+  "timestamp": "2026-06-23T06:10:00.000Z",
+  "data": {
+    "old": [
+      { "index": 0, "object": {
+        "club_id": 7, "name": "블렌드", "type": "AUTONOMOUS_CLUB", "founded_year": 2022,
+        "status": "ABOLISHED", "abolished_year": 2026,
+        "leader": null,
+        "participants": []
+      } }
+    ],
+    "new": [
+      { "index": 0, "object": {} }
+    ]
+  }
+}
+```
+
+→ `new[0].object`가 빈 `{}`이므로 삭제. 삭제 전 정보는 `old[0].object`에서 확인합니다.
