@@ -1,0 +1,170 @@
+export const metadata = { title: 'student.updated 명세' }
+
+# `student.updated`
+
+학생 정보가 변경되면 발송됩니다. 정보 수정, 졸업, 자퇴, 역할 변경 등 **모든 학생 변경**이 이 하나의 이벤트로 전달됩니다.
+
+봉투(`id`/`event`/`timestamp`/`data`)와 `data`의 `old`/`new` `{index, object}` 구조는 [페이로드 개요](/event/payloads)를 참고하세요. 이 페이지는 `object` 안에 담기는 학생 필드만 다룹니다.
+
+### `object` 필드
+
+`old[i].object` / `new[i].object`는 해당 시점의 학생 **전체 정보**를 담습니다.
+
+| 필드                     | 타입            | nullable | 설명                                        |
+|------------------------|---------------|:--------:|-------------------------------------------|
+| `student_id`           | `integer`     | X        | DataGSM 내부 학생 식별자. 같은 학생의 `old`/`new`는 동일  |
+| `name`                 | `string`      | X        | 이름                                        |
+| `email`                | `string`      | X        | 이메일                                       |
+| `sex`                  | `string(enum)`| X        | 성별 (`MAN` / `WOMAN`)                       |
+| `grade`                | `integer`     | O        | 학년                                        |
+| `class_num`            | `integer`     | O        | 반                                         |
+| `number`               | `integer`     | O        | 번호                                        |
+| `student_number`       | `integer`     | O        | 학번 (학년·반·번호 결합, 예: `2105`)                 |
+| `major`                | `string(enum)`| O        | 학과 (`SW_DEVELOPMENT` / `SMART_IOT` / `AI`) |
+| `specialty`            | `string`      | O        | 전공                                        |
+| `role`                 | `string(enum)`| X        | 소속/상태 (아래 enum 참고)                        |
+| `dormitory_floor`      | `integer`     | O        | 기숙사 층                                     |
+| `dormitory_room`       | `integer`     | O        | 기숙사 호실                                    |
+| `major_club_name`      | `string`      | O        | 전공동아리명                                    |
+| `autonomous_club_name` | `string`      | O        | 창체동아리명                                    |
+| `github_id`            | `string`      | O        | GitHub ID                                 |
+
+### enum 값
+
+**`sex`**
+
+| 값       | 의미 |
+|---------|----|
+| `MAN`   | 남자 |
+| `WOMAN` | 여자 |
+
+**`major`**
+
+| 값                | 의미       |
+|------------------|----------|
+| `SW_DEVELOPMENT` | SW개발과    |
+| `SMART_IOT`      | 스마트IoT과 |
+| `AI`             | 인공지능과    |
+
+**`role`** — 졸업/자퇴는 별도 이벤트가 아니라 이 값의 변화로 판단합니다.
+
+| 값                   | 의미          |
+|---------------------|-------------|
+| `GENERAL_STUDENT`   | 일반학생        |
+| `STUDENT_COUNCIL`   | 학생회         |
+| `DORMITORY_MANAGER` | 기숙사자치위원회    |
+| `GRADUATE`          | 졸업생         |
+| `WITHDRAWN`         | 자퇴생         |
+
+> enum에 **새 값이 추가될 수 있으므로**, 모르는 값을 받아도 오류 없이 처리되도록 구현하세요.
+
+### 발행 시점
+
+| 작업                                          | `old`/`new` 길이 | `role` 변화 예                          |
+|---------------------------------------------|----------------|-------------------------------------|
+| 학생 정보 수정 (이름·이메일·학번·동아리·기숙사 등)              | 1              | 변화 없음 또는 일부 필드만                     |
+| 상태(소속) 변경                                   | 1              | `GENERAL_STUDENT` → `STUDENT_COUNCIL` |
+| 자퇴 처리                                       | 1              | `... → WITHDRAWN`                   |
+| 졸업 처리                                       | 1              | `... → GRADUATE`                    |
+| 3학년 일괄 졸업                                   | N (학생 수)       | 다수 `... → GRADUATE`                 |
+| 엑셀 일괄 수정                                    | N (변경 학생 수)    | 변경 내용에 따라                          |
+
+> 학생 도메인은 현재 **수정만 발행**합니다. 졸업·자퇴해도 row가 남으므로 삭제(`object` 빈 `{}`)가 아니라 `role` 변화로 표현됩니다.
+
+### 예시 A — 단일 학생 정보 수정 (이메일·기숙사만 변경)
+
+```json
+{
+  "id": "evt_3f9a2c1b8e0d4a7f9c2e1b6d5a4f3c2e",
+  "event": "student.updated",
+  "timestamp": "2026-06-23T05:21:48.123Z",
+  "data": {
+    "old": [
+      {
+        "index": 0,
+        "object": {
+          "student_id": 42, "name": "홍길동", "email": "s24080@gsm.hs.kr", "sex": "MAN",
+          "grade": 2, "class_num": 1, "number": 5, "student_number": 2105,
+          "major": "SW_DEVELOPMENT", "specialty": null, "role": "GENERAL_STUDENT",
+          "dormitory_floor": 2, "dormitory_room": 201,
+          "major_club_name": "더모먼트", "autonomous_club_name": "블렌드", "github_id": "hong"
+        }
+      }
+    ],
+    "new": [
+      {
+        "index": 0,
+        "object": {
+          "student_id": 42, "name": "홍길동", "email": "s25012@gsm.hs.kr", "sex": "MAN",
+          "grade": 2, "class_num": 1, "number": 5, "student_number": 2105,
+          "major": "SW_DEVELOPMENT", "specialty": null, "role": "GENERAL_STUDENT",
+          "dormitory_floor": 3, "dormitory_room": 301,
+          "major_club_name": "더모먼트", "autonomous_club_name": "블렌드", "github_id": "hong"
+        }
+      }
+    ]
+  }
+}
+```
+
+→ `index 0`의 `old.object`/`new.object`를 비교: `email`(s24080→s25012), `dormitory_floor`/`dormitory_room`만 변경됨. `student_id`는 동일.
+
+### 예시 B — 졸업 (role 변화)
+
+```json
+{
+  "id": "evt_a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+  "event": "student.updated",
+  "timestamp": "2026-06-23T05:30:00.000Z",
+  "data": {
+    "old": [
+      {
+        "index": 0,
+        "object": {
+          "student_id": 42, "name": "홍길동", "email": "s24080@gsm.hs.kr", "sex": "MAN",
+          "grade": 3, "class_num": 1, "number": 1, "student_number": 3101,
+          "major": "SW_DEVELOPMENT", "specialty": null, "role": "GENERAL_STUDENT",
+          "dormitory_floor": 3, "dormitory_room": 301,
+          "major_club_name": "더모먼트", "autonomous_club_name": "블렌드", "github_id": "hong"
+        }
+      }
+    ],
+    "new": [
+      {
+        "index": 0,
+        "object": {
+          "student_id": 42, "name": "홍길동", "email": "s24080@gsm.hs.kr", "sex": "MAN",
+          "grade": null, "class_num": null, "number": null, "student_number": null,
+          "major": null, "specialty": null, "role": "GRADUATE",
+          "dormitory_floor": null, "dormitory_room": null,
+          "major_club_name": null, "autonomous_club_name": null, "github_id": "hong"
+        }
+      }
+    ]
+  }
+}
+```
+
+→ `role`이 `GENERAL_STUDENT` → `GRADUATE`로 바뀌면 졸업입니다. (자퇴는 `WITHDRAWN`) 졸업해도 row가 남으므로 **삭제가 아니라 `role` 변화**로 표현되며, 학번·학과·기숙사 등은 `null`이 됩니다.
+
+### 예시 C — 다수 학생 동시 변경 (3학년 일괄 졸업)
+
+```json
+{
+  "id": "evt_c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
+  "event": "student.updated",
+  "timestamp": "2026-06-23T05:40:00.000Z",
+  "data": {
+    "old": [
+      { "index": 0, "object": { "student_id": 10, "name": "학생1", "email": "s23001@gsm.hs.kr", "role": "GENERAL_STUDENT", "grade": 3, "...": "..." } },
+      { "index": 1, "object": { "student_id": 11, "name": "학생2", "email": "s23002@gsm.hs.kr", "role": "STUDENT_COUNCIL", "grade": 3, "...": "..." } }
+    ],
+    "new": [
+      { "index": 0, "object": { "student_id": 10, "name": "학생1", "email": "s23001@gsm.hs.kr", "role": "GRADUATE", "grade": null, "...": "..." } },
+      { "index": 1, "object": { "student_id": 11, "name": "학생2", "email": "s23002@gsm.hs.kr", "role": "GRADUATE", "grade": null, "...": "..." } }
+    ]
+  }
+}
+```
+
+> **엑셀 일괄 수정**은 실제로 값이 바뀐 학생만 `old`/`new`에 포함되며, 그 학생들에 `index`가 `0`부터 다시 순서대로 부여됩니다 (DB 전체 행 번호가 아님).

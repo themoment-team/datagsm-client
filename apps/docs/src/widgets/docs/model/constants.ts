@@ -168,12 +168,22 @@ export const docsSections: DocsSection[] = [
     icon: Radio,
     children: [
       {
-        label: '웹 콘솔에서 관리',
-        href: '/event/console',
-      },
-      {
         label: '이벤트 페이로드 명세',
         href: '/event/payloads',
+        children: [
+          {
+            label: 'student.updated',
+            href: '/event/payloads/student',
+          },
+          {
+            label: 'club.updated',
+            href: '/event/payloads/club',
+          },
+          {
+            label: 'project.updated',
+            href: '/event/payloads/project',
+          },
+        ],
       },
       {
         label: '서명 검증 가이드',
