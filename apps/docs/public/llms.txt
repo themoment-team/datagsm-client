@@ -34,5 +34,5 @@
 - [이벤트 페이로드 명세](https://docs.datagsm.kr/event/payloads): 이벤트 페이로드 공통 봉투 구조(id·event·timestamp·data)와 data.old/data.new({index, object}) 구조, 생성·수정·삭제 판별 방법
 - [student.updated 명세](https://docs.datagsm.kr/event/payloads/student): 학생 이벤트 object 전체 필드, sex·major·role enum, 발행 시점, 수정·졸업·일괄 변경 예시
 - [club.updated 명세](https://docs.datagsm.kr/event/payloads/club): 동아리 이벤트 object 필드(type·status·leader·participants), 생성·수정·삭제 판별, 수정·삭제 예시
-- [project.updated 명세](https://docs.datagsm.kr/event/payloads/project): 프로젝트 이벤트 object 필드(status·club·participants), 생성·수정·삭제 판별, 생성·수정 예시
+- [project.updated 명세](https://docs.datagsm.kr/event/payloads/project): 프로젝트 이벤트 object 필드(status·club·participants·repositories·tech_stacks), 생성·수정·삭제 판별, 생성·수정 예시
 - [서명 검증 가이드](https://docs.datagsm.kr/event/signature): X-DataGSM-Signature(HMAC-SHA256) 서명 검증 절차, 상수 시간 비교, Node·Python·Java·Kotlin 검증 예제

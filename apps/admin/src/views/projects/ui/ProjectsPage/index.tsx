@@ -151,6 +151,8 @@ const ProjectsPage = () => {
       status: 'ACTIVE',
       participantIds: [],
       clubId: 0,
+      repositories: [],
+      techStacks: [],
     },
   });
 

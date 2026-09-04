@@ -22,6 +22,12 @@ export const AddProjectSchema = z
       message: '운영 상태를 선택해주세요.',
     }),
     endYear: z.number().int().min(1900, { message: '1900년 이후의 연도를 입력해주세요.' }).optional(),
+    repositories: z
+      .array(z.string().max(300, { message: '리포지토리 URL은 300자 이하로 입력해주세요.' }))
+      .max(20, { message: '리포지토리는 최대 20개까지 등록할 수 있습니다.' }),
+    techStacks: z
+      .array(z.string().max(50, { message: '기술 스택은 50자 이하로 입력해주세요.' }))
+      .max(20, { message: '기술 스택은 최대 20개까지 등록할 수 있습니다.' }),
   })
   .superRefine((data, ctx) => {
     if (data.status === 'ACTIVE') {

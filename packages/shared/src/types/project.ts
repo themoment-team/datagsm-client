@@ -11,6 +11,8 @@ export interface Project {
   status: ProjectStatus;
   club: Club | null;
   participants: ClubMember[];
+  repositories: string[];
+  techStacks: string[];
 }
 
 export interface ProjectListData {
