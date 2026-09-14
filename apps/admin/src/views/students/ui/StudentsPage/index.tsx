@@ -28,6 +28,8 @@ import {
 } from '@/widgets/students';
 
 const PAGE_SIZE = 10;
+/** 서버가 한 번에 내려주는 학생 수의 상한. 전체 선택은 이 크기로 필터 전체를 가져온다. */
+const MAX_PAGE_SIZE = 1000;
 
 const StudentsPage = () => {
   const searchParams = useSearchParams();
@@ -240,6 +242,32 @@ const StudentsPage = () => {
 
   const students = studentsData?.data.students;
 
+  /** 전체 선택은 현재 페이지가 아니라 필터에 걸리는 학생 전체를 대상으로 한다. */
+  const { data: filteredStudentsData, isLoading: isLoadingFilteredStudents } = useGetStudents(
+    { ...queryParams, page: 0, size: MAX_PAGE_SIZE },
+    { enabled: isColumnRefreshMode },
+  );
+
+  const filteredStudents = useMemo(
+    () => filteredStudentsData?.data.students ?? [],
+    [filteredStudentsData],
+  );
+
+  const isAllFilteredSelected = useMemo(() => {
+    const selectedIdSet = new Set(selectedStudentIds);
+    return filteredStudents.length > 0 && filteredStudents.every(({ id }) => selectedIdSet.has(id));
+  }, [filteredStudents, selectedStudentIds]);
+
+  const toggleSelectAll = () => {
+    const filteredIdSet = new Set(filteredStudents.map(({ id }) => id));
+
+    // 필터 밖에서 고른 학생은 그대로 두고, 필터에 걸리는 학생만 한꺼번에 넣거나 뺀다.
+    setSelectedStudents((previous) => {
+      const outsideFilter = previous.filter(({ id }) => !filteredIdSet.has(id));
+      return isAllFilteredSelected ? outsideFilter : [...outsideFilter, ...filteredStudents];
+    });
+  };
+
   const totalPages = studentsData?.data.totalPages ?? 0;
 
   const isEmpty = !isLoadingStudents && !students?.length;
@@ -320,6 +348,9 @@ const StudentsPage = () => {
               selectable={isColumnRefreshMode}
               selectedIds={selectedStudentIds}
               onToggleSelect={toggleStudentSelection}
+              isAllSelected={isAllFilteredSelected}
+              isSelectAllDisabled={isLoadingFilteredStudents || !filteredStudents.length}
+              onToggleSelectAll={toggleSelectAll}
             />
           </div>
 
