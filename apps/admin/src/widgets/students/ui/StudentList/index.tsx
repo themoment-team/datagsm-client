@@ -25,6 +25,10 @@ interface StudentListProps {
   /** 선택된 학생 ID. 페이지를 넘겨도 유지되도록 부모가 들고 있는다. */
   selectedIds?: number[];
   onToggleSelect?: (student: Student) => void;
+  /** 현재 필터에 걸리는 학생이 모두 선택되었는지. 페이지가 아니라 필터 전체 기준이다. */
+  isAllSelected?: boolean;
+  isSelectAllDisabled?: boolean;
+  onToggleSelectAll?: () => void;
 }
 
 const StudentList = ({
@@ -34,6 +38,9 @@ const StudentList = ({
   selectable = false,
   selectedIds = [],
   onToggleSelect,
+  isAllSelected = false,
+  isSelectAllDisabled = false,
+  onToggleSelectAll,
 }: StudentListProps) => {
   if (!isLoading && !students?.length) {
     return (
@@ -57,7 +64,24 @@ const StudentList = ({
           <TableHead>전공동아리</TableHead>
           <TableHead>자율동아리</TableHead>
           <TableHead className={cn('w-[70px]')}>
-            <span className={cn('sr-only')}>{selectable ? '선택' : '작업'}</span>
+            {selectable ? (
+              <label
+                htmlFor="student-select-all"
+                className={cn('flex cursor-pointer items-center justify-end gap-3')}
+              >
+                전체선택
+                {/* 헤더가 반전 배경이라 체크된 상태에서도 테두리가 보이도록 뒤집는다. */}
+                <Checkbox
+                  id="student-select-all"
+                  checked={isAllSelected}
+                  disabled={isSelectAllDisabled}
+                  onCheckedChange={() => onToggleSelectAll?.()}
+                  className={cn('border-background size-5')}
+                />
+              </label>
+            ) : (
+              <span className={cn('sr-only')}>작업</span>
+            )}
           </TableHead>
         </TableRow>
       </TableHeader>
