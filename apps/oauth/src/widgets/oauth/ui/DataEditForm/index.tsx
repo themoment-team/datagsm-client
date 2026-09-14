@@ -24,6 +24,7 @@ import {
   DataEditPayload,
   buildDataEditSchema,
   toDataEditPayload,
+  withNoClubOption,
 } from '@/entities/data-edit';
 
 interface DataEditFormProps {
@@ -72,7 +73,6 @@ const DataEditForm = ({ fields, isPending = false, onSubmit }: DataEditFormProps
             const { name, options } = spec;
             const { label, placeholder, maxLength } = DATA_EDIT_FIELD_META[name];
             const error = errors[name];
-            const hasNoOptions = isSelectField(spec) && !options?.length;
 
             return (
               <FormField
@@ -91,17 +91,13 @@ const DataEditForm = ({ fields, isPending = false, onSubmit }: DataEditFormProps
                         <SelectTrigger
                           id={name}
                           aria-invalid={!!error}
-                          disabled={isPending || hasNoOptions}
+                          disabled={isPending}
                           className={cn(FORM_TRIGGER_STYLE)}
                         >
-                          <SelectValue
-                            placeholder={
-                              hasNoOptions ? '동아리 목록을 불러올 수 없습니다' : placeholder
-                            }
-                          />
+                          <SelectValue placeholder={placeholder} />
                         </SelectTrigger>
                         <SelectContent>
-                          {options?.map((option) => (
+                          {withNoClubOption(options).map((option) => (
                             <SelectItem key={option.value} value={String(option.value)}>
                               {option.label}
                             </SelectItem>

@@ -76,6 +76,8 @@ GET /v1/projects
 | `status`       | `ProjectStatus`            | 프로젝트 운영 상태 (`ACTIVE`: 운영 중, `ENDED`: 종료)    | `ACTIVE`               |
 | `club`         | `ClubSummaryDto?`          | 프로젝트 소유 동아리 데이터 (없는 경우 `null`)               | -                      |
 | `participants` | `List<ParticipantInfoDto>` | 프로젝트 참가자 목록                                  | -                      |
+| `repositories` | `List<String>`             | 프로젝트 리포지토리 URL 목록 (최대 20개)                   | -                      |
+| `techStacks`   | `List<String>`             | 프로젝트 기술 스택 목록 (최대 20개)                       | -                      |
 
 ### 동아리 요약 객체 (ClubSummaryDto)
 
@@ -155,7 +157,12 @@ curl -X GET "https://openapi.datagsm.kr/v1/projects?sortBy=NAME&sortDirection=AS
             "major": "SMART_IOT",
             "sex": "MAN"
           }
-        ]
+        ],
+        "repositories": [
+          "https://github.com/themoment-team/datagsm-server",
+          "https://github.com/themoment-team/datagsm-client"
+        ],
+        "techStacks": ["Kotlin", "Spring Boot", "TypeScript"]
       }
     ]
   }

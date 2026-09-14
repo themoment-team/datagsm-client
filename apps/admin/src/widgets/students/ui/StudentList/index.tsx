@@ -25,6 +25,10 @@ interface StudentListProps {
   /** 선택된 학생 ID. 페이지를 넘겨도 유지되도록 부모가 들고 있는다. */
   selectedIds?: number[];
   onToggleSelect?: (student: Student) => void;
+  /** 현재 필터에 걸리는 학생이 모두 선택되었는지. 페이지가 아니라 필터 전체 기준이다. */
+  isAllSelected?: boolean;
+  isSelectAllDisabled?: boolean;
+  onToggleSelectAll?: () => void;
 }
 
 const StudentList = ({
@@ -34,6 +38,9 @@ const StudentList = ({
   selectable = false,
   selectedIds = [],
   onToggleSelect,
+  isAllSelected = false,
+  isSelectAllDisabled = false,
+  onToggleSelectAll,
 }: StudentListProps) => {
   if (!isLoading && !students?.length) {
     return (
@@ -45,7 +52,13 @@ const StudentList = ({
 
   return (
     <Table>
-      <TableHeader>
+      <TableHeader
+        className={cn(
+          // 컬럼 초기화 모드에서는 헤더를 밝게 뒤집고, 본문과의 경계를 테두리로 구분한다.
+          // 행 테두리는 공용 스타일이 지우므로 thead 자체에 준다.
+          selectable && 'bg-background text-foreground border-foreground border-b',
+        )}
+      >
         <TableRow className={cn(TABLE_HEAD_ROW_STYLE)}>
           <TableHead className={cn('w-[100px]')}>이름</TableHead>
           <TableHead className={cn('w-[100px]')}>성별</TableHead>
@@ -56,8 +69,25 @@ const StudentList = ({
           <TableHead className={cn('w-[140px]')}>기숙사 호실</TableHead>
           <TableHead>전공동아리</TableHead>
           <TableHead>자율동아리</TableHead>
-          <TableHead className={cn('w-[70px]')}>
-            <span className={cn('sr-only')}>{selectable ? '선택' : '작업'}</span>
+          {/* 체크박스가 든 칸은 공용 스타일이 오른쪽 여백을 없애므로, 시안대로 다른 열과 같은 여백을 되돌린다. */}
+          <TableHead className={cn('w-[70px] [&:has([role=checkbox])]:pr-5')}>
+            {selectable ? (
+              <label
+                htmlFor="student-select-all"
+                className={cn('flex cursor-pointer items-center justify-end gap-3')}
+              >
+                전체선택
+                <Checkbox
+                  id="student-select-all"
+                  checked={isAllSelected}
+                  disabled={isSelectAllDisabled}
+                  onCheckedChange={() => onToggleSelectAll?.()}
+                  className={cn('size-5')}
+                />
+              </label>
+            ) : (
+              <span className={cn('sr-only')}>작업</span>
+            )}
           </TableHead>
         </TableRow>
       </TableHeader>

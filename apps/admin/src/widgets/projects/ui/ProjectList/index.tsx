@@ -1,5 +1,6 @@
 import { Project, ProjectStatus } from '@repo/shared/types';
 import {
+  Badge,
   Button,
   ConfirmDialog,
   Skeleton,
@@ -13,6 +14,8 @@ import {
   TableRow,
 } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
+
+import { getRepositoryLabel } from '@/entities/project';
 
 interface ProjectListProps {
   projects: Project[];
@@ -35,6 +38,41 @@ const STATUS_BADGE: Record<ProjectStatus, { label: string; badgeStyle: string; d
     },
   };
 
+/** 셀 안에 한 번에 보여줄 항목 수. 넘치는 개수는 +N으로 접는다. */
+const MAX_VISIBLE_TAGS = 2;
+
+interface TagCellProps {
+  items?: string[];
+  format?: (item: string) => string;
+}
+
+/** 문자열 목록을 칩으로 보여주고, 길면 +N으로 접는 셀. */
+const TagCell = ({ items, format }: TagCellProps) => {
+  if (!items?.length) {
+    return <span className={cn('text-muted-foreground')}>-</span>;
+  }
+
+  const visibleItems = items.slice(0, MAX_VISIBLE_TAGS);
+  const hiddenCount = items.length - visibleItems.length;
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-1')} title={items.join(', ')}>
+      {visibleItems.map((item, index) => (
+        <Badge
+          key={`${item}-${index}`}
+          variant="outline"
+          className={cn('border-foreground max-w-[160px] truncate font-mono text-[11px]')}
+        >
+          {format ? format(item) : item}
+        </Badge>
+      ))}
+      {hiddenCount > 0 && (
+        <span className={cn('text-muted-foreground font-mono text-[11px]')}>+{hiddenCount}</span>
+      )}
+    </div>
+  );
+};
+
 const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps) => {
   if (!isLoading && !projects.length) {
     return (
@@ -52,7 +90,9 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
           <TableHead className={cn('w-[140px]')}>상태</TableHead>
           <TableHead className={cn('w-[80px]')}>시작 연도</TableHead>
           <TableHead className={cn('w-[80px]')}>종료 연도</TableHead>
-          <TableHead className={cn('w-[420px]')}>설명</TableHead>
+          <TableHead className={cn('w-[240px]')}>설명</TableHead>
+          <TableHead className={cn('w-[200px]')}>리포지토리</TableHead>
+          <TableHead className={cn('w-[200px]')}>기술 스택</TableHead>
           <TableHead>동아리</TableHead>
           <TableHead className={cn('w-[160px]')}>
             <span className={cn('sr-only')}>작업</span>
@@ -76,7 +116,13 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                   <Skeleton className={cn('h-4 w-10')} />
                 </TableCell>
                 <TableCell>
-                  <Skeleton className={cn('h-4 w-64')} />
+                  <Skeleton className={cn('h-4 w-40')} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className={cn('h-5 w-32')} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className={cn('h-5 w-32')} />
                 </TableCell>
                 <TableCell>
                   <Skeleton className={cn('h-4 w-24')} />
@@ -108,8 +154,14 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                   </TableCell>
                   <TableCell>{project.startYear}</TableCell>
                   <TableCell>{project.endYear ?? '-'}</TableCell>
-                  <TableCell className={cn('max-w-[420px] truncate')}>
+                  <TableCell className={cn('max-w-[240px] truncate')}>
                     {project.description}
+                  </TableCell>
+                  <TableCell>
+                    <TagCell items={project.repositories} format={getRepositoryLabel} />
+                  </TableCell>
+                  <TableCell>
+                    <TagCell items={project.techStacks} />
                   </TableCell>
                   <TableCell>{project.club?.name || '무소속'}</TableCell>
                   <TableCell>

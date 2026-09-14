@@ -25,6 +25,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  TagInput,
   Textarea,
 } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -111,6 +112,8 @@ const ProjectFormDialog = ({
           participantIds: project.participants.map((p) => p.id),
           status: project.status,
           endYear: project.endYear ?? undefined,
+          repositories: project.repositories ?? [],
+          techStacks: project.techStacks ?? [],
         });
       } else if (mode === 'create') {
         reset({
@@ -121,6 +124,8 @@ const ProjectFormDialog = ({
           participantIds: [],
           status: 'ACTIVE',
           endYear: undefined,
+          repositories: [],
+          techStacks: [],
         });
       }
     }
@@ -347,6 +352,50 @@ const ProjectFormDialog = ({
                   'border-foreground min-h-[80px] resize-none rounded-none px-3 text-sm',
                 )}
                 {...register('description')}
+              />
+            </FormField>
+
+            <FormField
+              label="리포지토리"
+              htmlFor="repositories"
+              error={Array.isArray(errors.repositories) ? undefined : errors.repositories}
+              className={cn('col-span-2')}
+            >
+              <Controller
+                control={control}
+                name="repositories"
+                render={({ field }) => (
+                  <TagInput
+                    id="repositories"
+                    placeholder="리포지토리 URL을 입력하고 Enter를 누르세요"
+                    maxItems={20}
+                    maxLength={300}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </FormField>
+
+            <FormField
+              label="기술 스택"
+              htmlFor="techStacks"
+              error={Array.isArray(errors.techStacks) ? undefined : errors.techStacks}
+              className={cn('col-span-2')}
+            >
+              <Controller
+                control={control}
+                name="techStacks"
+                render={({ field }) => (
+                  <TagInput
+                    id="techStacks"
+                    placeholder="기술 스택을 입력하고 Enter를 누르세요"
+                    maxItems={20}
+                    maxLength={50}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
               />
             </FormField>
 

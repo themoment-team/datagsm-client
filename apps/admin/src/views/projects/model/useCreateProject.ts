@@ -11,6 +11,8 @@ export interface CreateProjectRequest {
   participantIds: number[];
   status: 'ACTIVE' | 'ENDED';
   endYear?: number;
+  repositories: string[];
+  techStacks: string[];
 }
 
 export const useCreateProject = (
