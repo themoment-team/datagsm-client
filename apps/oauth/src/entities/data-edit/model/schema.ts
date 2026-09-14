@@ -22,6 +22,17 @@ export interface DataEditFieldSpec {
   options?: DataEditOption[];
 }
 
+/** 무소속을 뜻하는 동아리 ID. 서버 NO_CLUB_ID와 대응한다. */
+export const NO_CLUB_ID = 0;
+
+const NO_CLUB_OPTION: DataEditOption = { value: NO_CLUB_ID, label: '무소속' };
+
+/** 서버 응답에 무소속이 없어도 항상 맨 앞에 무소속 선택지를 둔다. */
+export const withNoClubOption = (options: DataEditOption[] = []): DataEditOption[] => [
+  NO_CLUB_OPTION,
+  ...options.filter((option) => option.value !== NO_CLUB_ID),
+];
+
 /** data-edit-requirements 응답 본문. */
 export interface DataEditRequirementsResponse {
   fields: DataEditFieldSpec[];
@@ -59,7 +70,7 @@ const dormitoryRoomRule = z
     message: `${DORMITORY_ROOM_RANGE.min}호 ~ ${DORMITORY_ROOM_RANGE.max}호 사이로 입력하세요.`,
   });
 
-/** 서버가 null을 거부하므로 "선택 안 함"은 허용하지 않는다. */
+/** 서버가 null을 거부하므로 "선택 안 함"은 허용하지 않는다. 무소속은 NO_CLUB_ID로 보낸다. */
 const clubRule = z.string().min(1, { message: '동아리를 선택하세요.' });
 
 const FIELD_RULES: Record<StudentDataEditField, z.ZodTypeAny> = {
