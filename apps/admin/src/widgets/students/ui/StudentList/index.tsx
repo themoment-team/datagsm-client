@@ -52,7 +52,13 @@ const StudentList = ({
 
   return (
     <Table>
-      <TableHeader>
+      <TableHeader
+        className={cn(
+          // 컬럼 초기화 모드에서는 헤더를 밝게 뒤집고, 본문과의 경계를 테두리로 구분한다.
+          // 행 테두리는 공용 스타일이 지우므로 thead 자체에 준다.
+          selectable && 'bg-background text-foreground border-foreground border-b',
+        )}
+      >
         <TableRow className={cn(TABLE_HEAD_ROW_STYLE)}>
           <TableHead className={cn('w-[100px]')}>이름</TableHead>
           <TableHead className={cn('w-[100px]')}>성별</TableHead>
@@ -63,20 +69,20 @@ const StudentList = ({
           <TableHead className={cn('w-[140px]')}>기숙사 호실</TableHead>
           <TableHead>전공동아리</TableHead>
           <TableHead>자율동아리</TableHead>
-          <TableHead className={cn('w-[70px]')}>
+          {/* 체크박스가 든 칸은 공용 스타일이 오른쪽 여백을 없애므로, 시안대로 다른 열과 같은 여백을 되돌린다. */}
+          <TableHead className={cn('w-[70px] [&:has([role=checkbox])]:pr-5')}>
             {selectable ? (
               <label
                 htmlFor="student-select-all"
                 className={cn('flex cursor-pointer items-center justify-end gap-3')}
               >
                 전체선택
-                {/* 헤더가 반전 배경이라 체크된 상태에서도 테두리가 보이도록 뒤집는다. */}
                 <Checkbox
                   id="student-select-all"
                   checked={isAllSelected}
                   disabled={isSelectAllDisabled}
                   onCheckedChange={() => onToggleSelectAll?.()}
-                  className={cn('border-background size-5')}
+                  className={cn('size-5')}
                 />
               </label>
             ) : (
