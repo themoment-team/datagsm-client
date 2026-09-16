@@ -228,4 +228,8 @@ export const oauthUrl = {
   postOAuthCode: () => '/v1/oauth/code',
   postOAuthToken: () => '/oauth/token', // Next.js Route Handler (client_secret 숨김)
   postOAuthTokenRefresh: () => '/v1/oauth/token', // 토큰 갱신 (통합 엔드포인트)
+  postAuthorizeConsent: () => '/v1/oauth/authorize/consent',
+  postLogout: () => '/v1/oauth/logout',
+  getIdpSessions: () => '/v1/oauth/idp-sessions',
+  deleteIdpSession: (sessionId: string) => `/v1/oauth/idp-sessions/${sessionId}`,
 } as const;

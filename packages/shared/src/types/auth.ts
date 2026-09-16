@@ -132,6 +132,22 @@ export interface RefreshTokenRequest {
 
 export type RefreshTokenResponse = ApiResponse<OAuthTokenResponseData>;
 
+export interface OAuthConsentRequest {
+  token: string;
+  approved: boolean;
+}
+
+export interface IdpSession {
+  sessionId: string;
+  userAgent: string | null;
+  createdAt: string | null;
+  current: boolean;
+}
+
+export type IdpSessionListResponse = ApiResponse<{
+  sessions: IdpSession[];
+}>;
+
 export interface ApiKey {
   id: number;
   apiKey: string;
