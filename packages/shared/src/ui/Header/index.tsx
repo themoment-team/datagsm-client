@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import Link from 'next/link';
 
+import { oauthPost, oauthUrl } from '@repo/shared/api';
 import { CLIENT_URL, COOKIE_KEYS, NAV_LINKS } from '@repo/shared/constants';
 import { cn, deleteCookie } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,8 +19,15 @@ const Header = ({ role = 'client' }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     queryClient.clear();
+
+    try {
+      // SSO 세션도 함께 종료한다. 실패해도 이 서비스의 로컬 로그아웃은 막지 않는다.
+      await oauthPost(oauthUrl.postLogout(), undefined, { withCredentials: true });
+    } catch {
+      // no-op
+    }
 
     deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
     deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
