@@ -132,6 +132,31 @@ export interface RefreshTokenRequest {
 
 export type RefreshTokenResponse = ApiResponse<OAuthTokenResponseData>;
 
+export interface OAuthConsentRequest {
+  token: string;
+  approved: boolean;
+}
+
+/**
+ * 성공 시 302 대신 200으로 내려주는 형태. 브라우저 fetch가 그 302를 그대로
+ * 따라가면 외부 서비스 도메인에서 CORS로 막히거나 1회용 code가 소진돼버려서,
+ * 백엔드가 redirectUrl을 JSON으로 감싸 주고 프론트가 직접 이동시킨다.
+ */
+export interface OAuthConsentSuccessResponse {
+  redirectUrl: string;
+}
+
+export interface IdpSession {
+  sessionId: string;
+  userAgent: string | null;
+  createdAt: string | null;
+  current: boolean;
+}
+
+export type IdpSessionListResponse = ApiResponse<{
+  sessions: IdpSession[];
+}>;
+
 export interface ApiKey {
   id: number;
   apiKey: string;
