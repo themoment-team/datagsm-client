@@ -1,6 +1,7 @@
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 
+import { resetFixtureIds } from './fixtures';
 import { resetNextNavigationMock } from './mocks/nextNavigation';
 import { server } from './msw/server';
 
@@ -12,6 +13,7 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetNextNavigationMock();
+  resetFixtureIds();
 });
 
 afterAll(() => server.close());
