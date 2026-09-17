@@ -26,7 +26,8 @@ export const mockRouter = {
 export const nextNavigationMock = {
   useRouter: () => mockRouter,
   usePathname: () => state.pathname,
-  useSearchParams: () => new URLSearchParams(state.searchParams),
+  // Next처럼 URL이 바뀌기 전까지 같은 객체를 돌려준다. 매번 새로 만들면 이를 의존성으로 쓰는 effect가 끝없이 돈다.
+  useSearchParams: () => state.searchParams,
   useParams: () => state.params,
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT: ${url}`);
