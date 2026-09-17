@@ -6,7 +6,10 @@
     "noEmit": true,
     "declaration": false,
     "declarationMap": false,
-    "types": ["vitest/importMeta"]
+    "types": ["vitest/importMeta"],
+    "paths": {
+      "@repo/shared/*": ["../shared/src/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules"]
