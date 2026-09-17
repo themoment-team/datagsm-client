@@ -211,4 +211,113 @@ describe('OAuthAuthorizeForm', () => {
       expect(screen.getByRole('button', { name: 'SIGN IN' })).toBeEnabled();
     });
   });
+
+  describe('정보 변경이 필요한 계정 (422)', () => {
+    const REQUIREMENTS_URL = 'http://localhost:3000/api/oauth/data-edit-requirements';
+
+    const mockRequirements = (respond: () => Response) => {
+      const bodies: unknown[] = [];
+      server.use(
+        http.post(REQUIREMENTS_URL, async ({ request }) => {
+          bodies.push(await request.json());
+          return respond();
+        }),
+      );
+      return bodies;
+    };
+
+    /** 첫 요청은 422, 이후 요청은 respond로 응답한다. */
+    const mockAuthorizeAfterDataEdit = (respond: () => Response) => {
+      let count = 0;
+      return mockAuthorize(() =>
+        count++ === 0
+          ? HttpResponse.json({ message: '정보 변경 필요' }, { status: 422 })
+          : respond(),
+      );
+    };
+
+    it('필요한 항목을 조회해 정보 변경 화면으로 바꾸고, 입력값을 함께 다시 보낸다', async () => {
+      mockSession();
+      const authorizeBodies = mockAuthorizeAfterDataEdit(() =>
+        HttpResponse.json({ redirect_url: 'https://app.test/callback?code=abc' }),
+      );
+      const requirementBodies = mockRequirements(() =>
+        apiSuccess({ fields: [{ name: 'STUDENT_NUMBER' }, { name: 'DORMITORY_ROOM_NUMBER' }] }),
+      );
+      const user = setup();
+
+      await signIn(user);
+
+      expect(await screen.findByText('정보 변경')).toBeInTheDocument();
+      expect(requirementBodies).toEqual([{ email: 's25001@gsm.hs.kr', password: 'password1' }]);
+
+      await user.type(screen.getByLabelText('학번'), '2103');
+      await user.type(screen.getByLabelText('기숙사 호실'), '305');
+      await user.click(screen.getByRole('button', { name: 'Enter' }));
+
+      await waitFor(() => expect(window.location.href).toBe('https://app.test/callback?code=abc'));
+      expect(authorizeBodies[1]).toEqual({
+        email: 's25001@gsm.hs.kr',
+        password: 'password1',
+        token: TOKEN,
+        studentGrade: 2,
+        studentClass: 1,
+        studentNumber: 3,
+        dormitoryRoomNumber: 305,
+      });
+    });
+
+    it('화면이 모르는 항목이 하나라도 있으면 정보 변경 화면으로 넘어가지 않는다', async () => {
+      mockSession();
+      mockAuthorizeAfterDataEdit(() => HttpResponse.json({}));
+      mockRequirements(() =>
+        apiSuccess({ fields: [{ name: 'STUDENT_NUMBER' }, { name: 'PHONE_NUMBER' }] }),
+      );
+      const user = setup();
+
+      await signIn(user);
+
+      expect(
+        await screen.findByText('현재 지원하지 않는 정보 변경 항목입니다. 관리자에게 문의하세요.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('정보 변경')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'SIGN IN' })).toBeEnabled();
+    });
+
+    it.each([
+      ['조회에 실패하면', () => HttpResponse.json({}, { status: 500 })],
+      ['항목이 비어 있으면', () => apiSuccess({ fields: [] })],
+    ])('%s 안내하고 로그인 화면에 머문다', async (_, respond) => {
+      mockSession();
+      mockAuthorizeAfterDataEdit(() => HttpResponse.json({}));
+      mockRequirements(respond);
+      const user = setup();
+
+      await signIn(user);
+
+      expect(
+        await screen.findByText('정보 변경 항목을 불러오지 못했습니다. 다시 시도해주세요.'),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'SIGN IN' })).toBeEnabled();
+    });
+
+    it('정보 변경 재제출이 400이면 세션 만료로 보지 않고 입력 화면을 유지한다', async () => {
+      mockSession();
+      mockAuthorizeAfterDataEdit(() => HttpResponse.json({}, { status: 400 }));
+      mockRequirements(() => apiSuccess({ fields: [{ name: 'DORMITORY_ROOM_NUMBER' }] }));
+      const user = setup();
+      await signIn(user);
+      await user.type(await screen.findByLabelText('기숙사 호실'), '305');
+
+      await user.click(screen.getByRole('button', { name: 'Enter' }));
+
+      expect(
+        await screen.findByText(
+          '입력한 정보를 저장하지 못했습니다. 값을 확인하고 다시 시도해주세요.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('기숙사 호실')).toHaveValue('305');
+    });
+  });
 });
