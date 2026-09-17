@@ -5,7 +5,7 @@
 - `renderWithProviders`, `renderHookWithProviders`: React Query와 토스트를 감싸서 렌더링
 - Testing Library(`screen`, `waitFor`, `userEvent` 등)도 함께 내보내므로 패키지마다 따로 설치하지 않는다
 - `@repo/test-utils/next-navigation`: `next/navigation` 대체 구현과 상태 조작 함수
-- `@repo/test-utils/setup`: 렌더링 정리와 navigation mock 초기화
+- `@repo/test-utils/setup`: MSW 서버 시작·초기화, 렌더링 정리, navigation mock 초기화
 
 ```ts
 // vitest.config.mts (패키지가 "type": "module"이 아니면 .mts로 만든다)
@@ -23,4 +23,16 @@ vi.mock('next/navigation', async () => {
   const { nextNavigationMock } = await import('@repo/test-utils/next-navigation');
   return nextNavigationMock;
 });
+```
+
+## API 응답 대체 (MSW)
+
+기본 핸들러는 없다. 테스트에서 필요한 응답만 등록하고, 등록하지 않은 요청은 실패한다.
+등록한 핸들러는 테스트가 끝나면 초기화된다.
+
+```ts
+import { apiError, apiPath, apiSuccess, http, server } from '@repo/test-utils';
+
+server.use(http.get(apiPath('/v1/students'), () => apiSuccess(studentList)));
+server.use(http.put(apiPath('/v1/students/:id'), () => apiError(400, '중복된 학번입니다.')));
 ```

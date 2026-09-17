@@ -4,3 +4,4 @@ export { default as userEvent } from '@testing-library/user-event';
 
 export * from './render';
 export * from './mocks/nextNavigation';
+export * from './msw';

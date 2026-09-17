@@ -15,7 +15,8 @@
   "dependencies": {
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7"
+    "@testing-library/user-event": "^14.6.7",
+    "msw": "^2.15.0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.90.5",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
