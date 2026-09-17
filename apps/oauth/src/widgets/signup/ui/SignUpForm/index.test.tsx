@@ -7,6 +7,7 @@ import {
   mockRouter,
   renderWithProviders,
   screen,
+  selectOption,
   server,
   userEvent,
   waitFor,
@@ -290,8 +291,7 @@ describe('SignUpForm', () => {
       await screen.findByText('인증 완료');
       await fillPasswords(user);
       await user.type(screen.getByLabelText('성함'), '  김선생 ');
-      await user.click(screen.getByRole('combobox', { name: '소속 부서' }));
-      await user.click(await screen.findByRole('option', { name: '마이스터부' }));
+      await selectOption(user, screen.getByRole('combobox', { name: '소속 부서' }), '마이스터부');
       await user.type(screen.getByLabelText('설명'), '   ');
       await agreePrivacy(user);
 
@@ -320,8 +320,7 @@ describe('SignUpForm', () => {
       await screen.findByText('인증 완료');
       await fillPasswords(user);
       await user.type(screen.getByLabelText('성함'), '김선생');
-      await user.click(screen.getByRole('combobox', { name: '소속 부서' }));
-      await user.click(await screen.findByRole('option', { name: '마이스터부' }));
+      await selectOption(user, screen.getByRole('combobox', { name: '소속 부서' }), '마이스터부');
       await agreePrivacy(user);
 
       await user.click(screen.getByRole('button', { name: 'SIGN UP' }));

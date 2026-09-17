@@ -48,3 +48,11 @@ const club = createClub({ leader: toClubMember(student) });
 
 server.use(http.get(apiPath('/v1/students'), () => apiSuccess(createStudentListData([student]))));
 ```
+
+## Radix Select 항목 고르기
+
+jsdom에서는 트리거를 클릭하면 목록이 바로 닫힐 수 있으므로 `selectOption`을 쓴다.
+
+```ts
+await selectOption(user, screen.getByLabelText('전공 동아리'), '더모먼트');
+```
