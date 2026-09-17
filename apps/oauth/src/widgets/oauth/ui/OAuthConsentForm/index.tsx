@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { oauthUrl } from '@repo/shared/api';
-import { OAuthConsentRequest } from '@repo/shared/types';
+import { OAuthConsentRequest, OAuthConsentSuccessResponse } from '@repo/shared/types';
 import { AuthWindow, Button, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { toast } from 'sonner';
@@ -45,6 +45,11 @@ const OAuthConsentForm = () => {
     try {
       // 세션 쿠키는 백엔드 호스트에 host-only로 심겨 있어 BFF로는 전달할 수 없다.
       // 그래서 이 요청은 BFF를 거치지 않고 브라우저에서 백엔드로 직접 나간다.
+      //
+      // 성공 시 백엔드는 302가 아니라 200 + { redirectUrl }을 내려준다. fetch가
+      // 302를 그대로 따라가면 외부 서비스 도메인에서 CORS로 막히거나(credentials
+      // 포함 크로스오리진 리다이렉트) 1회용 code가 fetch에서 먼저 소진돼버려서,
+      // 최종 이동은 항상 이 JSON을 받아 프론트가 직접 window.location으로 한다.
       const payload: OAuthConsentRequest = { token, approved };
       const response = await fetch(`${oauthBaseUrl}${oauthUrl.postAuthorizeConsent()}`, {
         method: 'POST',
@@ -53,10 +58,25 @@ const OAuthConsentForm = () => {
         },
         body: JSON.stringify(payload),
         credentials: 'include',
+        redirect: 'manual',
       });
 
-      if (response.redirected) {
-        window.location.href = response.url;
+      if (response.type === 'opaqueredirect') {
+        setIsPending(false);
+        toast.error('서버 응답 형식이 예상과 다릅니다. 백엔드 배포 상태를 확인해주세요.');
+        return;
+      }
+
+      if (response.ok) {
+        const { redirectUrl } = (await response.json()) as OAuthConsentSuccessResponse;
+
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+        }
+
+        setIsPending(false);
+        toast.error('응답이 올바르지 않습니다. 다시 시도해주세요.');
         return;
       }
 
