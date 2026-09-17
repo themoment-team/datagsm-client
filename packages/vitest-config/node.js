@@ -14,6 +14,7 @@ export const config = defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**'],
+    passWithNoTests: true,
     restoreMocks: true,
     unstubEnvs: true,
     unstubGlobals: true,
