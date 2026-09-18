@@ -14,6 +14,8 @@ export const config = defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/.next/**', '**/dist/**'],
+    // CI 머신은 로컬보다 느리므로 기본 제한 시간(5초)으로는 무거운 테스트가 불안정해진다.
+    testTimeout: 15_000,
     passWithNoTests: true,
     restoreMocks: true,
     unstubEnvs: true,
