@@ -5,7 +5,7 @@ import pluginReactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-import { config as baseConfig } from './base.js';
+import { config as baseConfig, testFilesConfig } from './base.js';
 
 /**
  * A custom ESLint configuration for libraries that use React.
@@ -37,4 +37,5 @@ export const config = [
       'react/react-in-jsx-scope': 'off',
     },
   },
+  testFilesConfig,
 ];
