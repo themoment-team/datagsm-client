@@ -63,8 +63,7 @@ const ApplicationFormDialog = ({
     },
     onError: (error) => {
       const message =
-        (error?.response?.data as BaseApiResponse)?.message ||
-        '애플리케이션 생성에 실패했습니다.';
+        (error?.response?.data as BaseApiResponse)?.message || '애플리케이션 생성에 실패했습니다.';
       toast.error(message);
     },
   });
@@ -243,11 +242,14 @@ const ApplicationFormDialog = ({
       }}
     >
       {!isControlled && <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>}
-      <DialogContent className={cn('max-h-[90vh] p-0 sm:max-w-xl')}>
-        <DialogHeader className={cn('border-foreground border-b-2 px-6 py-5')}>
+      <DialogContent className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-xl')}>
+        <DialogHeader className={cn('border-foreground shrink-0 border-b-2 px-6 py-5')}>
           <DialogTitle className={cn('font-pixel text-[14px] leading-none')}>{title}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('space-y-6 px-6 py-6')}>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className={cn('min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6')}
+        >
           <div className={cn('space-y-2')}>
             <Label
               htmlFor="applicationName"
