@@ -1,6 +1,7 @@
 export const CLIENT_URL = process.env.NEXT_PUBLIC_CLIENT_URL ?? 'http://localhost:3000';
 export const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL ?? 'http://localhost:3002';
 export const STATUS_URL = process.env.NEXT_PUBLIC_STATUS_URL ?? 'http://localhost:3003';
+export const PROJECTS_URL = process.env.NEXT_PUBLIC_PROJECTS_URL ?? 'http://localhost:3005';
 
 export const NAV_LINKS = {
   client: [
@@ -8,6 +9,7 @@ export const NAV_LINKS = {
     { href: '/clients', label: 'Client' },
     { href: '/application', label: 'Application' },
     { href: '/events', label: 'Event' },
+    { href: PROJECTS_URL, label: 'Projects' },
     { href: DOCS_URL, label: 'Docs' },
     { href: STATUS_URL, label: 'Status' },
     { href: '/myinfo', label: 'My' },
@@ -25,6 +27,7 @@ export const NAV_LINKS = {
     { href: `${CLIENT_URL}/clients`, label: 'Client' },
     { href: `${CLIENT_URL}/application`, label: 'Application' },
     { href: `${CLIENT_URL}/events`, label: 'Event' },
+    { href: PROJECTS_URL, label: 'Projects' },
     { href: '/', label: 'Docs' },
     { href: STATUS_URL, label: 'Status' },
     { href: `${CLIENT_URL}/myinfo`, label: 'My' },
@@ -34,8 +37,19 @@ export const NAV_LINKS = {
     { href: `${CLIENT_URL}/clients`, label: 'Client' },
     { href: `${CLIENT_URL}/application`, label: 'Application' },
     { href: `${CLIENT_URL}/events`, label: 'Event' },
+    { href: PROJECTS_URL, label: 'Projects' },
     { href: DOCS_URL, label: 'Docs' },
     { href: '/', label: 'Status' },
+    { href: `${CLIENT_URL}/myinfo`, label: 'My' },
+  ],
+  projects: [
+    { href: CLIENT_URL, label: 'APIKey' },
+    { href: `${CLIENT_URL}/clients`, label: 'Client' },
+    { href: `${CLIENT_URL}/application`, label: 'Application' },
+    { href: `${CLIENT_URL}/events`, label: 'Event' },
+    { href: '/', label: 'Projects' },
+    { href: DOCS_URL, label: 'Docs' },
+    { href: STATUS_URL, label: 'Status' },
     { href: `${CLIENT_URL}/myinfo`, label: 'My' },
   ],
 } as const;

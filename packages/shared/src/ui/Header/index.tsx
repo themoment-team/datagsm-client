@@ -12,7 +12,7 @@ import { LogOut, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface HeaderProps {
-  role?: 'admin' | 'client' | 'docs' | 'status';
+  role?: 'admin' | 'client' | 'docs' | 'status' | 'projects';
 }
 
 const Header = ({ role = 'client' }: HeaderProps) => {
