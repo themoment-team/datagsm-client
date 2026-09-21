@@ -54,14 +54,13 @@ describe('useURLFilters', () => {
     expect(pushedUrl()).toBe('/students?');
   });
 
-  // 0과 false도 빈 값으로 보고 지운다. 현재 동작을 기록한다. 개선 이슈: #225
-  it('0과 false도 쿼리에서 지운다', () => {
+  it('0과 false는 값으로 보고 쿼리에 넣는다', () => {
     setMockSearchParams('grade=1&onlyEnrolled=true');
     const result = renderFilters();
 
     act(() => result.current.updateURL({ grade: 0, onlyEnrolled: false }));
 
-    expect(pushedUrl()).toBe('/students?');
+    expect(pushedUrl()).toBe('/students?grade=0&onlyEnrolled=false');
   });
 
   it('page가 0이면 지우고, 그 외에는 넣는다', () => {
