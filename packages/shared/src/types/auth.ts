@@ -111,27 +111,6 @@ interface OAuthCodeResponseData {
 
 export type OAuthCodeResponse = ApiResponse<OAuthCodeResponseData>;
 
-export interface OAuthTokenRequest {
-  code: string;
-  code_verifier: string;
-}
-
-interface OAuthTokenResponseData {
-  accessToken: string;
-  tokenType: string;
-  expiresIn: number;
-  refreshToken: string;
-}
-
-export type OAuthTokenResponse = ApiResponse<OAuthTokenResponseData>;
-
-export interface RefreshTokenRequest {
-  grant_type: 'refresh_token';
-  refresh_token: string;
-}
-
-export type RefreshTokenResponse = ApiResponse<OAuthTokenResponseData>;
-
 export interface OAuthConsentRequest {
   token: string;
   approved: boolean;

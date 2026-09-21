@@ -32,9 +32,8 @@ const protectedApi = (path: string) =>
   );
 
 /**
- * 현재 코드는 oauthAxiosInstance가 본문을 푼 뒤 한 번 더 `.data`를 읽는다.
- * 그래서 `{ data: { access_token, refresh_token } }` 형태여야 갱신에 성공한다.
- * 문서 형식(최상위 access_token)과의 차이는 아래 '알려진 문제' 테스트에 기록한다. 수정 이슈: #218
+ * oauthAxiosInstance 인터셉터가 응답 본문을 그대로 반환하므로, 갱신 응답은 최상위에 토큰이 오는
+ * 문서 형식(`{ access_token, refresh_token }`, 비래핑)으로 목을 만든다. (이슈 #218에서 수정)
  */
 const tokenResponse = (body: object, init?: { delayMs?: number }) =>
   http.post(TOKEN_URL, async ({ request }) => {
@@ -61,7 +60,7 @@ describe('401 응답 시 토큰 갱신', () => {
     const { axiosInstance } = await loadAxios();
     server.use(
       protectedApi('/v1/students'),
-      tokenResponse({ data: { access_token: 'access-new', refresh_token: 'refresh-new' } }),
+      tokenResponse({ access_token: 'access-new', refresh_token: 'refresh-new' }),
     );
 
     await expect(axiosInstance.get('/v1/students')).resolves.toMatchObject({
@@ -81,10 +80,7 @@ describe('401 응답 시 토큰 갱신', () => {
       protectedApi('/v1/students'),
       protectedApi('/v1/clubs'),
       protectedApi('/v1/projects'),
-      tokenResponse(
-        { data: { access_token: 'access-new', refresh_token: 'refresh-new' } },
-        { delayMs: 50 },
-      ),
+      tokenResponse({ access_token: 'access-new', refresh_token: 'refresh-new' }, { delayMs: 50 }),
     );
 
     const results = await Promise.all([
@@ -130,7 +126,7 @@ describe('401 응답 시 토큰 갱신', () => {
 
   it('갱신 응답에 access_token이 없으면 쿠키를 지우고 /로 보낸다', async () => {
     const { axiosInstance } = await loadAxios();
-    server.use(protectedApi('/v1/students'), tokenResponse({ data: {} }));
+    server.use(protectedApi('/v1/students'), tokenResponse({}));
 
     await expect(axiosInstance.get('/v1/students')).rejects.toThrow('No new token returned');
 
@@ -155,7 +151,7 @@ describe('401 응답 시 토큰 갱신', () => {
     const { axiosInstance } = await loadAxios();
     server.use(
       http.get(apiPath('/v1/students'), () => apiError(401, '권한 없음')),
-      tokenResponse({ data: { access_token: 'access-new', refresh_token: 'refresh-new' } }),
+      tokenResponse({ access_token: 'access-new', refresh_token: 'refresh-new' }),
     );
 
     const error = await axiosInstance.get('/v1/students').catch((e: unknown) => e);
@@ -164,23 +160,35 @@ describe('401 응답 시 토큰 갱신', () => {
     expect(tokenRequests).toHaveLength(1);
   });
 
-  it.fails(
-    '문서 형식({ access_token, refresh_token })으로 응답해도 갱신에 성공한다 (알려진 문제)',
-    async () => {
-      const { axiosInstance } = await loadAxios();
-      server.use(
-        protectedApi('/v1/students'),
-        tokenResponse({
-          access_token: 'access-new',
-          token_type: 'Bearer',
-          expires_in: 3600,
-          refresh_token: 'refresh-new',
-        }),
-      );
+  it('문서 형식(최상위 access_token)으로 응답하면 갱신에 성공한다', async () => {
+    const { axiosInstance } = await loadAxios();
+    server.use(
+      protectedApi('/v1/students'),
+      tokenResponse({
+        access_token: 'access-new',
+        token_type: 'Bearer',
+        expires_in: 3600,
+        refresh_token: 'refresh-new',
+      }),
+    );
 
-      await expect(axiosInstance.get('/v1/students')).resolves.toMatchObject({
-        data: '/v1/students',
-      });
-    },
-  );
+    await expect(axiosInstance.get('/v1/students')).resolves.toMatchObject({
+      data: '/v1/students',
+    });
+  });
+
+  it('갱신 응답의 refresh_token이 null이면 기존 refresh token 쿠키를 유지한다', async () => {
+    const { axiosInstance } = await loadAxios();
+    server.use(
+      protectedApi('/v1/students'),
+      tokenResponse({ access_token: 'access-new', refresh_token: null }),
+    );
+
+    await expect(axiosInstance.get('/v1/students')).resolves.toMatchObject({
+      data: '/v1/students',
+    });
+
+    expect(readCookie('accessToken')).toBe('access-new');
+    expect(readCookie('refreshToken')).toBe('refresh-old');
+  });
 });

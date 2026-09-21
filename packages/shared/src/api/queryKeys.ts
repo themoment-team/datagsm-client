@@ -146,8 +146,6 @@ export const accountQueryKeys = {
 
 export const oauthQueryKeys = {
   getOAuthSession: (token: string) => ['oauth', 'session', token] as const,
-  postOAuthTokenRefresh: () => ['oauth', 'token', 'refresh'] as const,
-  postOAuthToken: () => ['oauth', 'token'] as const,
   postOAuthCode: () => ['oauth', 'code'] as const,
   getIdpSessions: () => ['oauth', 'idp-sessions', 'list'] as const,
   deleteIdpSession: () => ['oauth', 'idp-sessions', 'delete'] as const,
