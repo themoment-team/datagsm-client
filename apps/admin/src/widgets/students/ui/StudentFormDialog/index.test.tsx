@@ -6,6 +6,7 @@ import {
   createClub,
   createClubListData,
   createStudent,
+  expectNoRequest,
   http,
   renderWithProviders,
   screen,
@@ -159,7 +160,8 @@ describe('StudentFormDialog 추가', () => {
     expect(field('전공')).toHaveTextContent('선택 안 함');
   });
 
-  // 졸업생·자퇴생은 학년·반 등을 숨기지만 검증은 그대로라, 에러도 보이지 않고 요청도 나가지 않는다. 현재 동작을 기록한다.
+  // 졸업생·자퇴생은 학년·반 등을 숨기지만 검증은 그대로라, 에러도 보이지 않고 요청도 나가지 않는다.
+  // 현재 동작을 기록한다. 개선 이슈: #221
   it('졸업생으로 추가하려 하면 숨겨진 항목 때문에 요청이 나가지 않는다', async () => {
     const requests = mockStudentApi();
     const { user } = await openCreateDialog();
@@ -172,8 +174,7 @@ describe('StudentFormDialog 추가', () => {
 
     await user.click(within(dialog()).getByRole('button', { name: '+ Add Student' }));
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(requests.create).toEqual([]);
+    await expectNoRequest(() => requests.create.length);
   });
 });
 
@@ -295,7 +296,7 @@ describe('StudentFormDialog 수정', () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  // 바뀐 값이 없으면 아무 요청도, 안내도 하지 않는다. 현재 동작을 기록한다.
+  // 바뀐 값이 없으면 아무 요청도, 안내도 하지 않는다. 현재 동작을 기록한다. 개선 이슈: #221
   it('아무것도 바꾸지 않고 수정을 누르면 요청하지 않는다', async () => {
     const requests = mockStudentApi();
     const { user, onOpenChange } = openEditDialog();
@@ -303,8 +304,9 @@ describe('StudentFormDialog 수정', () => {
 
     await user.click(within(dialog()).getByRole('button', { name: '수정' }));
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(requests).toEqual({ create: [], update: [], updateStatus: [] });
+    await expectNoRequest(
+      () => requests.create.length + requests.update.length + requests.updateStatus.length,
+    );
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
