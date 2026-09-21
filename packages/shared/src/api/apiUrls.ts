@@ -2,6 +2,7 @@ import { ClubType, StudentRole, StudentSex } from '@repo/shared/types';
 
 import { AccountObjectType, AccountSortBy, AccountStatus } from '../types/account';
 import { UserRoleType } from '../types/userRole';
+import { buildQuery } from './buildQuery';
 
 export const studentUrl = {
   putStudentById: (studentId: number) => `/v1/students/${studentId}`,
@@ -18,23 +19,19 @@ export const studentUrl = {
     sortBy?: string,
     name?: string,
   ) => {
-    const params = new URLSearchParams();
-
-    if (page !== undefined) params.append('page', page.toString());
-    if (size !== undefined) params.append('size', size.toString());
-    if (grade !== undefined) params.append('grade', grade.toString());
-    if (classNum !== undefined) params.append('classNum', classNum.toString());
-    if (sex !== undefined) params.append('sex', sex);
-    if (role !== undefined) params.append('role', role);
-    if (includeGraduates !== undefined)
-      params.append('includeGraduates', includeGraduates.toString());
-    if (includeWithdrawn !== undefined)
-      params.append('includeWithdrawn', includeWithdrawn.toString());
-    if (onlyEnrolled !== undefined) params.append('onlyEnrolled', onlyEnrolled.toString());
-    if (sortBy !== undefined) params.append('sortBy', sortBy);
-    if (name !== undefined) params.append('name', name);
-
-    return `/v1/students?${params.toString()}`;
+    return `/v1/students${buildQuery({
+      page,
+      size,
+      grade,
+      classNum,
+      sex,
+      role,
+      includeGraduates,
+      includeWithdrawn,
+      onlyEnrolled,
+      sortBy,
+      name,
+    })}`;
   },
   postStudent: () => '/v1/students',
   patchStudentStatus: (studentId: number) => `/v1/students/${studentId}/status`,
@@ -62,19 +59,15 @@ export const authUrl = {
     isExpired?: boolean;
     isRenewable?: boolean;
   }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-    if (params.id !== undefined) urlParams.append('id', params.id.toString());
-    if (params.accountId !== undefined) urlParams.append('accountId', params.accountId.toString());
-    if (params.scope) urlParams.append('scope', params.scope);
-    if (params.isExpired !== undefined) urlParams.append('isExpired', params.isExpired.toString());
-    if (params.isRenewable !== undefined)
-      urlParams.append('isRenewable', params.isRenewable.toString());
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/auth/api-keys?${queryString}` : '/v1/auth/api-keys';
+    return `/v1/auth/api-keys${buildQuery({
+      page: params.page,
+      size: params.size,
+      id: params.id,
+      accountId: params.accountId,
+      scope: params.scope,
+      isExpired: params.isExpired,
+      isRenewable: params.isRenewable,
+    })}`;
   },
   getApiScope: (scopeName: string) => `/v1/auth/api-keys/scopes/${scopeName}`,
   getAvailableScope: (userRole: UserRoleType) =>
@@ -95,16 +88,13 @@ export const projectUrl = {
     clubId?: number;
     status?: 'ACTIVE' | 'ENDED';
   }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-    if (params.projectName) urlParams.append('projectName', params.projectName);
-    if (params.clubId !== undefined) urlParams.append('clubId', params.clubId.toString());
-    if (params.status !== undefined) urlParams.append('status', params.status);
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/projects?${queryString}` : '/v1/projects';
+    return `/v1/projects${buildQuery({
+      page: params.page,
+      size: params.size,
+      projectName: params.projectName,
+      clubId: params.clubId,
+      status: params.status,
+    })}`;
   },
   postProject: () => '/v1/projects',
 } as const;
@@ -113,16 +103,7 @@ export const clubUrl = {
   putClubById: (clubId: number) => `/v1/clubs/${clubId}`,
   deleteClubById: (clubId: number) => `/v1/clubs/${clubId}`,
   getClubs: (page?: number, size?: number, type?: ClubType, clubName?: string, status?: string) => {
-    const params = new URLSearchParams();
-
-    if (page !== undefined) params.append('page', page.toString());
-    if (size !== undefined) params.append('size', size.toString());
-    if (type != null) params.append('clubType', type);
-    if (clubName !== undefined) params.append('clubName', clubName);
-    if (status !== undefined) params.append('clubStatus', status);
-
-    const queryString = params.toString();
-    return queryString ? `/v1/clubs?${queryString}` : '/v1/clubs';
+    return `/v1/clubs${buildQuery({ page, size, clubType: type, clubName, clubStatus: status })}`;
   },
   postClub: () => '/v1/clubs',
   postClubImport: () => '/v1/clubs/imports',
@@ -131,41 +112,25 @@ export const clubUrl = {
 
 export const clientUrl = {
   getClientsSearch: (page?: number, size?: number, clientName?: string) => {
-    const params = new URLSearchParams();
-
-    if (clientName !== undefined) params.append('clientName', clientName);
-    if (page !== undefined) params.append('page', page.toString());
-    if (size !== undefined) params.append('size', size.toString());
-
-    const queryString = params.toString();
-    return queryString ? `/v1/clients?${queryString}` : '/v1/clients';
+    return `/v1/clients${buildQuery({ clientName, page, size })}`;
   },
   postClient: () => '/v1/clients',
   deleteClientById: (clientId: string) => `/v1/clients/${clientId}`,
   patchClientById: (clientId: string) => `/v1/clients/${clientId}`,
   getClients: (page?: number, size?: number) => {
-    const params = new URLSearchParams();
-
-    if (page !== undefined) params.append('page', page.toString());
-    if (size !== undefined) params.append('size', size.toString());
-
-    const queryString = params.toString();
-    return queryString ? `/v1/clients/my?${queryString}` : '/v1/clients/my';
+    return `/v1/clients/my${buildQuery({ page, size })}`;
   },
   getAvailableScopes: () => '/v1/clients/available-scopes',
 } as const;
 
 export const applicationUrl = {
   getApplications: (params: { page?: number; size?: number; name?: string; id?: string }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-    if (params.name) urlParams.append('name', params.name);
-    if (params.id) urlParams.append('id', params.id);
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/applications?${queryString}` : '/v1/applications';
+    return `/v1/applications${buildQuery({
+      page: params.page,
+      size: params.size,
+      name: params.name,
+      id: params.id,
+    })}`;
   },
   postApplication: () => '/v1/applications',
   deleteApplicationById: (id: string) => `/v1/applications/${id}`,
@@ -206,18 +171,15 @@ export const accountUrl = {
     status?: AccountStatus;
     sortBy?: AccountSortBy;
   }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-    if (params.email) urlParams.append('email', params.email);
-    if (params.role !== undefined) urlParams.append('role', params.role);
-    if (params.objectType !== undefined) urlParams.append('objectType', params.objectType);
-    if (params.status !== undefined) urlParams.append('status', params.status);
-    if (params.sortBy !== undefined) urlParams.append('sortBy', params.sortBy);
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/accounts?${queryString}` : '/v1/accounts';
+    return `/v1/accounts${buildQuery({
+      page: params.page,
+      size: params.size,
+      email: params.email,
+      role: params.role,
+      objectType: params.objectType,
+      status: params.status,
+      sortBy: params.sortBy,
+    })}`;
   },
   patchAccountRole: (accountId: number) => `/v1/accounts/${accountId}/role`,
   patchAccountApproval: (accountId: number) => `/v1/accounts/${accountId}/approval`,
