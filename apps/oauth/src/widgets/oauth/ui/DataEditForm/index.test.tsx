@@ -46,8 +46,7 @@ describe('DataEditForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  // 폼 기본값이 없어 선택하지 않은 동아리 값이 undefined로 검증되고, zod 기본 영문 메시지가 뜬다. 수정 이슈: #219
-  it.fails('동아리를 고르지 않고 제출하면 한국어 안내를 보여준다 (알려진 문제)', async () => {
+  it('동아리를 고르지 않고 제출하면 한국어 안내를 보여준다', async () => {
     const { user } = setup([{ name: 'MAJOR_CLUB', options: CLUB_OPTIONS }]);
 
     await submit(user);
