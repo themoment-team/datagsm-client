@@ -80,6 +80,35 @@ export const projectQueryKeys = {
   postProject: () => ['projects', 'create'] as const,
 } as const;
 
+export const publicProjectQueryKeys = {
+  getPublicProjects: (params: {
+    projectName?: string;
+    clubId?: number;
+    status?: string;
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDirection?: string;
+  }) => ['public-projects', 'list', params] as const,
+  getPublicProjectById: (projectId: number) => ['public-projects', 'detail', projectId] as const,
+} as const;
+
+export const meProjectQueryKeys = {
+  getMyProjects: (requestStatus?: string) => ['me-projects', 'list', { requestStatus }] as const,
+  postMyProject: () => ['me-projects', 'create'] as const,
+  putMyProject: () => ['me-projects', 'update'] as const,
+  postIconUploadUrl: () => ['me-projects', 'icons', 'upload-url'] as const,
+} as const;
+
+export const projectRequestQueryKeys = {
+  getProjectRequests: (params: { requestStatus?: string; page?: number; size?: number }) =>
+    ['project-requests', 'list', params] as const,
+  getProjectRequestById: (requestId: number) =>
+    ['project-requests', 'detail', requestId] as const,
+  postAcceptProjectRequest: () => ['project-requests', 'accept'] as const,
+  postRejectProjectRequest: () => ['project-requests', 'reject'] as const,
+} as const;
+
 export const clubQueryKeys = {
   putClubById: () => ['clubs', 'update'] as const,
   deleteClubById: () => ['clubs', 'delete'] as const,

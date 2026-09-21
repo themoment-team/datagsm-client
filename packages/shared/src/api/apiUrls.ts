@@ -1,4 +1,10 @@
-import { ClubType, StudentRole, StudentSex } from '@repo/shared/types';
+import {
+  ClubType,
+  ProjectRequestStatus,
+  ProjectStatus,
+  StudentRole,
+  StudentSex,
+} from '@repo/shared/types';
 
 import { AccountObjectType, AccountSortBy, AccountStatus } from '../types/account';
 import { UserRoleType } from '../types/userRole';
@@ -107,6 +113,68 @@ export const projectUrl = {
     return queryString ? `/v1/projects?${queryString}` : '/v1/projects';
   },
   postProject: () => '/v1/projects',
+} as const;
+
+export const publicProjectUrl = {
+  getPublicProjects: (params: {
+    projectName?: string;
+    clubId?: number;
+    status?: ProjectStatus;
+    page?: number;
+    size?: number;
+    sortBy?: 'ID' | 'NAME';
+    sortDirection?: 'ASC' | 'DESC';
+  }) => {
+    const urlParams = new URLSearchParams();
+
+    if (params.projectName) urlParams.append('projectName', params.projectName);
+    if (params.clubId !== undefined) urlParams.append('clubId', params.clubId.toString());
+    if (params.status !== undefined) urlParams.append('status', params.status);
+    if (params.page !== undefined) urlParams.append('page', params.page.toString());
+    if (params.size !== undefined) urlParams.append('size', params.size.toString());
+    if (params.sortBy !== undefined) urlParams.append('sortBy', params.sortBy);
+    if (params.sortDirection !== undefined)
+      urlParams.append('sortDirection', params.sortDirection);
+
+    const queryString = urlParams.toString();
+    return queryString ? `/v1/public/projects?${queryString}` : '/v1/public/projects';
+  },
+  getPublicProjectById: (projectId: number) => `/v1/public/projects/${projectId}`,
+} as const;
+
+export const meProjectUrl = {
+  getMyProjects: (requestStatus?: ProjectRequestStatus) => {
+    const params = new URLSearchParams();
+
+    if (requestStatus !== undefined) params.append('requestStatus', requestStatus);
+
+    const queryString = params.toString();
+    return queryString ? `/v1/students/me/projects?${queryString}` : '/v1/students/me/projects';
+  },
+  postMyProject: () => '/v1/students/me/projects',
+  putMyProject: (projectId: number) => `/v1/students/me/projects/${projectId}`,
+  postIconUploadUrl: () => '/v1/students/me/projects/icons/upload-url',
+} as const;
+
+export const projectRequestUrl = {
+  getProjectRequests: (params: {
+    requestStatus?: ProjectRequestStatus;
+    page?: number;
+    size?: number;
+  }) => {
+    const urlParams = new URLSearchParams();
+
+    if (params.requestStatus !== undefined)
+      urlParams.append('requestStatus', params.requestStatus);
+    if (params.page !== undefined) urlParams.append('page', params.page.toString());
+    if (params.size !== undefined) urlParams.append('size', params.size.toString());
+
+    const queryString = urlParams.toString();
+    return queryString ? `/v1/projects/requests?${queryString}` : '/v1/projects/requests';
+  },
+  getProjectRequestById: (requestId: number) => `/v1/projects/requests/${requestId}`,
+  postAcceptProjectRequest: (requestId: number) => `/v1/projects/requests/${requestId}/accept`,
+  postRejectProjectRequest: (requestId: number) => `/v1/projects/requests/${requestId}/reject`,
 } as const;
 
 export const clubUrl = {
