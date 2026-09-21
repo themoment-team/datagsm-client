@@ -1,23 +1,29 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 
+import { Plus } from 'lucide-react';
+
 import { useURLFilters } from '@repo/shared/hooks';
 import type { ProjectStatus } from '@repo/shared/types';
-import { CommonPagination, PageHeader } from '@repo/shared/ui';
+import { Button, CommonPagination, PageHeader } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
 import { DEFAULT_PROJECT_SORT, parseProjectSort } from '@/entities/project';
+import { requireAuth } from '@/shared/lib';
 import { useGetPublicProjects } from '@/views/projects/model/useGetPublicProjects';
 import { ProjectList, ProjectListFilter } from '@/widgets/project';
+import { ProjectFormDialog } from '@/widgets/project-form';
 
 const PAGE_SIZE = 12;
 
 const ProjectsPage = () => {
   const searchParams = useSearchParams();
   const { updateURL } = useURLFilters<{ projectName: string; status: string; sort: string }>();
+
+  const [isFormOpen, setFormOpen] = useState(false);
 
   const filters = useMemo(() => {
     return {
@@ -47,10 +53,21 @@ const ProjectsPage = () => {
   const handleSort = (value: string) => updateURL({ sort: value }, 0);
   const handlePage = (page: number) => updateURL({}, page);
 
+  const handleApply = () => requireAuth(() => setFormOpen(true), '/');
+
   return (
     <div className={cn('bg-background min-h-[calc(100vh-3.5rem)]')}>
       <main className={cn('container mx-auto px-4 py-8')}>
-        <PageHeader breadcrumb="DATAGSM / PROJECTS" title="프로젝트" />
+        <PageHeader
+          breadcrumb="DATAGSM / PROJECTS"
+          title="프로젝트"
+          action={
+            <Button onClick={handleApply} className={cn('gap-1.5')}>
+              <Plus className={cn('h-4 w-4')} />
+              프로젝트 신청
+            </Button>
+          }
+        />
 
         <div className={cn('mb-6')}>
           <ProjectListFilter
@@ -84,6 +101,8 @@ const ProjectsPage = () => {
           />
         </div>
       </main>
+
+      <ProjectFormDialog mode="create" open={isFormOpen} onOpenChange={setFormOpen} />
     </div>
   );
 };
