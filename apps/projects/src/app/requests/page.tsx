@@ -1,7 +1,13 @@
+import { Suspense } from 'react';
+
 import { AdminRequestsPage } from '@/views/admin-requests';
 
 const AdminRequestsRoute = () => {
-  return <AdminRequestsPage />;
+  return (
+    <Suspense>
+      <AdminRequestsPage />
+    </Suspense>
+  );
 };
 
 export default AdminRequestsRoute;

@@ -1,7 +1,13 @@
+import { Suspense } from 'react';
+
 import { ProjectsPage } from '@/views/projects';
 
 const Home = () => {
-  return <ProjectsPage />;
+  return (
+    <Suspense>
+      <ProjectsPage />
+    </Suspense>
+  );
 };
 
 export default Home;
