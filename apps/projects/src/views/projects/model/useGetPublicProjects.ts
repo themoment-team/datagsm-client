@@ -9,7 +9,10 @@ export const useGetPublicProjects = (
 ) =>
   useQuery({
     queryKey: publicProjectQueryKeys.getPublicProjects(params),
-    queryFn: () => get<PublicProjectListResponse>(publicProjectUrl.getPublicProjects(params)),
+    queryFn: () =>
+      get<PublicProjectListResponse>(publicProjectUrl.getPublicProjects(params), {
+        skipAuthRefresh: true,
+      }),
     staleTime: minutesToMs(1),
     gcTime: minutesToMs(5),
     refetchOnMount: false,

@@ -4,6 +4,13 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 import { oauthUrl } from '../api';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** true면 401 응답에도 토큰 refresh·리다이렉트를 건너뛴다 (공개 조회 등 인증 예외 요청). */
+    skipAuthRefresh?: boolean;
+  }
+}
+
 let isRefreshing = false;
 let refreshQueue: ((token: string) => void)[] = [];
 
