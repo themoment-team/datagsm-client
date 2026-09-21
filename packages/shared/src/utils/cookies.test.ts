@@ -50,8 +50,7 @@ describe('cookies', () => {
     expect(getAllCookies()).toEqual({});
   });
 
-  // 수정 이슈: #220
-  it.fails('서버가 인코딩 없이 저장한 =가 들어간 값도 전부 읽는다 (알려진 문제)', () => {
+  it('서버가 인코딩 없이 저장한 =가 들어간 값도 전부 읽는다', () => {
     document.cookie = 'raw=abc==; Path=/';
 
     expect(getAllCookies()).toEqual({ raw: 'abc==' });
