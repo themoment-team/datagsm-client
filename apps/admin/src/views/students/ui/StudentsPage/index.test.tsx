@@ -6,7 +6,6 @@ import {
   createClubListData,
   createStudent,
   createStudentListData,
-  delay,
   http,
   renderWithProviders,
   screen,
@@ -149,8 +148,13 @@ describe('StudentsPage 컬럼 초기화', () => {
 
   it('요청이 끝나기 전에는 같은 초기화를 다시 보낼 수 없다', async () => {
     mockStudents(createStudents(3));
+    // 시간이 아니라 직접 놓아줄 때까지 요청을 붙잡아, 느린 환경에서도 흔들리지 않게 한다.
+    let releaseRequest!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
     const bodies = mockDataEditRequest(async () => {
-      await delay(200);
+      await pending;
       return apiSuccess(null);
     });
     const { user } = await setup();
@@ -159,7 +163,12 @@ describe('StudentsPage 컬럼 초기화', () => {
 
     await confirmFields(user);
 
+    // 요청이 도착했고, 응답 전에는 다시 보내는 버튼이 막혀 있다.
+    await waitFor(() => expect(bodies).toHaveLength(1));
     expect(await screen.findByRole('button', { name: 'Next' })).toBeDisabled();
+
+    releaseRequest();
+
     await screen.findByText('선택한 학생들의 컬럼을 초기화했습니다.');
     expect(bodies).toHaveLength(1);
   });
