@@ -66,7 +66,7 @@ describe('studentUrl.getStudents', () => {
     ).toBe('/v1/students?name=');
   });
 
-  // 다른 목록 URL과 달리 인자가 없어도 끝에 ?가 남는다. 현재 동작을 기록한다.
+  // 다른 목록 URL과 달리 인자가 없어도 끝에 ?가 남는다. 현재 동작을 기록한다. 개선 이슈: #225
   it('인자가 없으면 끝에 ?가 붙은 경로를 돌려준다', () => {
     expect(studentUrl.getStudents()).toBe('/v1/students?');
   });

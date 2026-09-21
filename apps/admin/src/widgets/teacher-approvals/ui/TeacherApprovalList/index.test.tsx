@@ -71,7 +71,7 @@ describe('TeacherApprovalList', () => {
     expect(screen.getByRole('button', { name: 'Allow' })).toBeDisabled();
   });
 
-  // 거절 API가 아직 연동되지 않았다(TODO). 확인해도 아무 일도 일어나지 않는 현재 동작을 기록한다.
+  // 거절 API가 아직 연동되지 않았다(TODO). 확인해도 아무 일도 일어나지 않는 현재 동작을 기록한다. 연동 이슈: #223
   it('Delete는 확인 창만 띄우고 onApprove를 부르지 않는다', async () => {
     const onApprove = vi.fn();
     const user = userEvent.setup();

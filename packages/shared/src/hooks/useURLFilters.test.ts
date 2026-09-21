@@ -54,7 +54,7 @@ describe('useURLFilters', () => {
     expect(pushedUrl()).toBe('/students?');
   });
 
-  // 0과 false도 빈 값으로 보고 지운다. 현재 동작을 기록한다.
+  // 0과 false도 빈 값으로 보고 지운다. 현재 동작을 기록한다. 개선 이슈: #225
   it('0과 false도 쿼리에서 지운다', () => {
     setMockSearchParams('grade=1&onlyEnrolled=true');
     const result = renderFilters();

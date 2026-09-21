@@ -34,7 +34,7 @@ const protectedApi = (path: string) =>
 /**
  * 현재 코드는 oauthAxiosInstance가 본문을 푼 뒤 한 번 더 `.data`를 읽는다.
  * 그래서 `{ data: { access_token, refresh_token } }` 형태여야 갱신에 성공한다.
- * 문서 형식(최상위 access_token)과의 차이는 아래 '알려진 문제' 테스트에 기록한다.
+ * 문서 형식(최상위 access_token)과의 차이는 아래 '알려진 문제' 테스트에 기록한다. 수정 이슈: #218
  */
 const tokenResponse = (body: object, init?: { delayMs?: number }) =>
   http.post(TOKEN_URL, async ({ request }) => {
