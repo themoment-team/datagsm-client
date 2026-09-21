@@ -72,8 +72,7 @@ describe('GET /api/callback (client)', () => {
     expect(response.headers.get('location')).toBe(`${ORIGIN}/`);
   });
 
-  // isValidRelativePath가 \를 거르지 않아, URL 파서가 //evil.com으로 읽는다. 오픈 리다이렉트 취약점, 별도 PR에서 처리 예정.
-  it.fails('state가 /\\evil.com이면 다른 호스트로 보내지 않는다 (알려진 문제)', async () => {
+  it('state가 /\\evil.com이면 다른 호스트로 보내지 않는다', async () => {
     mockToken();
 
     const response = await callback(`code=code-1&state=${encodeURIComponent('/\\evil.com')}`);

@@ -21,8 +21,12 @@ describe('isValidRelativePath', () => {
     expect(new URL('/\\evil.com', 'https://datagsm.kr').host).toBe('evil.com');
   });
 
-  // 오픈 리다이렉트 취약점. 별도 PR에서 처리 예정.
-  it.fails('/\\evil.com처럼 다른 호스트로 해석되는 경로를 거부한다 (알려진 문제)', () => {
+  it('/\\evil.com처럼 다른 호스트로 해석되는 경로를 거부한다', () => {
     expect(isValidRelativePath('/\\evil.com')).toBe(false);
+  });
+
+  // 제어문자를 끼워 넣어 검증을 우회하려는 경로도 거부한다.
+  it.each(['/\tevil.com', '/\nevil.com', '/foo\r\nSet-Cookie: x'])('%s는 거부한다', (path) => {
+    expect(isValidRelativePath(path)).toBe(false);
   });
 });
