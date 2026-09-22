@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useURLFilters } from '@repo/shared/hooks';
 import type { ProjectStatus } from '@repo/shared/types';
 import { Button, CommonPagination, type FilterOption, PageHeader } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
-import { Plus } from 'lucide-react';
+import { FolderOpen, Plus } from 'lucide-react';
 
 import { DEFAULT_PROJECT_SORT, parseProjectSort } from '@/entities/project';
 import { useGetMajorClubs } from '@/shared/hooks';
@@ -21,6 +21,7 @@ const PAGE_SIZE = 12;
 const ALL = 'all';
 
 const ProjectsPage = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { updateURL } = useURLFilters<{
     projectName: string;
@@ -77,6 +78,8 @@ const ProjectsPage = () => {
   const handlePage = (page: number) => updateURL({}, page);
 
   const handleApply = () => requireAuth(() => setFormOpen(true), '/');
+  // 내 프로젝트는 로그인 전용 화면이라 비로그인 상태면 바로 로그인으로 보낸다.
+  const handleMyProjects = () => requireAuth(() => router.push('/me'), '/me');
 
   return (
     <div className={cn('bg-background min-h-[calc(100vh-3.5rem)]')}>
@@ -85,10 +88,16 @@ const ProjectsPage = () => {
           breadcrumb="DATAGSM / PROJECTS"
           title="프로젝트"
           action={
-            <Button onClick={handleApply} className={cn('gap-1.5')}>
-              <Plus className={cn('h-4 w-4')} />
-              프로젝트 신청
-            </Button>
+            <div className={cn('flex items-center gap-2')}>
+              <Button variant="outline" onClick={handleMyProjects} className={cn('gap-1.5')}>
+                <FolderOpen className={cn('h-4 w-4')} />
+                내 프로젝트
+              </Button>
+              <Button onClick={handleApply} className={cn('gap-1.5')}>
+                <Plus className={cn('h-4 w-4')} />
+                프로젝트 신청
+              </Button>
+            </div>
           }
         />
 
