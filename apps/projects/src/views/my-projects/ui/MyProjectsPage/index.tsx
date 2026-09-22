@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-import { Plus } from 'lucide-react';
+import { LayoutGrid, Plus } from 'lucide-react';
 
 import { useURLFilters } from '@repo/shared/hooks';
 import type { MyProject, ProjectRequestStatus } from '@repo/shared/types';
@@ -61,10 +62,18 @@ const MyProjectsPage = () => {
           breadcrumb="DATAGSM / PROJECTS"
           title="내 프로젝트"
           action={
-            <Button onClick={handleCreate} className={cn('gap-1.5')}>
-              <Plus className={cn('h-4 w-4')} />
-              프로젝트 신청
-            </Button>
+            <div className={cn('flex items-center gap-2')}>
+              <Button variant="outline" asChild className={cn('gap-1.5')}>
+                <Link href="/">
+                  <LayoutGrid className={cn('h-4 w-4')} />
+                  전체 프로젝트
+                </Link>
+              </Button>
+              <Button onClick={handleCreate} className={cn('gap-1.5')}>
+                <Plus className={cn('h-4 w-4')} />
+                프로젝트 신청
+              </Button>
+            </div>
           }
         />
 
