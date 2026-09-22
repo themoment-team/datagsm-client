@@ -27,6 +27,7 @@ interface RequestReviewDialogProps {
 }
 
 const LABEL_STYLE = 'text-muted-foreground font-mono text-[10px] uppercase tracking-widest';
+const EMPTY_STYLE = 'text-muted-foreground/70 font-mono text-xs';
 const REJECT_REASON_MAX_LENGTH = 500;
 
 const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialogProps) => {
@@ -136,8 +137,12 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
                   {getMajorLabel(request.requestedBy.major)} · {request.requestedBy.studentNumber}
                 </span>
               </p>
+              <p className={cn('text-muted-foreground break-all font-mono text-xs')}>
+                {request.requestedBy.email}
+              </p>
               <p className={cn('text-muted-foreground font-mono text-xs')}>
                 신청일 {formatDate(request.requestedAt)}
+                {request.processedAt && ` · 처리일 ${formatDate(request.processedAt)}`}
               </p>
             </div>
           </div>
@@ -160,9 +165,10 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
             </div>
           </div>
 
-          {request.participants.length > 0 && (
-            <div className={cn('space-y-1')}>
-              <p className={cn(LABEL_STYLE)}>참여자</p>
+          {/* 아래 세 항목은 비어 있어도 섹션을 남긴다. "신청자가 입력하지 않음"과 "화면에 없음"을 구분해야 하기 때문. */}
+          <div className={cn('space-y-1')}>
+            <p className={cn(LABEL_STYLE)}>참여자</p>
+            {request.participants.length > 0 ? (
               <div className={cn('flex flex-wrap gap-1')}>
                 {request.participants.map((participant) => (
                   <Badge key={participant.id} variant="outline">
@@ -170,12 +176,14 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
                   </Badge>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className={cn(EMPTY_STYLE)}>입력하지 않음</p>
+            )}
+          </div>
 
-          {request.techStacks.length > 0 && (
-            <div className={cn('space-y-1')}>
-              <p className={cn(LABEL_STYLE)}>기술 스택</p>
+          <div className={cn('space-y-1')}>
+            <p className={cn(LABEL_STYLE)}>기술 스택</p>
+            {request.techStacks.length > 0 ? (
               <div className={cn('flex flex-wrap gap-1')}>
                 {request.techStacks.map((tech) => (
                   <Badge key={tech} variant="outline">
@@ -183,12 +191,14 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
                   </Badge>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <p className={cn(EMPTY_STYLE)}>입력하지 않음</p>
+            )}
+          </div>
 
-          {request.repositories.length > 0 && (
-            <div className={cn('space-y-1')}>
-              <p className={cn(LABEL_STYLE)}>리포지토리</p>
+          <div className={cn('space-y-1')}>
+            <p className={cn(LABEL_STYLE)}>리포지토리</p>
+            {request.repositories.length > 0 ? (
               <ul className={cn('flex flex-col gap-1')}>
                 {request.repositories.map((repo) => (
                   <li key={repo}>
@@ -205,8 +215,10 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
                   </li>
                 ))}
               </ul>
-            </div>
-          )}
+            ) : (
+              <p className={cn(EMPTY_STYLE)}>입력하지 않음</p>
+            )}
+          </div>
 
           {request.requestStatus === 'REJECTED' && request.rejectReason && (
             <div
