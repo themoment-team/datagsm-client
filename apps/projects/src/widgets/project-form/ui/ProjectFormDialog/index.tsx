@@ -35,12 +35,12 @@ import {
   PROJECT_REPOSITORY_MAX_LENGTH,
   PROJECT_TECH_STACK_MAX_COUNT,
   PROJECT_TECH_STACK_MAX_LENGTH,
-  projectFormSchema,
   type ProjectFormType,
+  projectFormSchema,
 } from '@/entities/project';
+import { useGetMajorClubs } from '@/shared/hooks';
 
 import { useCreateProject } from '../../model/useCreateProject';
-import { useGetMajorClubs } from '../../model/useGetMajorClubs';
 import { useUpdateProject } from '../../model/useUpdateProject';
 import ProjectIconField from '../ProjectIconField';
 
@@ -82,7 +82,7 @@ const ProjectFormDialog = ({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
-  const { data: clubsData } = useGetMajorClubs(open);
+  const { data: clubsData } = useGetMajorClubs({ enabled: open });
   const clubs = clubsData?.data.clubs ?? [];
 
   const {
