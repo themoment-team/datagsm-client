@@ -20,6 +20,7 @@ export const NAV_LINKS = {
     { href: '/teacher-approvals', label: '선생님 승인' },
     { href: '/clubs', label: '동아리' },
     { href: '/projects', label: '프로젝트' },
+    { href: '/projects/requests', label: '프로젝트 심사' },
     { href: '/api-keys', label: 'API 키' },
   ],
   docs: [

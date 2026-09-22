@@ -1,4 +1,4 @@
-import { ProjectStatus } from '@repo/shared/types';
+import { ProjectRequestStatus, ProjectStatus } from '@repo/shared/types';
 
 export const getProjectStatusLabel = (status: ProjectStatus) => {
   switch (status) {
@@ -22,3 +22,36 @@ export const getRepositoryLabel = (repository: string) => {
     return repository;
   }
 };
+
+export const getProjectRequestStatusLabel = (status: ProjectRequestStatus) => {
+  switch (status) {
+    case 'PENDING':
+      return '심사 중';
+    case 'ACCEPTED':
+      return '승인됨';
+    case 'REJECTED':
+      return '거절됨';
+    default:
+      return status;
+  }
+};
+
+export const getProjectRequestStatusVariant = (
+  status: ProjectRequestStatus,
+): 'default' | 'secondary' | 'destructive' => {
+  switch (status) {
+    case 'ACCEPTED':
+      return 'default';
+    case 'REJECTED':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
+};
+
+/** 심사 화면 상태 탭. 어드민은 상태별로만 보므로 '전체'는 두지 않는다. */
+export const PROJECT_REQUEST_STATUS_TABS: { value: ProjectRequestStatus; label: string }[] = [
+  { value: 'PENDING', label: '심사 중' },
+  { value: 'ACCEPTED', label: '승인됨' },
+  { value: 'REJECTED', label: '거절됨' },
+];
