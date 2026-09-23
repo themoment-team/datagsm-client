@@ -4,6 +4,10 @@
 
 ## 서버 변경사항 (최신)
 
+- **배포 URL 필드 추가** (server PR #451)
+  - 요청(2-4·2-5·3-5)에 `deploymentUrl`, 응답(1-1·1-2·2-1·3-1·3-2)에 `deploymentUrl: string | null`이 추가됐다. 웹훅 `project.updated`에는 `deployment_url`로 실린다.
+  - 수정(2-5, 3-5 `PUT`)은 **전체 덮어쓰기**다. `deploymentUrl`을 빼고 보내면 `null`로 지워지므로 기존 값을 채워서 보낼 것.
+  - 빈 문자열 `""`은 형식 오류(`400`)다. 값이 없으면 필드를 생략한다.
 - **GET /v1/students/me/projects — 거절 상태 해석 (중요)**
   - 실제 서버 동작이 바뀐 유일한 항목. 나머지는 문서 정정.
   - 이미 등록된 프로젝트의 수정 신청이 거절되면, 이전엔 아무것도 안 내려갔는데 이제 원본 프로젝트에 거절 정보가 실려서 온다.
@@ -87,6 +91,7 @@
       "endYear": null,
       "status": "ACTIVE",
       "iconUrl": "https://cdn.datagsm.kr/project-icons/{uuid}.png",
+      "deploymentUrl": "https://datagsm.kr",
       "club": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" },
       "participants": [{ "name": "홍길동", "major": "SW_DEVELOPMENT" }],
       "repositories": ["https://github.com/team/repo"],
@@ -132,6 +137,7 @@
       "endYear": null,
       "status": "ACTIVE",
       "iconUrl": "https://cdn.datagsm.kr/project-icons/{uuid}.png",
+      "deploymentUrl": "https://datagsm.kr",
       "club": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" },
       "participants": [
         { "id": 1, "name": "홍길동", "email": "s24080@gsm.hs.kr", "studentNumber": 1201, "major": "SW_DEVELOPMENT", "sex": "MAN" }
@@ -195,7 +201,7 @@ Body: <binary>
 ### 2-4. 프로젝트 신청 (신규) — `POST /v1/students/me/projects`
 
 ```json
-{ "name": "...", "description": "...", "startYear": 2024, "clubId": 1, "participantIds": [1,2,3], "repositories": ["..."], "techStacks": ["..."], "iconKey": "project-icons/{uuid}.png" }
+{ "name": "...", "description": "...", "startYear": 2024, "clubId": 1, "participantIds": [1,2,3], "repositories": ["..."], "techStacks": ["..."], "iconKey": "project-icons/{uuid}.png", "deploymentUrl": "https://datagsm.kr" }
 ```
 
 | 필드 | 필수 | 제약 |
@@ -208,6 +214,7 @@ Body: <binary>
 | `repositories` | X | 최대 20개, 각 300자 |
 | `techStacks` | X | 최대 20개, 각 50자 |
 | `iconKey` | X | 2-2에서 발급받은 값 |
+| `deploymentUrl` | X | 최대 300자, `http://` 또는 `https://`로 시작 (대소문자 구분). 빈 문자열은 `400`이므로 없으면 생략 |
 
 응답: 신청 상세 (`ProjectEditRequestResDto`, `originalProjectId: null`). 에러: `400` 검증 실패, `404` 동아리/참여자를 찾을 수 없음.
 
@@ -219,6 +226,7 @@ Body: <binary>
 - **대기 중인 수정 신청이 있으면 최신 내용으로 대체**된다 (별도 삭제 불필요).
 - **신청자와 참여자 모두** 수정 가능.
 - 원본 프로젝트는 어드민 수락 시점에만 변경된다.
+- **전체 덮어쓰기**: 수락되면 신청본이 원본을 그대로 대체한다. `deploymentUrl`처럼 생략 가능한 필드도 빼고 보내면 `null`로 지워지므로 기존 값을 다시 보내야 한다.
 
 응답: 2-4와 동일 (`originalProjectId`에 값 존재). 에러: `400` 검증 실패, `403` 수정 권한 없음, `404` 프로젝트/동아리/참여자를 찾을 수 없음.
 
@@ -272,7 +280,7 @@ Body: <binary>
 | `POST` | `/v1/projects/{projectId}/end` | 종료 처리 (`endYear` 필요) |
 | `POST` | `/v1/projects/{projectId}/reactivate` | 운영 재개 |
 
-`POST`/`PUT` 바디는 2-4 필드에 `status`, `endYear`가 추가된 형태.
+`POST`/`PUT` 바디는 2-4 필드에 `status`, `endYear`가 추가된 형태. `PUT`도 전체 덮어쓰기라 `deploymentUrl`을 빼면 지워진다.
 
 > **주의**: 어드민 API는 `clubId=0`을 무소속으로 해석하지 않는다. 무소속으로 만들려면 `clubId`를 **생략하거나 `null`**로 보내야 하며, `0`을 보내면 `404`가 발생한다. (`clubId=0` → 무소속 변환은 학생 신청 API에만 적용.)
 
