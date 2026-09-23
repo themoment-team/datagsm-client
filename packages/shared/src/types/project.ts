@@ -15,6 +15,7 @@ export interface Project {
   endYear: number | null;
   status: ProjectStatus;
   iconUrl?: string | null;
+  deploymentUrl?: string | null;
   club: Club | null;
   participants: ClubMember[];
   repositories: string[];
@@ -55,6 +56,7 @@ export interface PublicProject {
   endYear: number | null;
   status: ProjectStatus;
   iconUrl: string | null;
+  deploymentUrl: string | null;
   club: Club | null;
   participants: PublicParticipant[];
   repositories: string[];
@@ -96,6 +98,7 @@ export interface MyProject {
   endYear: number | null;
   status: ProjectStatus | null;
   iconUrl: string | null;
+  deploymentUrl: string | null;
   club: Club | null;
   participants: ClubMember[];
   repositories: string[];
@@ -124,6 +127,8 @@ export interface ProjectRequestBody {
   repositories?: string[];
   techStacks?: string[];
   iconKey?: string;
+  /** http(s)://로 시작하는 300자 이하 URL. 빈 문자열은 400이므로 없으면 생략한다 */
+  deploymentUrl?: string;
 }
 
 /** 신청/수정 제안 스냅샷 (ProjectEditRequestResDto) */
@@ -136,6 +141,7 @@ export interface ProjectEditRequest {
   description: string;
   startYear: number;
   iconUrl: string | null;
+  deploymentUrl: string | null;
   club: Club | null;
   participants: ClubMember[];
   repositories: string[];
