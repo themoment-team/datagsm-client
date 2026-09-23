@@ -4,10 +4,14 @@ import Link from 'next/link';
 
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 
-import { Badge, Skeleton } from '@repo/shared/ui';
+import { Badge, Button, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
-import { PROJECT_STATUS_LABEL, STUDENT_MAJOR_LABEL } from '@/entities/project';
+import {
+  PROJECT_DEPLOYMENT_URL_PATTERN,
+  PROJECT_STATUS_LABEL,
+  STUDENT_MAJOR_LABEL,
+} from '@/entities/project';
 import { useGetPublicProject } from '@/views/project-detail/model/useGetPublicProject';
 
 interface ProjectDetailPageProps {
@@ -17,6 +21,11 @@ interface ProjectDetailPageProps {
 const ProjectDetailPage = ({ projectId }: ProjectDetailPageProps) => {
   const { data, isLoading, isError } = useGetPublicProject(projectId);
   const project = data?.data;
+  // 서버가 http(s)만 저장하지만, href에 넣는 값이라 한 번 더 걸러 javascript: 같은 스킴을 막는다.
+  const deploymentUrl =
+    project?.deploymentUrl && PROJECT_DEPLOYMENT_URL_PATTERN.test(project.deploymentUrl)
+      ? project.deploymentUrl
+      : null;
 
   return (
     <div className={cn('bg-background min-h-[calc(100vh-3.5rem)]')}>
@@ -73,6 +82,19 @@ const ProjectDetailPage = ({ projectId }: ProjectDetailPageProps) => {
                   {project.club?.name ?? '무소속'} · {project.startYear}
                   {project.endYear ? `~${project.endYear}` : ''}
                 </p>
+                {deploymentUrl && (
+                  <Button asChild variant="outline" size="sm" className={cn('mt-3 gap-1.5')}>
+                    <a
+                      href={deploymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={deploymentUrl}
+                    >
+                      <ExternalLink className={cn('h-3.5 w-3.5')} />
+                      사이트 방문
+                    </a>
+                  </Button>
+                )}
               </div>
             </header>
 
