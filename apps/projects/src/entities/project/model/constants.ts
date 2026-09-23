@@ -69,6 +69,10 @@ export const PROJECT_REPOSITORY_MAX_COUNT = 20;
 export const PROJECT_REPOSITORY_MAX_LENGTH = 300;
 export const PROJECT_TECH_STACK_MAX_COUNT = 20;
 export const PROJECT_TECH_STACK_MAX_LENGTH = 50;
+export const PROJECT_DEPLOYMENT_URL_MAX_LENGTH = 300;
+
+/** 서버 검증(`^https?://.*`)과 같은 규칙. 서버는 대소문자를 구분하므로 `i` 플래그를 붙이지 않는다. */
+export const PROJECT_DEPLOYMENT_URL_PATTERN = /^https?:\/\//;
 
 /** 무소속을 의미하는 clubId */
 export const NO_CLUB_ID = 0;

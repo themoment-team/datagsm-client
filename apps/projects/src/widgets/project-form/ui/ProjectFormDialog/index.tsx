@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 
 import {
   NO_CLUB_ID,
+  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
   PROJECT_REPOSITORY_MAX_COUNT,
@@ -66,6 +67,8 @@ const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   repositories: initial?.repositories ?? [],
   techStacks: initial?.techStacks ?? [],
   iconKey: null,
+  // 수정 신청은 전체 덮어쓰기라 기존 값을 채워 두지 않으면 수락 시 배포 URL이 지워진다.
+  deploymentUrl: initial?.deploymentUrl ?? '',
 });
 
 const ProjectFormDialog = ({
@@ -133,6 +136,8 @@ const ProjectFormDialog = ({
       repositories: form.repositories,
       techStacks: form.techStacks,
       iconKey: form.iconKey ?? undefined,
+      // 서버는 빈 문자열을 URL 형식 오류(400)로 거부하므로 미입력이면 필드를 뺀다.
+      deploymentUrl: form.deploymentUrl || undefined,
     };
 
     if (projectId != null) {
@@ -249,6 +254,22 @@ const ProjectFormDialog = ({
                 </Select>
               )}
             />
+          </div>
+
+          <div className={cn('space-y-2')}>
+            <Label htmlFor="deploymentUrl" className={cn(LABEL_STYLE)}>
+              배포 URL
+            </Label>
+            <Input
+              id="deploymentUrl"
+              inputMode="url"
+              maxLength={PROJECT_DEPLOYMENT_URL_MAX_LENGTH}
+              placeholder="https://example.com"
+              className={cn('border-foreground rounded-none font-mono')}
+              {...register('deploymentUrl')}
+              disabled={isPending}
+            />
+            <FormErrorMessage error={errors.deploymentUrl} />
           </div>
 
           <div className={cn('space-y-2')}>
