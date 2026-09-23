@@ -55,4 +55,11 @@ describe('cookies', () => {
 
     expect(getAllCookies()).toEqual({ raw: 'abc==' });
   });
+
+  it('디코딩할 수 없는 %가 섞인 쿠키는 원문으로 읽고, 나머지 쿠키도 계속 읽는다', () => {
+    document.cookie = 'discount=100%; Path=/';
+    setCookie('b', '2');
+
+    expect(getAllCookies()).toEqual({ discount: '100%', b: '2' });
+  });
 });
