@@ -47,8 +47,7 @@ describe('studentUrl.getStudents', () => {
     });
   });
 
-  // 다른 목록 URL과 달리 빈 문자열도 넣는다.
-  it('빈 이름도 쿼리에 넣는다', () => {
+  it('빈 이름은 쿼리에서 뺀다', () => {
     expect(
       studentUrl.getStudents(
         undefined,
@@ -63,12 +62,11 @@ describe('studentUrl.getStudents', () => {
         undefined,
         '',
       ),
-    ).toBe('/v1/students?name=');
+    ).toBe('/v1/students');
   });
 
-  // 다른 목록 URL과 달리 인자가 없어도 끝에 ?가 남는다. 현재 동작을 기록한다. 개선 이슈: #225
-  it('인자가 없으면 끝에 ?가 붙은 경로를 돌려준다', () => {
-    expect(studentUrl.getStudents()).toBe('/v1/students?');
+  it('인자가 없으면 쿼리 없이 경로만 돌려준다', () => {
+    expect(studentUrl.getStudents()).toBe('/v1/students');
   });
 });
 
@@ -87,8 +85,8 @@ describe('clubUrl.getClubs', () => {
     });
   });
 
-  it('type이 null이면 빼고, 빈 clubName은 넣는다', () => {
-    expect(clubUrl.getClubs(undefined, undefined, null as never, '')).toBe('/v1/clubs?clubName=');
+  it('type이 null이거나 clubName이 비어 있으면 뺀다', () => {
+    expect(clubUrl.getClubs(undefined, undefined, null as never, '')).toBe('/v1/clubs');
   });
 });
 
@@ -143,8 +141,8 @@ describe('accountUrl.getAccounts', () => {
 });
 
 describe('clientUrl', () => {
-  it('검색은 빈 clientName도 넣는다', () => {
-    expect(clientUrl.getClientsSearch(undefined, undefined, '')).toBe('/v1/clients?clientName=');
+  it('검색은 빈 clientName을 뺀다', () => {
+    expect(clientUrl.getClientsSearch(undefined, undefined, '')).toBe('/v1/clients');
   });
 
   it('내 클라이언트 목록은 인자가 없으면 경로만 돌려준다', () => {
