@@ -34,7 +34,7 @@ import { ChevronDown } from 'lucide-react';
 import { Controller, FieldErrors, SubmitHandler, UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { AddProjectType } from '@/entities/project';
+import { AddProjectType, DEPLOYMENT_URL_MAX_LENGTH } from '@/entities/project';
 import {
   useCreateProject,
   useEndProject,
@@ -114,6 +114,8 @@ const ProjectFormDialog = ({
           endYear: project.endYear ?? undefined,
           repositories: project.repositories ?? [],
           techStacks: project.techStacks ?? [],
+          // 수정은 전체 덮어쓰기라 기존 값을 채워 두지 않으면 배포 URL이 지워진다.
+          deploymentUrl: project.deploymentUrl ?? '',
         });
       } else if (mode === 'create') {
         reset({
@@ -126,6 +128,7 @@ const ProjectFormDialog = ({
           endYear: undefined,
           repositories: [],
           techStacks: [],
+          deploymentUrl: '',
         });
       }
     }
@@ -150,6 +153,8 @@ const ProjectFormDialog = ({
       ...data,
       clubId: data.clubId === 0 ? null : data.clubId,
       endYear: data.status === 'ENDED' ? data.endYear : undefined,
+      // 서버는 빈 문자열을 URL 형식 오류(400)로 거부하므로 미입력이면 필드를 뺀다.
+      deploymentUrl: data.deploymentUrl || undefined,
     };
 
     try {
@@ -352,6 +357,22 @@ const ProjectFormDialog = ({
                   'border-foreground min-h-[80px] resize-none rounded-none px-3 text-sm',
                 )}
                 {...register('description')}
+              />
+            </FormField>
+
+            <FormField
+              label="배포 URL"
+              htmlFor="deploymentUrl"
+              error={errors.deploymentUrl}
+              className={cn('col-span-2')}
+            >
+              <Input
+                id="deploymentUrl"
+                inputMode="url"
+                maxLength={DEPLOYMENT_URL_MAX_LENGTH}
+                placeholder="https://example.com"
+                className={cn(FORM_FIELD_STYLE)}
+                {...register('deploymentUrl')}
               />
             </FormField>
 

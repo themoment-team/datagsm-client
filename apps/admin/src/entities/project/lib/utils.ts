@@ -1,5 +1,7 @@
 import { ProjectRequestStatus, ProjectStatus } from '@repo/shared/types';
 
+import { DEPLOYMENT_URL_PATTERN } from '../model/schema';
+
 export const getProjectStatusLabel = (status: ProjectStatus) => {
   switch (status) {
     case 'ACTIVE':
@@ -20,6 +22,19 @@ export const getRepositoryLabel = (repository: string) => {
     return path || hostname;
   } catch {
     return repository;
+  }
+};
+
+/** href에 넣어도 되는 배포 URL만 돌려준다. 서버가 걸러 저장하지만 javascript: 같은 스킴을 한 번 더 막는다. */
+export const getSafeDeploymentUrl = (url?: string | null) =>
+  url && DEPLOYMENT_URL_PATTERN.test(url) ? url : null;
+
+/** 표에 넣기 좋게 배포 URL에서 호스트(포트 포함)만 남긴다. */
+export const getDeploymentUrlLabel = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
   }
 };
 
