@@ -16,7 +16,7 @@ import { cn, formatDate } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { getProjectRequestStatusLabel } from '@/entities/project';
+import { getProjectRequestStatusLabel, getSafeDeploymentUrl } from '@/entities/project';
 import { getMajorLabel } from '@/entities/student';
 import { useAcceptProjectRequest, useRejectProjectRequest } from '@/views/project-requests/model';
 
@@ -79,6 +79,7 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
   const isProcessing = isAccepting || isRejectPending;
   const canReview = request.requestStatus === 'PENDING';
   const isEdit = request.originalProjectId !== null;
+  const deploymentUrl = getSafeDeploymentUrl(request.deploymentUrl);
 
   const handleReject = () => {
     if (reason.trim().length === 0) {
@@ -165,7 +166,25 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
             </div>
           </div>
 
-          {/* 아래 세 항목은 비어 있어도 섹션을 남긴다. "신청자가 입력하지 않음"과 "화면에 없음"을 구분해야 하기 때문. */}
+          {/* 아래 항목은 비어 있어도 섹션을 남긴다. "신청자가 입력하지 않음"과 "화면에 없음"을 구분해야 하기 때문. */}
+          <div className={cn('space-y-1')}>
+            <p className={cn(LABEL_STYLE)}>배포 URL</p>
+            {deploymentUrl ? (
+              <a
+                href={deploymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'text-muted-foreground hover:text-foreground break-all font-mono text-xs',
+                )}
+              >
+                {deploymentUrl}
+              </a>
+            ) : (
+              <p className={cn(EMPTY_STYLE)}>입력하지 않음</p>
+            )}
+          </div>
+
           <div className={cn('space-y-1')}>
             <p className={cn(LABEL_STYLE)}>참여자</p>
             {request.participants.length > 0 ? (
