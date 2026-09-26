@@ -175,14 +175,16 @@ describe('EventsPage', () => {
   });
 
   describe('수정·삭제', () => {
-    const actionButtons = async (url: string) => within(await rowOf(url)).getAllByRole('button');
+    const editButtonOf = async (url: string) =>
+      within(await rowOf(url)).getByRole('button', { name: `${url} 이벤트 수정` });
+    const deleteButtonOf = async (url: string) =>
+      within(await rowOf(url)).getByRole('button', { name: `${url} 이벤트 삭제` });
 
     it('기존 값을 채운 수정 창을 열고, 한 번 더 확인받은 뒤 저장한다', async () => {
       const requests = mockEventApi([createEvent({ id: 7, target_url: 'https://old.test' })]);
       const { user } = renderWithProviders(<EventsPage />);
 
-      const [editButton] = await actionButtons('https://old.test');
-      await user.click(editButton!);
+      await user.click(await editButtonOf('https://old.test'));
       const dialog = within(await screen.findByRole('dialog'));
       expect(dialog.getByLabelText('수신 URL')).toHaveValue('https://old.test');
       expect(dialog.getByRole('checkbox', { name: /student\.updated/ })).toBeChecked();
@@ -209,14 +211,13 @@ describe('EventsPage', () => {
       const requests = mockEventApi([createEvent({ id: 7, target_url: 'https://old.test' })]);
       const { user } = renderWithProviders(<EventsPage />);
 
-      const [, deleteButton] = await actionButtons('https://old.test');
-      await user.click(deleteButton!);
+      await user.click(await deleteButtonOf('https://old.test'));
       await user.click(
         within(await screen.findByRole('alertdialog')).getByRole('button', { name: '취소' }),
       );
       expect(requests).toEqual([]);
 
-      await user.click(deleteButton!);
+      await user.click(await deleteButtonOf('https://old.test'));
       await user.click(
         within(await screen.findByRole('alertdialog')).getByRole('button', { name: '삭제' }),
       );
@@ -231,8 +232,7 @@ describe('EventsPage', () => {
       });
       const { user } = renderWithProviders(<EventsPage />);
 
-      const [, deleteButton] = await actionButtons('https://old.test');
-      await user.click(deleteButton!);
+      await user.click(await deleteButtonOf('https://old.test'));
       await user.click(
         within(await screen.findByRole('alertdialog')).getByRole('button', { name: '삭제' }),
       );
