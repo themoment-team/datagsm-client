@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["NODE_ENV"],
+  "globalEnv": ["NODE_ENV", "DATAGSM_CLIENT_SECRET"],
   "globalPassThroughEnv": ["NODE_ENV"],
   "ui": "tui",
   "tasks": {
