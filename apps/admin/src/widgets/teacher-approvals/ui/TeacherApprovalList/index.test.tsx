@@ -71,17 +71,10 @@ describe('TeacherApprovalList', () => {
     expect(screen.getByRole('button', { name: 'Allow' })).toBeDisabled();
   });
 
-  // 거절 API가 아직 연동되지 않았다(TODO). 확인해도 아무 일도 일어나지 않는 현재 동작을 기록한다. 연동 이슈: #223
-  it('Delete는 확인 창만 띄우고 onApprove를 부르지 않는다', async () => {
-    const onApprove = vi.fn();
-    const user = userEvent.setup();
-    render(<TeacherApprovalList accounts={[pendingTeacher]} onApprove={onApprove} />);
+  // 거절(계정 삭제) API가 서버에 아직 없어 Delete 버튼을 비활성화한다. 연동 이슈: #223
+  it('거절 API가 없어 Delete 버튼은 비활성화되어 있다', () => {
+    render(<TeacherApprovalList accounts={[pendingTeacher]} />);
 
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
-    await user.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '확인' }),
-    );
-
-    expect(onApprove).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });
 });
