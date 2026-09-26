@@ -133,17 +133,31 @@ describe('OAuthAuthorizeForm', () => {
   });
 
   describe('세션 시작 실패', () => {
-    it('URL에 토큰이 없으면 로그인 폼 대신 안내 화면과 기술문서·서버 상태 링크를 보여준다', async () => {
+    it('URL에 토큰이 없으면 로그인 폼 대신 잘못된 접근 안내만 보여주고, 문서·상태 링크는 없다', async () => {
       setMockSearchParams({});
       setup();
 
       expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
       expect(await screen.findByText('오류')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: '기술문서' })).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: '서버 상태 확인' })).toBeInTheDocument();
+      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
     });
 
-    it('서비스 정보 조회에 실패하면 로그인 폼 대신 안내 화면과 기술문서·서버 상태 링크를 보여준다', async () => {
+    it('세션 조회가 401이면 잘못된 접근 안내만 보여주고, 문서·상태 링크는 없다', async () => {
+      server.use(
+        http.get(`*/v1/oauth/sessions/${TOKEN}`, () => apiError(401, '유효하지 않은 토큰')),
+      );
+      setup();
+
+      expect(await screen.findByText('오류')).toBeInTheDocument();
+      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
+    });
+
+    it('세션 조회가 401이 아닌 오류(서버 장애 등)면 기술문서·서버 상태 링크를 보여준다', async () => {
       server.use(http.get(`*/v1/oauth/sessions/${TOKEN}`, () => apiError(500, '서버 오류')));
       setup();
 

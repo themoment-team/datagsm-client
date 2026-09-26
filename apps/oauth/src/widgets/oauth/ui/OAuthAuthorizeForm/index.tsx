@@ -35,7 +35,10 @@ const OAuthAuthorizeForm = () => {
     data: sessionResponse,
     isLoading: isLoadingServiceInfo,
     isError: isSessionError,
+    error: sessionError,
   } = useGetOAuthSession(token);
+  // 토큰이 없거나 거부(401)된 접근은 서버 장애가 아니라 잘못된 링크다. 재로그인만 안내한다.
+  const isInvalidAccess = !token || sessionError?.response?.status === 401;
   const sessionData = sessionResponse?.data;
   const serviceName = sessionData?.serviceName;
   const serviceScope = sessionData?.requestedScopes;
@@ -240,8 +243,12 @@ const OAuthAuthorizeForm = () => {
     setDataEditFields(fields);
   };
 
-  if (!token || isSessionError) {
-    return <OAuthSessionErrorFallback windowLabel="Sign In" />;
+  if (isInvalidAccess) {
+    return <OAuthSessionErrorFallback windowLabel="Sign In" variant="invalid" />;
+  }
+
+  if (isSessionError) {
+    return <OAuthSessionErrorFallback windowLabel="Sign In" variant="unavailable" />;
   }
 
   return (
