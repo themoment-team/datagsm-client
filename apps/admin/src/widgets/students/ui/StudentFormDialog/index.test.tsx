@@ -302,6 +302,41 @@ describe('StudentFormDialog 수정', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  // 호실 0(없음)처럼 AddStudentSchema를 통과하지 못하는 기존 데이터도 있다. 검증 실패로
+  // onSubmit이 아예 호출되지 않는 경우에도 무변경 제출은 안내되어야 한다. (#221 팔로우업)
+  it('스키마를 통과하지 못하는 기존 데이터라도 아무것도 바꾸지 않았으면 안내하고 창을 닫는다', async () => {
+    const requests = mockStudentApi();
+    const commuter = createStudent({ id: 8, name: '통학생', dormitoryRoom: 0 });
+    const { user, onOpenChange } = openEditDialog(commuter);
+    await screen.findByDisplayValue('통학생');
+
+    await user.click(within(dialog()).getByRole('button', { name: '수정' }));
+
+    expect(await screen.findByText('변경사항이 없습니다.')).toBeInTheDocument();
+    expect(requests.create.length + requests.update.length + requests.updateStatus.length).toBe(0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // 졸업생·자퇴생은 호실 등 숨겨진 필드의 에러도 화면에 그리지 않아, 검증 실패가 겹치면
+  // 더 눈에 띄지 않게 묻힌다. 이 조합에서도 무변경 제출은 안내되어야 한다. (#221 팔로우업)
+  it('졸업생이고 숨겨진 항목이 스키마를 통과하지 못해도 아무것도 바꾸지 않았으면 안내하고 창을 닫는다', async () => {
+    const requests = mockStudentApi();
+    const graduate = createStudent({
+      id: 9,
+      name: '김졸업',
+      role: 'GRADUATE',
+      dormitoryRoom: 0,
+    });
+    const { user, onOpenChange } = openEditDialog(graduate);
+    await screen.findByDisplayValue('김졸업');
+
+    await user.click(within(dialog()).getByRole('button', { name: '졸업생 처리' }));
+
+    expect(await screen.findByText('변경사항이 없습니다.')).toBeInTheDocument();
+    expect(requests.create.length + requests.update.length + requests.updateStatus.length).toBe(0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('GitHub ID를 지우면 빈 문자열 대신 null로 보낸다', async () => {
     const requests = mockStudentApi();
     const { user } = openEditDialog({ ...student, githubId: 'gildong' });

@@ -171,11 +171,20 @@ const StudentFormDialog = ({
         );
       } else if (isOtherDataChanged) {
         updateStudent({ studentId: student.id, data });
-      } else {
-        setOpen(false);
-        toast.info('변경사항이 없습니다.');
       }
     }
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    // 바뀐 값이 없으면 검증을 거치지 않고 바로 안내한다. 기존 데이터가 AddStudentSchema를
+    // 통과하지 못하는 경우(예: 호실이 없는 통학생)에도 무변경 제출은 항상 안내되어야 한다.
+    if (mode === 'edit' && Object.keys(dirtyFields).length === 0) {
+      event.preventDefault();
+      setOpen(false);
+      toast.info('변경사항이 없습니다.');
+      return;
+    }
+    handleSubmit(onSubmit)(event);
   };
 
   const windowTitle = mode === 'create' ? 'Add Student' : 'Edit Student';
@@ -229,7 +238,7 @@ const StudentFormDialog = ({
     >
       {!isControlled && <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>}
       <DialogWindow windowTitle={windowTitle} heading={heading} description={description}>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleFormSubmit}>
           <div className={cn('grid grid-cols-2 gap-4 px-5 pb-2.5 pt-5')}>
             <FormField label="이름" htmlFor="name" error={errors.name}>
               <Input
