@@ -10,7 +10,7 @@ import { AuthWindow, Button, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
-import { useGetOAuthSession } from '@/widgets/oauth';
+import { OAuthSessionErrorFallback, useGetOAuthSession } from '@/widgets/oauth';
 
 const OAuthConsentForm = () => {
   const [isPending, setIsPending] = useState(false);
@@ -99,15 +99,7 @@ const OAuthConsentForm = () => {
   };
 
   if (!token || isSessionError) {
-    return (
-      <AuthWindow windowLabel="Consent" title="오류">
-        <p className={cn('text-muted-foreground px-5 py-6 text-center font-mono text-sm')}>
-          잘못되었거나 만료된 접근입니다.
-          <br />
-          서비스에서 다시 로그인을 시도해주세요.
-        </p>
-      </AuthWindow>
-    );
+    return <OAuthSessionErrorFallback windowLabel="Consent" />;
   }
 
   return (
