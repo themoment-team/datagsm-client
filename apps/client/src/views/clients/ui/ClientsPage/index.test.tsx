@@ -151,7 +151,9 @@ describe('ClientsPage', () => {
     const { user } = renderWithProviders(<ClientsPage />);
 
     const row = (await screen.findByText('기존 클라이언트')).closest('tr')!;
-    await user.click(within(row).getByRole('button', { name: '기존 클라이언트 클라이언트 수정' }));
+    await user.click(
+      within(row).getByRole('button', { name: '기존 클라이언트 (client-1) 클라이언트 수정' }),
+    );
     const dialog = within(await screen.findByRole('dialog'));
     expect(dialog.getByText('client-1')).toBeInTheDocument();
     expect(dialog.queryByRole('checkbox')).not.toBeInTheDocument();
@@ -173,6 +175,63 @@ describe('ClientsPage', () => {
           clientName: '기존 클라이언트',
           serviceName: '바뀐 서비스',
           redirectUrls: ['https://old.test/callback'],
+        },
+      },
+    ]);
+  });
+
+  it('이름이 같은 클라이언트가 여러 개 있어도 ID로 각 행의 버튼을 구분할 수 있다', async () => {
+    const duplicateNamedClient: Client = {
+      id: 'client-2',
+      clientName: '기존 클라이언트',
+      serviceName: '다른 서비스',
+      redirectUrl: ['https://another.test/callback'],
+      scopes: ['datagsm:self_read'],
+    };
+    const requests = mockClientApi({
+      clients: [existingClient, duplicateNamedClient],
+      update: () => apiSuccess(duplicateNamedClient),
+    });
+    const { user } = renderWithProviders(<ClientsPage />);
+
+    await screen.findByText('client-1');
+    await screen.findByText('client-2');
+
+    expect(
+      screen.getByRole('button', { name: '기존 클라이언트 (client-1) 클라이언트 ID 복사' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '기존 클라이언트 (client-2) 클라이언트 ID 복사' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '기존 클라이언트 (client-1) 클라이언트 삭제' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '기존 클라이언트 (client-2) 클라이언트 삭제' }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: '기존 클라이언트 (client-2) 클라이언트 수정' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(dialog.getByText('client-2')).toBeInTheDocument();
+
+    await user.clear(dialog.getByLabelText('서비스 명칭'));
+    await user.type(dialog.getByLabelText('서비스 명칭'), '바뀐 서비스2');
+    await user.click(dialog.getByRole('button', { name: '저장' }));
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '저장' }),
+    );
+
+    expect(await screen.findByText('클라이언트 데이터가 수정되었습니다.')).toBeInTheDocument();
+    expect(requests).toEqual([
+      {
+        method: 'PATCH',
+        id: 'client-2',
+        body: {
+          clientName: '기존 클라이언트',
+          serviceName: '바뀐 서비스2',
+          redirectUrls: ['https://another.test/callback'],
         },
       },
     ]);
