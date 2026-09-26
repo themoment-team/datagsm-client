@@ -32,6 +32,15 @@ export const deleteCookie = (name: string): void => {
   document.cookie = cookieString;
 };
 
+// 인코딩되지 않은 %가 섞여 있어 decodeURIComponent가 실패하면 원문을 그대로 쓴다.
+const safeDecodeURIComponent = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 export const getAllCookies = (): Record<string, string> => {
   if (typeof document === 'undefined') return {};
 
@@ -39,9 +48,14 @@ export const getAllCookies = (): Record<string, string> => {
   const cookieArray = document.cookie.split(';');
 
   for (const cookie of cookieArray) {
-    const [name, value] = cookie.trim().split('=');
+    const c = cookie.trim();
+    const separatorIndex = c.indexOf('=');
+    if (separatorIndex === -1) continue;
+
+    const name = c.substring(0, separatorIndex);
+    const value = c.substring(separatorIndex + 1);
     if (name && value) {
-      cookies[decodeURIComponent(name)] = decodeURIComponent(value);
+      cookies[safeDecodeURIComponent(name)] = safeDecodeURIComponent(value);
     }
   }
 

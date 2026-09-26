@@ -50,10 +50,16 @@ describe('cookies', () => {
     expect(getAllCookies()).toEqual({});
   });
 
-  // 수정 이슈: #220
-  it.fails('서버가 인코딩 없이 저장한 =가 들어간 값도 전부 읽는다 (알려진 문제)', () => {
+  it('서버가 인코딩 없이 저장한 =가 들어간 값도 전부 읽는다', () => {
     document.cookie = 'raw=abc==; Path=/';
 
     expect(getAllCookies()).toEqual({ raw: 'abc==' });
+  });
+
+  it('디코딩할 수 없는 %가 섞인 쿠키는 원문으로 읽고, 나머지 쿠키도 계속 읽는다', () => {
+    document.cookie = 'discount=100%; Path=/';
+    setCookie('b', '2');
+
+    expect(getAllCookies()).toEqual({ discount: '100%', b: '2' });
   });
 });
