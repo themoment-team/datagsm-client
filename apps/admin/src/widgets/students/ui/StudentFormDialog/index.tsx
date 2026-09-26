@@ -171,6 +171,9 @@ const StudentFormDialog = ({
         );
       } else if (isOtherDataChanged) {
         updateStudent({ studentId: student.id, data });
+      } else {
+        setOpen(false);
+        toast.info('변경사항이 없습니다.');
       }
     }
   };
@@ -277,8 +280,12 @@ const StudentFormDialog = ({
                       <SelectItem value="GENERAL_STUDENT">일반학생</SelectItem>
                       <SelectItem value="STUDENT_COUNCIL">학생회</SelectItem>
                       <SelectItem value="DORMITORY_MANAGER">기자위</SelectItem>
-                      <SelectItem value="GRADUATE">졸업생</SelectItem>
-                      <SelectItem value="WITHDRAWN">자퇴생</SelectItem>
+                      {mode === 'edit' && (
+                        <>
+                          <SelectItem value="GRADUATE">졸업생</SelectItem>
+                          <SelectItem value="WITHDRAWN">자퇴생</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 )}
