@@ -295,7 +295,7 @@ describe('ProjectFormDialog 수정', () => {
     expect(requests[0]?.body).toMatchObject({ deploymentUrl: 'https://datagsm.kr' });
   });
 
-  it('배포 URL을 지우면 필드를 빼고 보낸다', async () => {
+  it('배포 URL을 지우면 빈 문자열로 보내 삭제한다', async () => {
     const requests = mockProjectApi();
     const { user } = await openEditDialog({ ...baseProject, deploymentUrl: 'https://datagsm.kr' });
 
@@ -303,7 +303,7 @@ describe('ProjectFormDialog 수정', () => {
     await submit(user);
 
     await screen.findByText('프로젝트 데이터가 수정되었습니다.');
-    expect(requests[0]?.body).not.toHaveProperty('deploymentUrl');
+    expect(requests[0]?.body).toMatchObject({ deploymentUrl: '' });
   });
 
   it('응답에 리포지토리·기술 스택이 없는 프로젝트도 수정할 수 있다', async () => {

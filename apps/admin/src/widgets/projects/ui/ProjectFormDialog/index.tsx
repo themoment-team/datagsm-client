@@ -114,7 +114,6 @@ const ProjectFormDialog = ({
           endYear: project.endYear ?? undefined,
           repositories: project.repositories ?? [],
           techStacks: project.techStacks ?? [],
-          // 수정은 전체 덮어쓰기라 기존 값을 채워 두지 않으면 배포 URL이 지워진다.
           deploymentUrl: project.deploymentUrl ?? '',
         });
       } else if (mode === 'create') {
@@ -153,8 +152,8 @@ const ProjectFormDialog = ({
       ...data,
       clubId: data.clubId === 0 ? null : data.clubId,
       endYear: data.status === 'ENDED' ? data.endYear : undefined,
-      // 서버는 빈 문자열을 URL 형식 오류(400)로 거부하므로 미입력이면 필드를 뺀다.
-      deploymentUrl: data.deploymentUrl || undefined,
+      // 수정에서 필드를 빼면 서버가 기존 값을 유지하므로, 비운 값은 ''로 보내야 지워진다.
+      deploymentUrl: mode === 'edit' ? (data.deploymentUrl ?? '') : data.deploymentUrl || undefined,
     };
 
     try {
