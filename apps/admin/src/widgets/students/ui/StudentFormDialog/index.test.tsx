@@ -6,7 +6,6 @@ import {
   createClub,
   createClubListData,
   createStudent,
-  expectNoRequest,
   http,
   renderWithProviders,
   screen,
@@ -160,21 +159,16 @@ describe('StudentFormDialog 추가', () => {
     expect(field('전공')).toHaveTextContent('선택 안 함');
   });
 
-  // 졸업생·자퇴생은 학년·반 등을 숨기지만 검증은 그대로라, 에러도 보이지 않고 요청도 나가지 않는다.
-  // 현재 동작을 기록한다. 개선 이슈: #221
-  it('졸업생으로 추가하려 하면 숨겨진 항목 때문에 요청이 나가지 않는다', async () => {
-    const requests = mockStudentApi();
+  // 학생 추가는 신규 입학생을 등록하는 흐름이라 졸업생·자퇴생 상태로 바로 등록할 수 없다.
+  it('추가 모드의 구분 선택지에는 졸업생·자퇴생이 없다', async () => {
+    mockStudentApi();
     const { user } = await openCreateDialog();
-    await user.type(field('이름'), '졸업생');
-    await user.type(field('이메일'), 'grad@gsm.hs.kr');
-    await selectOption(user, field('성별'), '남');
-    await selectOption(user, field('구분'), '졸업생');
 
-    expect(within(dialog()).queryByLabelText('학년')).not.toBeInTheDocument();
+    field('구분').focus();
+    await user.keyboard('{ArrowDown}');
 
-    await user.click(within(dialog()).getByRole('button', { name: '+ Add Student' }));
-
-    await expectNoRequest(() => requests.create.length);
+    const options = (await screen.findAllByRole('option')).map((option) => option.textContent);
+    expect(options).toEqual(['일반학생', '학생회', '기자위']);
   });
 });
 
@@ -296,18 +290,51 @@ describe('StudentFormDialog 수정', () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  // 바뀐 값이 없으면 아무 요청도, 안내도 하지 않는다. 현재 동작을 기록한다. 개선 이슈: #221
-  it('아무것도 바꾸지 않고 수정을 누르면 요청하지 않는다', async () => {
+  it('아무것도 바꾸지 않고 수정을 누르면 안내하고 창을 닫는다', async () => {
     const requests = mockStudentApi();
     const { user, onOpenChange } = openEditDialog();
     await screen.findByDisplayValue('홍길동');
 
     await user.click(within(dialog()).getByRole('button', { name: '수정' }));
 
-    await expectNoRequest(
-      () => requests.create.length + requests.update.length + requests.updateStatus.length,
-    );
-    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(await screen.findByText('변경사항이 없습니다.')).toBeInTheDocument();
+    expect(requests.create.length + requests.update.length + requests.updateStatus.length).toBe(0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // 호실 0(없음)처럼 AddStudentSchema를 통과하지 못하는 기존 데이터도 있다. 검증 실패로
+  // onSubmit이 아예 호출되지 않는 경우에도 무변경 제출은 안내되어야 한다. (#221 팔로우업)
+  it('스키마를 통과하지 못하는 기존 데이터라도 아무것도 바꾸지 않았으면 안내하고 창을 닫는다', async () => {
+    const requests = mockStudentApi();
+    const commuter = createStudent({ id: 8, name: '통학생', dormitoryRoom: 0 });
+    const { user, onOpenChange } = openEditDialog(commuter);
+    await screen.findByDisplayValue('통학생');
+
+    await user.click(within(dialog()).getByRole('button', { name: '수정' }));
+
+    expect(await screen.findByText('변경사항이 없습니다.')).toBeInTheDocument();
+    expect(requests.create.length + requests.update.length + requests.updateStatus.length).toBe(0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // 졸업생·자퇴생은 호실 등 숨겨진 필드의 에러도 화면에 그리지 않아, 검증 실패가 겹치면
+  // 더 눈에 띄지 않게 묻힌다. 이 조합에서도 무변경 제출은 안내되어야 한다. (#221 팔로우업)
+  it('졸업생이고 숨겨진 항목이 스키마를 통과하지 못해도 아무것도 바꾸지 않았으면 안내하고 창을 닫는다', async () => {
+    const requests = mockStudentApi();
+    const graduate = createStudent({
+      id: 9,
+      name: '김졸업',
+      role: 'GRADUATE',
+      dormitoryRoom: 0,
+    });
+    const { user, onOpenChange } = openEditDialog(graduate);
+    await screen.findByDisplayValue('김졸업');
+
+    await user.click(within(dialog()).getByRole('button', { name: '졸업생 처리' }));
+
+    expect(await screen.findByText('변경사항이 없습니다.')).toBeInTheDocument();
+    expect(requests.create.length + requests.update.length + requests.updateStatus.length).toBe(0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it('GitHub ID를 지우면 빈 문자열 대신 null로 보낸다', async () => {
