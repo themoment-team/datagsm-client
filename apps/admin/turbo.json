@@ -1,0 +1,12 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "env": ["DATAGSM_CLIENT_SECRET"]
+    },
+    "lint": {
+      "env": ["DATAGSM_CLIENT_SECRET"]
+    }
+  }
+}
