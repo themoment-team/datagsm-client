@@ -115,31 +115,22 @@ export const publicProjectUrl = {
     sortBy?: 'ID' | 'NAME';
     sortDirection?: 'ASC' | 'DESC';
   }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.projectName) urlParams.append('projectName', params.projectName);
-    if (params.clubId !== undefined) urlParams.append('clubId', params.clubId.toString());
-    if (params.status !== undefined) urlParams.append('status', params.status);
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-    if (params.sortBy !== undefined) urlParams.append('sortBy', params.sortBy);
-    if (params.sortDirection !== undefined)
-      urlParams.append('sortDirection', params.sortDirection);
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/public/projects?${queryString}` : '/v1/public/projects';
+    return `/v1/public/projects${buildQuery({
+      projectName: params.projectName,
+      clubId: params.clubId,
+      status: params.status,
+      page: params.page,
+      size: params.size,
+      sortBy: params.sortBy,
+      sortDirection: params.sortDirection,
+    })}`;
   },
   getPublicProjectById: (projectId: number) => `/v1/public/projects/${projectId}`,
 } as const;
 
 export const meProjectUrl = {
   getMyProjects: (requestStatus?: ProjectRequestStatus) => {
-    const params = new URLSearchParams();
-
-    if (requestStatus !== undefined) params.append('requestStatus', requestStatus);
-
-    const queryString = params.toString();
-    return queryString ? `/v1/students/me/projects?${queryString}` : '/v1/students/me/projects';
+    return `/v1/students/me/projects${buildQuery({ requestStatus })}`;
   },
   postMyProject: () => '/v1/students/me/projects',
   putMyProject: (projectId: number) => `/v1/students/me/projects/${projectId}`,
@@ -152,15 +143,11 @@ export const projectRequestUrl = {
     page?: number;
     size?: number;
   }) => {
-    const urlParams = new URLSearchParams();
-
-    if (params.requestStatus !== undefined)
-      urlParams.append('requestStatus', params.requestStatus);
-    if (params.page !== undefined) urlParams.append('page', params.page.toString());
-    if (params.size !== undefined) urlParams.append('size', params.size.toString());
-
-    const queryString = urlParams.toString();
-    return queryString ? `/v1/projects/requests?${queryString}` : '/v1/projects/requests';
+    return `/v1/projects/requests${buildQuery({
+      requestStatus: params.requestStatus,
+      page: params.page,
+      size: params.size,
+    })}`;
   },
   getProjectRequestById: (requestId: number) => `/v1/projects/requests/${requestId}`,
   postAcceptProjectRequest: (requestId: number) => `/v1/projects/requests/${requestId}/accept`,
