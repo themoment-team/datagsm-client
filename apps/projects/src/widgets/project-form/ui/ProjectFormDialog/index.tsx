@@ -66,8 +66,9 @@ const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   clubId: initial?.club?.id ?? null,
   repositories: initial?.repositories ?? [],
   techStacks: initial?.techStacks ?? [],
-  iconKey: null,
-  // 수정 신청은 전체 덮어쓰기라 기존 값을 채워 두지 않으면 수락 시 배포 URL이 지워진다.
+  // 서버는 생략한 값을 원본 프로젝트 기준으로 채운다. 대기 중인 수정안이나 신규 신청을 다시 낼 때
+  // 화면에 보이는 값과 달라지지 않도록 기존 값을 채워 그대로 보낸다.
+  iconKey: initial?.iconKey ?? null,
   deploymentUrl: initial?.deploymentUrl ?? '',
 });
 
@@ -135,9 +136,9 @@ const ProjectFormDialog = ({
       participantIds: [],
       repositories: form.repositories,
       techStacks: form.techStacks,
-      iconKey: form.iconKey ?? undefined,
-      // 서버는 빈 문자열을 URL 형식 오류(400)로 거부하므로 미입력이면 필드를 뺀다.
-      deploymentUrl: form.deploymentUrl || undefined,
+      // 빈 문자열은 삭제, 생략은 기존 값 유지라 비운 값은 ''로 보내야 지워진다.
+      iconKey: form.iconKey ?? '',
+      deploymentUrl: form.deploymentUrl,
     };
 
     if (projectId != null) {
