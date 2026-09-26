@@ -15,6 +15,7 @@ export interface Project {
   endYear: number | null;
   status: ProjectStatus;
   iconUrl?: string | null;
+  iconKey?: string | null;
   deploymentUrl?: string | null;
   club: Club | null;
   participants: ClubMember[];
@@ -98,6 +99,8 @@ export interface MyProject {
   endYear: number | null;
   status: ProjectStatus | null;
   iconUrl: string | null;
+  /** 대기 중인 수정안이 있으면 수정안의 키. 수정 시 아이콘을 유지하려면 그대로 보낸다 */
+  iconKey: string | null;
   deploymentUrl: string | null;
   club: Club | null;
   participants: ClubMember[];
@@ -126,8 +129,9 @@ export interface ProjectRequestBody {
   participantIds?: number[];
   repositories?: string[];
   techStacks?: string[];
+  /** 생략하면 현재 값을 유지하고, 빈 문자열이면 삭제한다 */
   iconKey?: string;
-  /** http(s)://로 시작하는 300자 이하 URL. 빈 문자열은 400이므로 없으면 생략한다 */
+  /** http(s)://로 시작하는 300자 이하 URL. 생략하면 현재 값을 유지하고, 빈 문자열이면 삭제한다 */
   deploymentUrl?: string;
 }
 
@@ -141,6 +145,7 @@ export interface ProjectEditRequest {
   description: string;
   startYear: number;
   iconUrl: string | null;
+  iconKey: string | null;
   deploymentUrl: string | null;
   club: Club | null;
   participants: ClubMember[];

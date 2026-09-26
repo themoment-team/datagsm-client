@@ -15,6 +15,7 @@ const buildProject = (override: Partial<MyProject>): MyProject => ({
   endYear: null,
   status: null,
   iconUrl: null,
+  iconKey: null,
   deploymentUrl: null,
   club: null,
   participants: [],
