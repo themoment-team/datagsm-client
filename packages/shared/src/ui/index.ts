@@ -5,6 +5,7 @@ export * from './Card';
 export * from './AlertDialog';
 export * from './Badge';
 export * from './Dialog';
+export * from './Sheet';
 export * from './Input';
 export * from './Label';
 export * from './Pagination';
