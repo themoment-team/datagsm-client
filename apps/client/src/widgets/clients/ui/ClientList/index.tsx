@@ -52,7 +52,11 @@ const ClientListItem = ({ client, onEdit, onDelete }: ClientListItemProps) => {
       <TableCell>
         <div className={cn('flex items-center gap-2')}>
           <code className={cn('bg-muted px-2 py-1 font-mono text-xs')}>{client.id}</code>
-          <PixelIconButton size="sm" onClick={() => copy(client.id)}>
+          <PixelIconButton
+            size="sm"
+            onClick={() => copy(client.id)}
+            aria-label={`${client.clientName} 클라이언트 ID 복사`}
+          >
             {copied ? <Check className={cn('h-3 w-3')} /> : <Copy className={cn('h-3 w-3')} />}
           </PixelIconButton>
         </div>
@@ -87,13 +91,19 @@ const ClientListItem = ({ client, onEdit, onDelete }: ClientListItemProps) => {
       </TableCell>
       <TableCell>
         <div className={cn('flex items-center gap-1')}>
-          <PixelIconButton onClick={() => onEdit(client)}>
+          <PixelIconButton
+            onClick={() => onEdit(client)}
+            aria-label={`${client.clientName} 클라이언트 수정`}
+          >
             <Pencil className={cn('h-3.5 w-3.5')} />
           </PixelIconButton>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <PixelIconButton variant="destructive">
+              <PixelIconButton
+                variant="destructive"
+                aria-label={`${client.clientName} 클라이언트 삭제`}
+              >
                 <Trash2 className={cn('h-3.5 w-3.5')} />
               </PixelIconButton>
             </AlertDialogTrigger>

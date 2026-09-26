@@ -151,8 +151,7 @@ describe('ClientsPage', () => {
     const { user } = renderWithProviders(<ClientsPage />);
 
     const row = (await screen.findByText('기존 클라이언트')).closest('tr')!;
-    // 행의 버튼은 ID 복사, 수정, 삭제 순이다. 아이콘 버튼이라 접근 가능한 이름이 없다.
-    await user.click(within(row).getAllByRole('button')[1]!);
+    await user.click(within(row).getByRole('button', { name: '기존 클라이언트 클라이언트 수정' }));
     const dialog = within(await screen.findByRole('dialog'));
     expect(dialog.getByText('client-1')).toBeInTheDocument();
     expect(dialog.queryByRole('checkbox')).not.toBeInTheDocument();
