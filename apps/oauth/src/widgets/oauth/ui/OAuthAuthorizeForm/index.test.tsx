@@ -1,6 +1,7 @@
 import {
   HttpResponse,
   act,
+  apiError,
   apiSuccess,
   http,
   renderWithProviders,
@@ -131,6 +132,42 @@ describe('OAuthAuthorizeForm', () => {
     });
   });
 
+  describe('세션 시작 실패', () => {
+    it('URL에 토큰이 없으면 로그인 폼 대신 잘못된 접근 안내만 보여주고, 문서·상태 링크는 없다', async () => {
+      setMockSearchParams({});
+      setup();
+
+      expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
+      expect(await screen.findByText('오류')).toBeInTheDocument();
+      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
+    });
+
+    it('세션 조회가 401이면 잘못된 접근 안내만 보여주고, 문서·상태 링크는 없다', async () => {
+      server.use(
+        http.get(`*/v1/oauth/sessions/${TOKEN}`, () => apiError(401, '유효하지 않은 토큰')),
+      );
+      setup();
+
+      expect(await screen.findByText('오류')).toBeInTheDocument();
+      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
+    });
+
+    it('세션 조회가 401이 아닌 오류(서버 장애 등)면 기술문서·서버 상태 링크를 보여준다', async () => {
+      server.use(http.get(`*/v1/oauth/sessions/${TOKEN}`, () => apiError(500, '서버 오류')));
+      setup();
+
+      expect(await screen.findByText('오류')).toBeInTheDocument();
+      expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '기술문서' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '서버 상태 확인' })).toBeInTheDocument();
+    });
+  });
+
   describe('로그인', () => {
     it('이메일에 도메인을 붙여 토큰과 함께 보내고, 받은 주소로 이동하며 세션 캐시를 지운다', async () => {
       mockSession();
@@ -185,19 +222,6 @@ describe('OAuthAuthorizeForm', () => {
 
       expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
       expect(screen.getByText('세션이 만료되었습니다. 다시 시도해주세요.')).toBeInTheDocument();
-    });
-
-    it('URL에 토큰이 없으면 요청하지 않고 안내한다', async () => {
-      setMockSearchParams({});
-      const bodies = mockAuthorize(() => HttpResponse.json({}));
-      const user = setup();
-
-      await signIn(user);
-
-      expect(
-        await screen.findByText('인증 토큰이 없습니다. 다시 시도해주세요.'),
-      ).toBeInTheDocument();
-      expect(bodies).toEqual([]);
     });
 
     it('네트워크 오류가 나면 오류 메시지를 보여준다', async () => {

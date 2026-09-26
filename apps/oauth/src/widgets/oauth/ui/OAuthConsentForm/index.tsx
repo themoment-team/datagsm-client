@@ -10,7 +10,7 @@ import { AuthWindow, Button, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
-import { useGetOAuthSession } from '@/widgets/oauth';
+import { OAuthSessionErrorFallback, useGetOAuthSession } from '@/widgets/oauth';
 
 const OAuthConsentForm = () => {
   const [isPending, setIsPending] = useState(false);
@@ -21,7 +21,10 @@ const OAuthConsentForm = () => {
     data: sessionResponse,
     isLoading: isLoadingServiceInfo,
     isError: isSessionError,
+    error: sessionError,
   } = useGetOAuthSession(token);
+  // 토큰이 없거나 거부(401)된 접근은 서버 장애가 아니라 잘못된 링크다. 재로그인만 안내한다.
+  const isInvalidAccess = !token || sessionError?.response?.status === 401;
   const sessionData = sessionResponse?.data;
   const serviceName = sessionData?.serviceName;
   const serviceScope = sessionData?.requestedScopes;
@@ -98,16 +101,12 @@ const OAuthConsentForm = () => {
     }
   };
 
-  if (!token || isSessionError) {
-    return (
-      <AuthWindow windowLabel="Consent" title="오류">
-        <p className={cn('text-muted-foreground px-5 py-6 text-center font-mono text-sm')}>
-          잘못되었거나 만료된 접근입니다.
-          <br />
-          서비스에서 다시 로그인을 시도해주세요.
-        </p>
-      </AuthWindow>
-    );
+  if (isInvalidAccess) {
+    return <OAuthSessionErrorFallback windowLabel="Consent" variant="invalid" />;
+  }
+
+  if (isSessionError) {
+    return <OAuthSessionErrorFallback windowLabel="Consent" variant="unavailable" />;
   }
 
   return (
