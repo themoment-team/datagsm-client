@@ -4,6 +4,13 @@ import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 
 import { oauthUrl } from '../api';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** true면 401 응답에도 토큰 refresh·리다이렉트를 건너뛴다 (공개 조회 등 인증 예외 요청). */
+    skipAuthRefresh?: boolean;
+  }
+}
+
 /**
  * OAuth 토큰 엔드포인트(/v1/oauth/token)는 공통 래핑({ status, code, message, data })에서
  * 의도적으로 제외돼 토큰 필드가 최상위로 온다. oauthAxiosInstance 인터셉터가 본문을 그대로

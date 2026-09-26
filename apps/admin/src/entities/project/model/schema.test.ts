@@ -94,4 +94,41 @@ describe('AddProjectSchema', () => {
       });
     });
   });
+
+  describe('배포 URL', () => {
+    const parseUrl = (deploymentUrl?: string) =>
+      AddProjectSchema.safeParse({ ...activeProject, deploymentUrl });
+
+    it.each([undefined, '', 'https://datagsm.kr', 'http://localhost:3000/path?q=1'])(
+      '%s는 통과한다',
+      (url) => {
+        expect(parseUrl(url).success).toBe(true);
+      },
+    );
+
+    it('앞뒤 공백을 지운 값으로 통과한다', () => {
+      expect(parseUrl('  https://datagsm.kr  ').data?.deploymentUrl).toBe('https://datagsm.kr');
+    });
+
+    it.each([
+      'javascript:alert(1)',
+      'ftp://datagsm.kr',
+      'datagsm.kr',
+      // 서버 정규식은 대소문자를 구분한다
+      'HTTPS://datagsm.kr',
+    ])('%s는 거부한다', (url) => {
+      expect(issuesOf({ ...activeProject, deploymentUrl: url })).toEqual({
+        deploymentUrl: 'http:// 또는 https://로 시작하는 주소를 입력해주세요.',
+      });
+    });
+
+    it('300자까지 받는다', () => {
+      const atLimit = `https://${'a'.repeat(300 - 'https://'.length)}`;
+
+      expect(parseUrl(atLimit).success).toBe(true);
+      expect(issuesOf({ ...activeProject, deploymentUrl: `${atLimit}a` })).toEqual({
+        deploymentUrl: '배포 URL은 300자 이하로 입력해주세요.',
+      });
+    });
+  });
 });

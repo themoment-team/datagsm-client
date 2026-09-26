@@ -34,7 +34,7 @@ import { ChevronDown } from 'lucide-react';
 import { Controller, FieldErrors, SubmitHandler, UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { AddProjectType } from '@/entities/project';
+import { AddProjectType, DEPLOYMENT_URL_MAX_LENGTH } from '@/entities/project';
 import {
   useCreateProject,
   useEndProject,
@@ -114,6 +114,7 @@ const ProjectFormDialog = ({
           endYear: project.endYear ?? undefined,
           repositories: project.repositories ?? [],
           techStacks: project.techStacks ?? [],
+          deploymentUrl: project.deploymentUrl ?? '',
         });
       } else if (mode === 'create') {
         reset({
@@ -126,6 +127,7 @@ const ProjectFormDialog = ({
           endYear: undefined,
           repositories: [],
           techStacks: [],
+          deploymentUrl: '',
         });
       }
     }
@@ -150,6 +152,8 @@ const ProjectFormDialog = ({
       ...data,
       clubId: data.clubId === 0 ? null : data.clubId,
       endYear: data.status === 'ENDED' ? data.endYear : undefined,
+      // 수정에서 필드를 빼면 서버가 기존 값을 유지하므로, 비운 값은 ''로 보내야 지워진다.
+      deploymentUrl: mode === 'edit' ? (data.deploymentUrl ?? '') : data.deploymentUrl || undefined,
     };
 
     try {
@@ -352,6 +356,22 @@ const ProjectFormDialog = ({
                   'border-foreground min-h-[80px] resize-none rounded-none px-3 text-sm',
                 )}
                 {...register('description')}
+              />
+            </FormField>
+
+            <FormField
+              label="배포 URL"
+              htmlFor="deploymentUrl"
+              error={errors.deploymentUrl}
+              className={cn('col-span-2')}
+            >
+              <Input
+                id="deploymentUrl"
+                inputMode="url"
+                maxLength={DEPLOYMENT_URL_MAX_LENGTH}
+                placeholder="https://example.com"
+                className={cn(FORM_FIELD_STYLE)}
+                {...register('deploymentUrl')}
               />
             </FormField>
 
