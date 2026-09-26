@@ -34,7 +34,7 @@ describe('GET /api/callback (admin)', () => {
   beforeEach(() => {
     vi.stubEnv('NEXT_PUBLIC_OAUTH_BASE_URL', OAUTH_BASE_URL);
     vi.stubEnv('NEXT_PUBLIC_DATAGSM_CLIENT_ID', 'admin-client');
-    vi.stubEnv('NEXT_PUBLIC_DATAGSM_CLIENT_SECRET', 'admin-secret');
+    vi.stubEnv('DATAGSM_CLIENT_SECRET', 'admin-secret');
     vi.stubEnv('NEXT_PUBLIC_DATAGSM_REDIRECT_URI', `${ORIGIN}/api/callback`);
   });
 
@@ -93,7 +93,7 @@ describe('GET /api/callback (admin)', () => {
     });
 
     it('OAuth 설정 환경 변수가 하나라도 없으면 교환을 시도하지 않는다', async () => {
-      vi.stubEnv('NEXT_PUBLIC_DATAGSM_CLIENT_SECRET', '');
+      vi.stubEnv('DATAGSM_CLIENT_SECRET', '');
       const bodies = mockToken();
 
       const response = await callback('code=code-1');

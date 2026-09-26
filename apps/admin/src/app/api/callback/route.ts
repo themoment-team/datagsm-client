@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const oauthBaseUrl = process.env.NEXT_PUBLIC_OAUTH_BASE_URL;
     const clientId = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID;
-    const clientSecret = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_SECRET;
+    const clientSecret = process.env.DATAGSM_CLIENT_SECRET;
     const redirectUri = process.env.NEXT_PUBLIC_DATAGSM_REDIRECT_URI;
     const codeVerifier = request.cookies.get('code_verifier')?.value;
 
