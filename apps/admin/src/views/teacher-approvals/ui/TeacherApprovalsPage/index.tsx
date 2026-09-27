@@ -11,7 +11,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { useGetAccounts } from '@/views/accounts';
-import { TeacherApprovalList, useApproveTeacherAccount } from '@/widgets/teacher-approvals';
+import {
+  TeacherApprovalList,
+  useApproveTeacherAccount,
+  useRejectTeacherAccount,
+} from '@/widgets/teacher-approvals';
 
 const PAGE_SIZE = 10;
 
@@ -49,6 +53,22 @@ const TeacherApprovalsPage = () => {
     },
   });
 
+  const { mutate: rejectTeacher, isPending: isRejecting } = useRejectTeacherAccount({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      toast.success('선생님 계정 요청을 거절했습니다.');
+    },
+    onError: (error) => {
+      if (error.response?.status === 409) {
+        queryClient.invalidateQueries({ queryKey: ['accounts'] });
+        toast.info('이미 승인된 계정입니다.');
+        return;
+      }
+      console.error('선생님 계정 거절 실패:', error);
+      toast.error('선생님 계정 거절에 실패했습니다.');
+    },
+  });
+
   const accounts = accountsData?.data.accounts;
   const totalPages = accountsData?.data.totalPages ?? 0;
   const isEmpty = !isLoading && !accounts?.length;
@@ -69,7 +89,9 @@ const TeacherApprovalsPage = () => {
               accounts={accounts}
               isLoading={isLoading}
               isApproving={isApproving || isFetching}
+              isRejecting={isRejecting || isFetching}
               onApprove={(accountId) => approveTeacher({ accountId })}
+              onReject={(accountId) => rejectTeacher({ accountId })}
             />
           </div>
 

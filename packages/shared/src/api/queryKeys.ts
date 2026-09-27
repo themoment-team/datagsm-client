@@ -142,6 +142,7 @@ export const accountQueryKeys = {
   }) => ['accounts', 'list', params] as const,
   patchAccountRole: () => ['accounts', 'role', 'update'] as const,
   patchAccountApproval: () => ['accounts', 'approval', 'update'] as const,
+  deleteAccountApproval: () => ['accounts', 'approval', 'delete'] as const,
 } as const;
 
 export const oauthQueryKeys = {

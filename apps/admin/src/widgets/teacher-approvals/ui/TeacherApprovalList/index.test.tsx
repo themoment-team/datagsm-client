@@ -71,9 +71,23 @@ describe('TeacherApprovalList', () => {
     expect(screen.getByRole('button', { name: 'Allow' })).toBeDisabled();
   });
 
-  // 거절(계정 삭제) API가 서버에 아직 없어 Delete 버튼을 비활성화한다. 연동 이슈: #223
-  it('거절 API가 없어 Delete 버튼은 비활성화되어 있다', () => {
-    render(<TeacherApprovalList accounts={[pendingTeacher]} />);
+  it('Delete를 누르고 확인해야 해당 계정 ID로 onReject를 부른다', async () => {
+    const onReject = vi.fn();
+    const user = userEvent.setup();
+    render(<TeacherApprovalList accounts={[pendingTeacher]} onReject={onReject} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    const alert = await screen.findByRole('alertdialog');
+    expect(alert).toHaveTextContent('“teacher@gsm.hs.kr”의 요청을 거절할까요?');
+    expect(onReject).not.toHaveBeenCalled();
+
+    await user.click(within(alert).getByRole('button', { name: '확인' }));
+
+    expect(onReject).toHaveBeenCalledWith(41);
+  });
+
+  it('거절 요청 중에는 Delete를 누를 수 없다', () => {
+    render(<TeacherApprovalList accounts={[pendingTeacher]} isRejecting />);
 
     expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });

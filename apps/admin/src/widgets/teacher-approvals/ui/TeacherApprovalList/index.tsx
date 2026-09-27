@@ -20,14 +20,18 @@ interface TeacherApprovalListProps {
   accounts?: AccountListItem[];
   isLoading?: boolean;
   isApproving?: boolean;
+  isRejecting?: boolean;
   onApprove?: (accountId: number) => void;
+  onReject?: (accountId: number) => void;
 }
 
 const TeacherApprovalList = ({
   accounts,
   isLoading,
   isApproving,
+  isRejecting,
   onApprove,
+  onReject,
 }: TeacherApprovalListProps) => {
   if (!isLoading && !accounts?.length) {
     return (
@@ -108,18 +112,24 @@ const TeacherApprovalList = ({
                       onConfirm={() => onApprove?.(account.id)}
                     />
 
-                    {/* 거절(계정 삭제) API가 서버에 아직 없어 비활성화 처리. API 추가 시 연동 필요 (#223) */}
-                    {/* disabled 버튼은 pointer-events-none이 걸려 title 툴팁이 뜨지 않으므로 span에 붙인다 */}
-                    <span title="거절 기능은 아직 지원되지 않습니다.">
-                      <Button
-                        type="button"
-                        variant="pixel-destructive"
-                        className={cn('h-6 border px-2')}
-                        disabled
-                      >
-                        Delete
-                      </Button>
-                    </span>
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="pixel-destructive"
+                          className={cn('h-6 border px-2')}
+                          disabled={isRejecting}
+                        >
+                          Delete
+                        </Button>
+                      }
+                      title={`“${account.email}”의 요청을 거절할까요?`}
+                      warning="> 중요: 거절하면 해당 계정은 삭제되며 되돌릴 수 없습니다!"
+                      description="거절하면 해당 계정은 삭제되며 되돌릴 수 없습니다."
+                      confirmLabel="확인"
+                      confirmVariant="pixel-destructive"
+                      onConfirm={() => onReject?.(account.id)}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
