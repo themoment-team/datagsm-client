@@ -71,17 +71,24 @@ describe('TeacherApprovalList', () => {
     expect(screen.getByRole('button', { name: 'Allow' })).toBeDisabled();
   });
 
-  // 거절 API가 아직 연동되지 않았다(TODO). 확인해도 아무 일도 일어나지 않는 현재 동작을 기록한다. 연동 이슈: #223
-  it('Delete는 확인 창만 띄우고 onApprove를 부르지 않는다', async () => {
-    const onApprove = vi.fn();
+  it('Delete를 누르고 확인해야 해당 계정 ID로 onReject를 부른다', async () => {
+    const onReject = vi.fn();
     const user = userEvent.setup();
-    render(<TeacherApprovalList accounts={[pendingTeacher]} onApprove={onApprove} />);
+    render(<TeacherApprovalList accounts={[pendingTeacher]} onReject={onReject} />);
 
     await user.click(screen.getByRole('button', { name: 'Delete' }));
-    await user.click(
-      within(await screen.findByRole('alertdialog')).getByRole('button', { name: '확인' }),
-    );
+    const alert = await screen.findByRole('alertdialog');
+    expect(alert).toHaveTextContent('“teacher@gsm.hs.kr”의 요청을 거절할까요?');
+    expect(onReject).not.toHaveBeenCalled();
 
-    expect(onApprove).not.toHaveBeenCalled();
+    await user.click(within(alert).getByRole('button', { name: '확인' }));
+
+    expect(onReject).toHaveBeenCalledWith(41);
+  });
+
+  it('거절 요청 중에는 Delete를 누를 수 없다', () => {
+    render(<TeacherApprovalList accounts={[pendingTeacher]} isRejecting />);
+
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
   });
 });
