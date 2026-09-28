@@ -16,11 +16,12 @@ export const useGetOAuthSession = (token: string | null) => {
       if (storedData) {
         try {
           const parsed = JSON.parse(storedData);
-          // 토큰이 일치하고 필요한 정보가 다 있다면 즉시 반환
+          // 토큰이 일치하고 필요한 정보가 다 있으며, 서버가 내려준 만료 시각이 아직 지나지 않았다면 즉시 반환
           if (
             parsed.token === token &&
             parsed.serviceName &&
             parsed.expiresAt &&
+            parsed.expiresAt > Date.now() &&
             parsed.requestedScopes
           ) {
             return {

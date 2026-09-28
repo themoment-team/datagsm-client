@@ -105,6 +105,38 @@ describe('OAuthAuthorizeForm', () => {
       expect(requests).toEqual([]);
     });
 
+    it('저장된 세션이 만료 시각을 지났으면 쓰지 않고 서버에서 받아온다', async () => {
+      const requests = mockSession();
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          token: TOKEN,
+          ...createSession({ serviceName: '저장된 앱', expiresAt: Date.now() - 1000 }),
+        }),
+      );
+      setup();
+
+      expect(await screen.findByText('급식 알리미')).toBeInTheDocument();
+      expect(requests).toHaveLength(1);
+    });
+
+    it('저장된 세션이 만료 시각을 지났고 서버 조회도 실패하면 서버 상태 안내를 보여준다', async () => {
+      server.use(http.get(`*/v1/oauth/sessions/${TOKEN}`, () => apiError(500, '서버 오류')));
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({
+          token: TOKEN,
+          ...createSession({ serviceName: '저장된 앱', expiresAt: Date.now() - 1000 }),
+        }),
+      );
+      setup();
+
+      expect(await screen.findByText('오류')).toBeInTheDocument();
+      expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '기술문서' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '서버 상태 확인' })).toBeInTheDocument();
+    });
+
     it('다른 토큰의 저장된 세션은 쓰지 않고 서버에서 받아온다', async () => {
       const requests = mockSession();
       localStorage.setItem(
@@ -139,7 +171,9 @@ describe('OAuthAuthorizeForm', () => {
 
       expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
       expect(await screen.findByText('오류')).toBeInTheDocument();
-      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false }),
+      ).toBeInTheDocument();
       expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
     });
@@ -151,7 +185,9 @@ describe('OAuthAuthorizeForm', () => {
       setup();
 
       expect(await screen.findByText('오류')).toBeInTheDocument();
-      expect(screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false })).toBeInTheDocument();
+      expect(
+        screen.getByText('잘못되었거나 만료된 접근입니다.', { exact: false }),
+      ).toBeInTheDocument();
       expect(screen.queryByLabelText('이메일')).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: '기술문서' })).not.toBeInTheDocument();
       expect(screen.queryByRole('link', { name: '서버 상태 확인' })).not.toBeInTheDocument();
