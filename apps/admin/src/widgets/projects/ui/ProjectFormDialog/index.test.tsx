@@ -135,6 +135,40 @@ describe('ProjectFormDialog 추가', () => {
     ]);
   });
 
+  it('배포 URL은 앞뒤 공백을 지워 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openCreateDialog();
+
+    await user.type(field('프로젝트명'), 'DataGSM');
+    await user.type(field('시작 연도'), '2025');
+    await user.type(field('설명'), '학교 데이터 API');
+    await addMember(user, '2101 김팀원');
+    await user.type(field('배포 URL'), '  https://datagsm.kr  ');
+    await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
+    await screen.findByText('프로젝트가 등록되었습니다.');
+
+    expect(requests[0]?.body).toMatchObject({ deploymentUrl: 'https://datagsm.kr' });
+  });
+
+  it('배포 URL이 http(s)로 시작하지 않으면 요청하지 않는다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openCreateDialog();
+
+    await user.type(field('프로젝트명'), 'DataGSM');
+    await user.type(field('시작 연도'), '2025');
+    await user.type(field('설명'), '학교 데이터 API');
+    await addMember(user, '2101 김팀원');
+    await user.type(field('배포 URL'), 'datagsm.kr');
+    await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
+
+    expect(
+      await screen.findByText('http:// 또는 https://로 시작하는 주소를 입력해주세요.', {
+        selector: 'li *',
+      }),
+    ).toBeInTheDocument();
+    expect(requests).toEqual([]);
+  });
+
   it('검증에 걸리면 요청하지 않고 첫 번째 에러를 토스트로 알린다', async () => {
     const requests = mockProjectApi();
     const { user } = await openCreateDialog();
@@ -247,6 +281,29 @@ describe('ProjectFormDialog 수정', () => {
       ['POST', '/v1/projects/11/reactivate'],
     ]);
     expect(requests[0]?.body).not.toHaveProperty('endYear');
+  });
+
+  it('배포 URL을 건드리지 않아도 기존 값을 유지해 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog({ ...baseProject, deploymentUrl: 'https://datagsm.kr' });
+
+    expect(field('배포 URL')).toHaveValue('https://datagsm.kr');
+    await user.type(field('설명'), ' v2');
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ deploymentUrl: 'https://datagsm.kr' });
+  });
+
+  it('배포 URL을 지우면 빈 문자열로 보내 삭제한다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog({ ...baseProject, deploymentUrl: 'https://datagsm.kr' });
+
+    await user.clear(field('배포 URL'));
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ deploymentUrl: '' });
   });
 
   it('응답에 리포지토리·기술 스택이 없는 프로젝트도 수정할 수 있다', async () => {

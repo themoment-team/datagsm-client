@@ -1,4 +1,10 @@
-import { ClubType, StudentRole, StudentSex } from '@repo/shared/types';
+import {
+  ClubType,
+  ProjectRequestStatus,
+  ProjectStatus,
+  StudentRole,
+  StudentSex,
+} from '@repo/shared/types';
 
 import { AccountObjectType, AccountSortBy, AccountStatus } from '../types/account';
 import { UserRoleType } from '../types/userRole';
@@ -97,6 +103,55 @@ export const projectUrl = {
     })}`;
   },
   postProject: () => '/v1/projects',
+} as const;
+
+export const publicProjectUrl = {
+  getPublicProjects: (params: {
+    projectName?: string;
+    clubId?: number;
+    status?: ProjectStatus;
+    page?: number;
+    size?: number;
+    sortBy?: 'ID' | 'NAME';
+    sortDirection?: 'ASC' | 'DESC';
+  }) => {
+    return `/v1/public/projects${buildQuery({
+      projectName: params.projectName,
+      clubId: params.clubId,
+      status: params.status,
+      page: params.page,
+      size: params.size,
+      sortBy: params.sortBy,
+      sortDirection: params.sortDirection,
+    })}`;
+  },
+  getPublicProjectById: (projectId: number) => `/v1/public/projects/${projectId}`,
+} as const;
+
+export const meProjectUrl = {
+  getMyProjects: (requestStatus?: ProjectRequestStatus) => {
+    return `/v1/students/me/projects${buildQuery({ requestStatus })}`;
+  },
+  postMyProject: () => '/v1/students/me/projects',
+  putMyProject: (projectId: number) => `/v1/students/me/projects/${projectId}`,
+  postIconUploadUrl: () => '/v1/students/me/projects/icons/upload-url',
+} as const;
+
+export const projectRequestUrl = {
+  getProjectRequests: (params: {
+    requestStatus?: ProjectRequestStatus;
+    page?: number;
+    size?: number;
+  }) => {
+    return `/v1/projects/requests${buildQuery({
+      requestStatus: params.requestStatus,
+      page: params.page,
+      size: params.size,
+    })}`;
+  },
+  getProjectRequestById: (requestId: number) => `/v1/projects/requests/${requestId}`,
+  postAcceptProjectRequest: (requestId: number) => `/v1/projects/requests/${requestId}/accept`,
+  postRejectProjectRequest: (requestId: number) => `/v1/projects/requests/${requestId}/reject`,
 } as const;
 
 export const clubUrl = {
