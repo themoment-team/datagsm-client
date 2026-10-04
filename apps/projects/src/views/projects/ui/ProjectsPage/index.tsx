@@ -15,10 +15,13 @@ import { useGetMajorClubs } from '@/shared/hooks';
 import { requireAuth } from '@/shared/lib';
 import { useGetPublicProjects } from '@/views/projects/model/useGetPublicProjects';
 import { ProjectList, ProjectListFilter } from '@/widgets/project';
+import { ProjectDetailSheet } from '@/widgets/project-detail';
 import { ProjectFormDialog } from '@/widgets/project-form';
 
 const PAGE_SIZE = 12;
 const ALL = 'all';
+/** 상세 시트로 열 프로젝트 ID를 담는 쿼리 키 */
+const PROJECT_PARAM = 'project';
 
 const ProjectsPage = () => {
   const router = useRouter();
@@ -43,6 +46,10 @@ const ProjectsPage = () => {
   }, [searchParams]);
 
   const { sortBy, sortDirection } = parseProjectSort(filters.sort);
+
+  const projectParam = Number(searchParams.get(PROJECT_PARAM));
+  const selectedProjectId =
+    Number.isInteger(projectParam) && projectParam > 0 ? projectParam : null;
 
   // 공개 페이지라 비로그인 상태에서도 호출된다. 401이 나도 토큰 갱신·리다이렉트는 타지 않는다.
   const { data: clubsData } = useGetMajorClubs({ skipAuthRefresh: true });
@@ -76,6 +83,21 @@ const ProjectsPage = () => {
   const handleSort = (value: string) => updateURL({ sort: value }, 0);
   const handleClub = (value: string) => updateURL({ clubId: value }, 0);
   const handlePage = (page: number) => updateURL({}, page);
+
+  // 상세는 페이지를 옮기지 않고 쿼리로 시트를 연다. 목록·필터가 그대로 남고 주소로 공유할 수도 있다.
+  const getProjectHref = (projectId: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(PROJECT_PARAM, String(projectId));
+    return `/?${params.toString()}`;
+  };
+
+  // 닫을 때는 replace로 쿼리만 지워, 뒤로 가기로 방금 닫은 시트가 다시 열리지 않게 한다.
+  const handleCloseDetail = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(PROJECT_PARAM);
+    const query = params.toString();
+    router.replace(query ? `/?${query}` : '/', { scroll: false });
+  };
 
   const handleApply = () => requireAuth(() => setFormOpen(true), '/');
   // 내 프로젝트는 로그인 전용 화면이라 비로그인 상태면 바로 로그인으로 보낸다.
@@ -124,7 +146,7 @@ const ProjectsPage = () => {
             프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
           </div>
         ) : (
-          <ProjectList projects={projects} isLoading={isLoading} />
+          <ProjectList projects={projects} isLoading={isLoading} getProjectHref={getProjectHref} />
         )}
 
         <div className={cn('mt-6')}>
@@ -138,6 +160,11 @@ const ProjectsPage = () => {
       </main>
 
       <ProjectFormDialog mode="create" open={isFormOpen} onOpenChange={setFormOpen} />
+      <ProjectDetailSheet
+        projectId={selectedProjectId}
+        initialProject={projects.find((project) => project.id === selectedProjectId)}
+        onClose={handleCloseDetail}
+      />
     </div>
   );
 };

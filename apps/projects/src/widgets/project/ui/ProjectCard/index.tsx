@@ -8,16 +8,19 @@ import { PROJECT_STATUS_LABEL } from '@/entities/project';
 
 interface ProjectCardProps {
   project: PublicProject;
+  /** 상세 시트를 여는 주소 */
+  href: string;
 }
 
 const MAX_VISIBLE_TECH = 4;
 
-const ProjectCard = ({ project }: ProjectCardProps) => {
-  const { id, name, description, status, iconUrl, club, startYear, endYear, techStacks } = project;
+const ProjectCard = ({ project, href }: ProjectCardProps) => {
+  const { name, description, status, iconUrl, club, startYear, endYear, techStacks } = project;
 
   return (
     <Link
-      href={`/projects/${id}`}
+      href={href}
+      scroll={false}
       className={cn(
         'group border-foreground pixel-shadow bg-card flex flex-col gap-3 border-2 p-4 transition-transform hover:-translate-y-0.5',
       )}

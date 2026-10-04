@@ -7,13 +7,14 @@ import ProjectCard from '../ProjectCard';
 interface ProjectListProps {
   projects: PublicProject[];
   isLoading: boolean;
+  getProjectHref: (projectId: number) => string;
 }
 
 const SKELETON_COUNT = 6;
 
 const GRID_CLASS = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
-const ProjectList = ({ projects, isLoading }: ProjectListProps) => {
+const ProjectList = ({ projects, isLoading, getProjectHref }: ProjectListProps) => {
   if (isLoading) {
     return (
       <div className={cn(GRID_CLASS)}>
@@ -39,7 +40,7 @@ const ProjectList = ({ projects, isLoading }: ProjectListProps) => {
   return (
     <div className={cn(GRID_CLASS)}>
       {projects.map((project) => (
-        <ProjectCard key={project.id} project={project} />
+        <ProjectCard key={project.id} project={project} href={getProjectHref(project.id)} />
       ))}
     </div>
   );
