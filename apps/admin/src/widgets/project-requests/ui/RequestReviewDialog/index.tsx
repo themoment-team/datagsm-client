@@ -28,6 +28,7 @@ interface RequestReviewDialogProps {
 
 const LABEL_STYLE = 'text-muted-foreground font-mono text-[10px] uppercase tracking-widest';
 const EMPTY_STYLE = 'text-muted-foreground/70 font-mono text-xs';
+const REPOSITORY_STYLE = 'text-muted-foreground break-all font-mono text-xs';
 const REJECT_REASON_MAX_LENGTH = 500;
 
 const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialogProps) => {
@@ -219,20 +220,27 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
             <p className={cn(LABEL_STYLE)}>리포지토리</p>
             {request.repositories.length > 0 ? (
               <ul className={cn('flex flex-col gap-1')}>
-                {request.repositories.map((repo) => (
-                  <li key={repo}>
-                    <a
-                      href={repo}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        'text-muted-foreground hover:text-foreground break-all font-mono text-xs',
+                {request.repositories.map((repo) => {
+                  // 서버가 리포지토리 스킴을 검사하지 않아, http(s)가 아니면 링크 대신 글자로만 보여 준다.
+                  const repoUrl = getSafeUrl(repo);
+
+                  return (
+                    <li key={repo}>
+                      {repoUrl ? (
+                        <a
+                          href={repoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(REPOSITORY_STYLE, 'hover:text-foreground')}
+                        >
+                          {repo}
+                        </a>
+                      ) : (
+                        <span className={cn(REPOSITORY_STYLE)}>{repo}</span>
                       )}
-                    >
-                      {repo}
-                    </a>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <p className={cn(EMPTY_STYLE)}>입력하지 않음</p>
