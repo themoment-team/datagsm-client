@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { Button, type FilterOption, FilterSelect, Input } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -9,6 +9,7 @@ import { Search } from 'lucide-react';
 import { PROJECT_SORT_OPTIONS, PROJECT_STATUS_FILTER_OPTIONS } from '@/entities/project';
 
 interface ProjectListFilterProps {
+  /** URL에 반영된 검색어. 바뀌면 입력창도 이 값으로 맞춘다. */
   defaultSearch: string;
   status: string;
   sort: string;
@@ -33,6 +34,11 @@ const ProjectListFilter = ({
   onClubChange,
 }: ProjectListFilterProps) => {
   const [search, setSearch] = useState(defaultSearch);
+
+  // 페이지가 마운트된 채로 주소만 바뀌는 경우(뒤로 가기, 상단 링크)에도 입력창이 URL과 어긋나지 않게 한다.
+  useEffect(() => {
+    setSearch(defaultSearch);
+  }, [defaultSearch]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
