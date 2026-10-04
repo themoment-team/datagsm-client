@@ -15,10 +15,17 @@ import { useUploadProjectIcon } from '../../model/useUploadProjectIcon';
 interface ProjectIconFieldProps {
   initialUrl?: string | null;
   onChange: (iconKey: string | null) => void;
+  /** 업로드가 시작되면 true, 끝나거나(성공·실패) 필드가 사라지면 false로 알린다. */
+  onUploadingChange?: (uploading: boolean) => void;
   disabled?: boolean;
 }
 
-const ProjectIconField = ({ initialUrl, onChange, disabled }: ProjectIconFieldProps) => {
+const ProjectIconField = ({
+  initialUrl,
+  onChange,
+  onUploadingChange,
+  disabled,
+}: ProjectIconFieldProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(initialUrl ?? null);
   const { mutate: upload, isPending } = useUploadProjectIcon();
@@ -26,6 +33,13 @@ const ProjectIconField = ({ initialUrl, onChange, disabled }: ProjectIconFieldPr
   useEffect(() => {
     setPreview(initialUrl ?? null);
   }, [initialUrl]);
+
+  useEffect(() => {
+    if (!isPending) return;
+    onUploadingChange?.(true);
+    // 업로드 중에 다이얼로그가 닫혀 필드가 사라져도 부모가 업로드 중 상태에 머물지 않게 한다.
+    return () => onUploadingChange?.(false);
+  }, [isPending, onUploadingChange]);
 
   const handleSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

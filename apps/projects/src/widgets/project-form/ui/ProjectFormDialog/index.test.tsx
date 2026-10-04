@@ -1,5 +1,6 @@
 import type { MyProject } from '@repo/shared/types';
 import {
+  HttpResponse,
   apiPath,
   apiSuccess,
   createClubListData,
@@ -9,11 +10,14 @@ import {
   server,
   within,
 } from '@repo/test-utils';
+import { File as NodeFile } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 
 import ProjectFormDialog from '.';
 
 const ICON_KEY = 'project-icons/3f2504e0-4f89-11d3-9a0c-0305e82c3301.png';
+const NEW_ICON_KEY = 'project-icons/9b2c6a1e-7d3f-4e8a-b5c0-1f2e3d4c5b6a.png';
+const ICON_UPLOAD_URL = 'https://s3.example.com/project-icons/upload';
 
 /** 대기 중인 수정안처럼 원본과 다른 아이콘·배포 URL을 가진 카드 */
 const editingProject: MyProject = {
@@ -71,18 +75,43 @@ const mockProjectApi = () => {
   return requests;
 };
 
-const openEditDialog = (initial: MyProject) =>
-  renderWithProviders(
-    <ProjectFormDialog
-      mode="edit"
-      initial={initial}
-      projectId={initial.projectId}
-      open
-      onOpenChange={() => {}}
-    />,
+/** S3 업로드(PUT)는 돌려받은 함수를 부를 때까지 끝나지 않는다. */
+const mockIconUpload = ({ uploadStatus = 200 } = {}) => {
+  let finishUpload!: () => void;
+  const uploadFinished = new Promise<void>((resolve) => {
+    finishUpload = resolve;
+  });
+  server.use(
+    http.post(apiPath('/v1/students/me/projects/icons/upload-url'), () =>
+      apiSuccess({ uploadUrl: ICON_UPLOAD_URL, iconKey: NEW_ICON_KEY, expiresInSeconds: 300 }),
+    ),
+    http.put(ICON_UPLOAD_URL, async () => {
+      await uploadFinished;
+      return new HttpResponse(null, { status: uploadStatus });
+    }),
   );
+  return finishUpload;
+};
+
+const renderEditDialog = (initial: MyProject, open = true) => (
+  <ProjectFormDialog
+    mode="edit"
+    initial={initial}
+    projectId={initial.projectId}
+    open={open}
+    onOpenChange={() => {}}
+  />
+);
+
+const openEditDialog = (initial: MyProject) => renderWithProviders(renderEditDialog(initial));
 
 const dialog = () => screen.getByRole('dialog');
+
+const iconInput = () => dialog().querySelector<HTMLInputElement>('input[type="file"]')!;
+
+// vitest의 jsdom 호환 계층이 jsdom File을 Node Blob으로 바꾸지 못해 미리보기 URL 생성과
+// S3 PUT이 실패하므로 Node의 File을 쓴다.
+const iconFile = () => new NodeFile(['icon'], 'icon.png', { type: 'image/png' }) as unknown as File;
 
 describe('ProjectFormDialog 수정 신청', () => {
   it('건드리지 않은 아이콘 키와 배포 URL을 그대로 보낸다', async () => {
@@ -164,5 +193,68 @@ describe('ProjectFormDialog 수정 신청', () => {
         body: expect.objectContaining({ iconKey: ICON_KEY }),
       },
     ]);
+  });
+});
+
+describe('ProjectFormDialog 아이콘 업로드 중 제출', () => {
+  it('업로드가 끝나기 전에는 제출을 막고, 끝나면 새 아이콘 키로 보낸다', async () => {
+    const requests = mockProjectApi();
+    const finishUpload = mockIconUpload();
+    const { user } = openEditDialog(editingProject);
+
+    await user.upload(iconInput(), iconFile());
+
+    const uploadingButton = await within(dialog()).findByRole('button', {
+      name: '아이콘 업로드 중...',
+    });
+    expect(uploadingButton).toBeDisabled();
+
+    // 버튼이 아닌 Enter 키로도 이전 아이콘 키가 제출되면 안 된다.
+    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), '{Enter}');
+
+    finishUpload();
+    const submitButton = await within(dialog()).findByRole('button', { name: '수정 신청' });
+    expect(submitButton).toBeEnabled();
+    await user.click(submitButton);
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests).toEqual([
+      {
+        method: 'PUT',
+        path: '/v1/students/me/projects/10',
+        body: expect.objectContaining({ iconKey: NEW_ICON_KEY }),
+      },
+    ]);
+  });
+
+  it('업로드가 실패하면 다시 제출할 수 있다', async () => {
+    const requests = mockProjectApi();
+    const finishUpload = mockIconUpload({ uploadStatus: 500 });
+    const { user } = openEditDialog(editingProject);
+
+    await user.upload(iconInput(), iconFile());
+    await within(dialog()).findByRole('button', { name: '아이콘 업로드 중...' });
+
+    finishUpload();
+    await screen.findByText('아이콘 업로드에 실패했습니다.');
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ iconKey: ICON_KEY });
+  });
+
+  it('업로드 중에 다이얼로그를 닫았다 다시 열면 제출할 수 있다', async () => {
+    mockProjectApi();
+    const finishUpload = mockIconUpload();
+    const { user, rerender } = openEditDialog(editingProject);
+
+    await user.upload(iconInput(), iconFile());
+    await within(dialog()).findByRole('button', { name: '아이콘 업로드 중...' });
+
+    rerender(renderEditDialog(editingProject, false));
+    rerender(renderEditDialog(editingProject));
+
+    expect(within(dialog()).getByRole('button', { name: '수정 신청' })).toBeEnabled();
+    finishUpload();
   });
 });

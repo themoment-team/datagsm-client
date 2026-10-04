@@ -127,7 +127,13 @@ const ProjectFormDialog = ({
 
   const isPending = isCreating || isUpdating;
 
+  // iconKey는 업로드가 끝나야 폼에 반영된다. 업로드 중에 제출하면 이전 키로 신청이 나가고
+  // 새 아이콘이 유실되므로 업로드가 끝날 때까지 제출을 막는다.
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+
   const onSubmit = (form: ProjectFormType) => {
+    if (isUploadingIcon) return;
+
     const body: ProjectRequestBody = {
       name: form.name,
       description: form.description,
@@ -152,6 +158,11 @@ const ProjectFormDialog = ({
 
   const title = mode === 'create' ? '프로젝트 신청' : '프로젝트 수정 신청';
   const submitText = mode === 'create' ? '신청' : '수정 신청';
+  const submitLabel = isPending
+    ? '처리 중...'
+    : isUploadingIcon
+      ? '아이콘 업로드 중...'
+      : submitText;
 
   return (
     <Dialog
@@ -180,6 +191,7 @@ const ProjectFormDialog = ({
                 <ProjectIconField
                   initialUrl={mode === 'edit' ? initial?.iconUrl : null}
                   onChange={field.onChange}
+                  onUploadingChange={setIsUploadingIcon}
                   disabled={isPending}
                 />
               )}
@@ -322,8 +334,8 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('flex justify-end pt-2')}>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? '처리 중...' : submitText}
+            <Button type="submit" disabled={isPending || isUploadingIcon}>
+              {submitLabel}
             </Button>
           </div>
         </form>
