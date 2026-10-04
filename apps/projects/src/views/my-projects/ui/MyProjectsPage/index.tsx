@@ -14,6 +14,7 @@ import { cn } from '@repo/shared/utils';
 
 import {
   PROJECT_REQUEST_STATUS_FILTER_OPTIONS,
+  getMyProjectKey,
   parseProjectRequestStatus,
 } from '@/entities/project';
 import { getIsAuthenticated, startLogin } from '@/shared/lib';
@@ -131,11 +132,7 @@ const MyProjectsPage = () => {
         ) : (
           <div className={cn(GRID_CLASS)}>
             {projects.map((project) => (
-              <MyProjectCard
-                key={project.requestId ?? project.projectId}
-                project={project}
-                onEdit={handleEdit}
-              />
+              <MyProjectCard key={getMyProjectKey(project)} project={project} onEdit={handleEdit} />
             ))}
           </div>
         )}

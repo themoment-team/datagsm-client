@@ -87,3 +87,11 @@ export const getMyProjectDisplay = (project: MyProject): MyProjectDisplay => {
 
   return { kind, ...DISPLAY[kind] };
 };
+
+/**
+ * 내 프로젝트 목록에서 카드를 구분하는 React key.
+ * projectId와 requestId는 서로 다른 테이블의 번호라 값이 겹칠 수 있어 접두사로 구분한다.
+ * 등록된 프로젝트는 수정 신청 상태가 바뀌어도 같은 카드로 유지되도록 projectId를 우선한다.
+ */
+export const getMyProjectKey = (project: MyProject): string =>
+  project.projectId !== null ? `project-${project.projectId}` : `request-${project.requestId}`;

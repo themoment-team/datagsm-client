@@ -1,7 +1,7 @@
 import type { MyProject } from '@repo/shared/types';
 import { describe, expect, it } from 'vitest';
 
-import { getMyProjectDisplay } from './myProjectState';
+import { getMyProjectDisplay, getMyProjectKey } from './myProjectState';
 
 const buildProject = (override: Partial<MyProject>): MyProject => ({
   projectId: null,
@@ -85,5 +85,21 @@ describe('getMyProjectDisplay', () => {
     expect(display.isRegistered).toBe(false);
     expect(display.badgeVariant).toBe('destructive');
     expect(display.showRejectReason).toBe(true);
+  });
+});
+
+describe('getMyProjectKey', () => {
+  it('신규 신청의 requestId와 등록된 프로젝트의 projectId가 같아도 key가 겹치지 않는다', () => {
+    const newRequest = buildProject({ projectId: null, requestId: 3, requestStatus: 'PENDING' });
+    const registered = buildProject({ projectId: 3, requestId: null, requestStatus: 'ACCEPTED' });
+
+    expect(getMyProjectKey(newRequest)).not.toBe(getMyProjectKey(registered));
+  });
+
+  it('등록된 프로젝트는 수정 신청이 생겨도 같은 key를 유지한다', () => {
+    const registered = buildProject({ projectId: 10, requestId: null, requestStatus: 'ACCEPTED' });
+    const editPending = buildProject({ projectId: 10, requestId: 20, requestStatus: 'PENDING' });
+
+    expect(getMyProjectKey(editPending)).toBe(getMyProjectKey(registered));
   });
 });

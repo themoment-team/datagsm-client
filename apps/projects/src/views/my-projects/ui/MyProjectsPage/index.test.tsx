@@ -96,4 +96,24 @@ describe('MyProjectsPage', () => {
     expect(await screen.findByText(EMPTY_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByText(GENERIC_ERROR_MESSAGE)).not.toBeInTheDocument();
   });
+
+  it('신규 신청의 requestId와 등록된 프로젝트의 projectId가 같아도 두 카드를 key 충돌 없이 보여 준다', async () => {
+    const consoleError = vi.spyOn(console, 'error');
+    const newRequest: MyProject = {
+      ...myProject,
+      projectId: null,
+      requestId: 3,
+      requestStatus: 'PENDING',
+      name: '새 프로젝트',
+    };
+    const registered: MyProject = { ...myProject, projectId: 3, requestId: null };
+    mockMyProjects(() => apiSuccess({ totalElements: 2, projects: [newRequest, registered] }));
+
+    renderWithProviders(<MyProjectsPage />);
+
+    expect(await screen.findByRole('heading', { name: '새 프로젝트' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'DataGSM' })).toBeInTheDocument();
+    // React는 형제 key가 겹치면 console.error로 duplicate key 경고를 남긴다.
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('same key');
+  });
 });
