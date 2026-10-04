@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_PROJECT_SORT, parseProjectSort } from './constants';
+import { DEFAULT_PROJECT_SORT, parseProjectRequestStatus, parseProjectSort } from './constants';
+
+describe('parseProjectRequestStatus', () => {
+  it.each(['PENDING', 'ACCEPTED', 'REJECTED'] as const)(
+    '필터 목록에 있는 %s는 그대로 쓴다',
+    (value) => {
+      expect(parseProjectRequestStatus(value)).toBe(value);
+    },
+  );
+
+  it.each([null, undefined, '', 'all'])('%s는 전체로 본다', (value) => {
+    expect(parseProjectRequestStatus(value)).toBeUndefined();
+  });
+
+  it.each(['foo', 'pending', 'ACTIVE'])('필터 목록에 없는 %s는 전체로 본다', (value) => {
+    expect(parseProjectRequestStatus(value)).toBeUndefined();
+  });
+});
 
 describe('parseProjectSort', () => {
   it('ID:DESC를 sortBy/sortDirection으로 분해한다', () => {

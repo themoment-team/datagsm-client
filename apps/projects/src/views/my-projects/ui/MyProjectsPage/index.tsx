@@ -8,11 +8,14 @@ import { useSearchParams } from 'next/navigation';
 import { LayoutGrid, Plus } from 'lucide-react';
 
 import { useURLFilters } from '@repo/shared/hooks';
-import type { MyProject, ProjectRequestStatus } from '@repo/shared/types';
+import type { BaseApiResponse, MyProject } from '@repo/shared/types';
 import { Button, PageHeader, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
-import { PROJECT_REQUEST_STATUS_FILTER_OPTIONS } from '@/entities/project';
+import {
+  PROJECT_REQUEST_STATUS_FILTER_OPTIONS,
+  parseProjectRequestStatus,
+} from '@/entities/project';
 import { getIsAuthenticated, startLogin } from '@/shared/lib';
 import { useGetMyProjects } from '../../model/useGetMyProjects';
 import { MyProjectCard } from '@/widgets/my-project';
@@ -34,11 +37,18 @@ const MyProjectsPage = () => {
     }
   }, []);
 
-  const status = searchParams.get('status') ?? 'all';
-  const requestStatus = status === 'all' ? undefined : (status as ProjectRequestStatus);
+  const requestStatus = parseProjectRequestStatus(searchParams.get('status'));
+  // 알 수 없는 값은 전체로 조회하므로 강조할 필터도 같은 기준으로 고른다.
+  const status = requestStatus ?? 'all';
 
-  const { data, isLoading } = useGetMyProjects(requestStatus, { enabled: authorized });
+  const { data, isLoading, isError, error } = useGetMyProjects(requestStatus, {
+    enabled: authorized,
+  });
   const projects = data?.data.projects ?? [];
+  // 403(학생 정보 미연결)처럼 서버가 이유를 내려 주면 그 문구를 그대로 보여 준다.
+  const errorMessage =
+    (error as { response?: { data?: BaseApiResponse } } | null)?.response?.data?.message ||
+    '프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<MyProject | null>(null);
@@ -82,6 +92,7 @@ const MyProjectsPage = () => {
             <button
               key={option.value}
               type="button"
+              aria-pressed={status === option.value}
               onClick={() => updateURL({ status: option.value })}
               className={cn(
                 'border-foreground border px-3 py-1 font-mono text-xs uppercase tracking-widest transition-colors',
@@ -100,6 +111,14 @@ const MyProjectsPage = () => {
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className={cn('border-foreground h-40 border-2')} />
             ))}
+          </div>
+        ) : isError ? (
+          <div
+            className={cn(
+              'border-foreground text-muted-foreground flex h-40 items-center justify-center border-2 border-dashed font-mono text-sm',
+            )}
+          >
+            {errorMessage}
           </div>
         ) : projects.length === 0 ? (
           <div

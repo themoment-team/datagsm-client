@@ -38,6 +38,20 @@ export const PROJECT_REQUEST_STATUS_FILTER_OPTIONS: FilterOption[] = [
   { value: 'REJECTED', label: '거절됨' },
 ];
 
+/**
+ * URL의 status 값을 신청 상태로 바꾼다. 'all'과 필터 목록에 없는 값은 전체(undefined)로 본다.
+ * 검증 없이 넘기면 `/me?status=foo`가 그대로 서버로 가 400이 난다.
+ */
+export const parseProjectRequestStatus = (
+  value: string | null | undefined,
+): ProjectRequestStatus | undefined => {
+  if (!value || value === 'all') return undefined;
+
+  return PROJECT_REQUEST_STATUS_FILTER_OPTIONS.some((option) => option.value === value)
+    ? (value as ProjectRequestStatus)
+    : undefined;
+};
+
 export const PROJECT_SORT_OPTIONS: FilterOption[] = [
   { value: 'ID:DESC', label: '최신순' },
   { value: 'ID:ASC', label: '오래된순' },
