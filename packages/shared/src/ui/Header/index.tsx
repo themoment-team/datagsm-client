@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 import { oauthPost, oauthUrl } from '@repo/shared/api';
 import { CLIENT_URL, COOKIE_KEYS, NAV_LINKS } from '@repo/shared/constants';
-import { cn, deleteCookie } from '@repo/shared/utils';
+import { cn, deleteCookie, getCookie } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { LogOut, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,7 +17,11 @@ interface HeaderProps {
 
 const Header = ({ role = 'client' }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [hasToken, setHasToken] = useState<boolean>(false);
   const queryClient = useQueryClient();
+
+  // projects는 비로그인으로도 둘러보는 공개 앱이라 로그인한 경우에만 로그아웃을 보여 준다.
+  const canLogout = role === 'client' || role === 'admin' || (role === 'projects' && hasToken);
 
   const handleLogout = async () => {
     queryClient.clear();
@@ -49,6 +53,14 @@ const Header = ({ role = 'client' }: HeaderProps) => {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 쿠키는 서버 렌더 결과와 어긋나지 않도록 마운트 후에 읽는다.
+  // 액세스 토큰(1시간)이 만료돼도 리프레시 토큰(30일)이 남으므로 둘 중 하나만 있어도 로그인으로 본다.
+  useEffect(() => {
+    setHasToken(
+      Boolean(getCookie(COOKIE_KEYS.ACCESS_TOKEN) || getCookie(COOKIE_KEYS.REFRESH_TOKEN)),
+    );
   }, []);
 
   const links = NAV_LINKS[role];
@@ -83,7 +95,7 @@ const Header = ({ role = 'client' }: HeaderProps) => {
               {link.label}
             </Link>
           ))}
-          {(role === 'client' || role === 'admin') && (
+          {canLogout && (
             <button
               onClick={handleLogout}
               className={cn(
@@ -127,7 +139,7 @@ const Header = ({ role = 'client' }: HeaderProps) => {
               {link.label}
             </Link>
           ))}
-          {(role === 'client' || role === 'admin') && (
+          {canLogout && (
             <div className={cn('mt-4 border-t pt-4')}>
               <button
                 onClick={() => {
