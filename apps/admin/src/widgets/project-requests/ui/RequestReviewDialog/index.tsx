@@ -16,7 +16,7 @@ import { cn, formatDate, getSafeUrl } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { getProjectRequestStatusLabel } from '@/entities/project';
+import { getProjectRequestStatusLabel, getProjectRequestStatusVariant } from '@/entities/project';
 import { getMajorLabel } from '@/entities/student';
 import { useAcceptProjectRequest, useRejectProjectRequest } from '@/views/project-requests/model';
 
@@ -106,7 +106,7 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
           >
             {request.name}
             <Badge variant="outline">{isEdit ? '수정' : '신규'}</Badge>
-            <Badge variant={request.requestStatus === 'REJECTED' ? 'destructive' : 'secondary'}>
+            <Badge variant={getProjectRequestStatusVariant(request.requestStatus)}>
               {getProjectRequestStatusLabel(request.requestStatus)}
             </Badge>
           </DialogTitle>

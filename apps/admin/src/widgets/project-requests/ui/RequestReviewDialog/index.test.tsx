@@ -3,6 +3,7 @@ import { createClubMember, renderWithProviders, screen, within } from '@repo/tes
 import { describe, expect, it } from 'vitest';
 
 import RequestReviewDialog from '.';
+import RequestCard from '../RequestCard';
 
 const pendingRequest: ProjectEditRequest = {
   id: 3,
@@ -45,5 +46,23 @@ describe('RequestReviewDialog', () => {
     );
     expect(within(dialog()).getByText(unsafeRepo).closest('a')).toBeNull();
     expect(within(dialog()).queryByRole('link', { name: unsafeRepo })).not.toBeInTheDocument();
+  });
+
+  it('상태 뱃지를 신청 카드와 같은 모양으로 보여 준다', () => {
+    const acceptedRequest: ProjectEditRequest = {
+      ...pendingRequest,
+      requestStatus: 'ACCEPTED',
+      processedAt: '2026-03-06T09:00:00',
+    };
+
+    const card = renderWithProviders(<RequestCard request={acceptedRequest} onSelect={() => {}} />);
+    const cardBadgeClass = screen.getByText('승인됨').className;
+    card.unmount();
+
+    renderWithProviders(
+      <RequestReviewDialog request={acceptedRequest} open onOpenChange={() => {}} />,
+    );
+
+    expect(within(dialog()).getByText('승인됨')).toHaveAttribute('class', cardBadgeClass);
   });
 });
