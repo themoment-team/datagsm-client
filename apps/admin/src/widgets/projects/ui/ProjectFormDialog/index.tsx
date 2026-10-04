@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { Club, Project, Student } from '@repo/shared/types';
 import {
   Button,
@@ -34,7 +35,7 @@ import { ChevronDown } from 'lucide-react';
 import { Controller, FieldErrors, SubmitHandler, UseFormReturn } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { AddProjectType, DEPLOYMENT_URL_MAX_LENGTH } from '@/entities/project';
+import { AddProjectType } from '@/entities/project';
 import {
   useCreateProject,
   useEndProject,
@@ -368,7 +369,7 @@ const ProjectFormDialog = ({
               <Input
                 id="deploymentUrl"
                 inputMode="url"
-                maxLength={DEPLOYMENT_URL_MAX_LENGTH}
+                maxLength={PROJECT_DEPLOYMENT_URL_MAX_LENGTH}
                 placeholder="https://example.com"
                 className={cn(FORM_FIELD_STYLE)}
                 {...register('deploymentUrl')}

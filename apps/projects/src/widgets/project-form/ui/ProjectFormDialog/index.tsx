@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import type { BaseApiResponse, MyProject, ProjectRequestBody } from '@repo/shared/types';
 import {
   Button,
@@ -29,7 +30,6 @@ import { toast } from 'sonner';
 
 import {
   NO_CLUB_ID,
-  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
   PROJECT_REPOSITORY_MAX_COUNT,

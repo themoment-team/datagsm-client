@@ -13,13 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
+import { cn, getSafeUrl } from '@repo/shared/utils';
 
-import {
-  getDeploymentUrlLabel,
-  getRepositoryLabel,
-  getSafeDeploymentUrl,
-} from '@/entities/project';
+import { getDeploymentUrlLabel, getRepositoryLabel } from '@/entities/project';
 
 interface ProjectListProps {
   projects: Project[];
@@ -142,7 +138,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
             ))
           : projects.map((project) => {
               const status = STATUS_BADGE[project.status];
-              const deploymentUrl = getSafeDeploymentUrl(project.deploymentUrl);
+              const deploymentUrl = getSafeUrl(project.deploymentUrl);
 
               return (
                 <TableRow key={project.id} className={cn(TABLE_BODY_ROW_STYLE)}>

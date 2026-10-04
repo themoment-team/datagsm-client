@@ -1,9 +1,6 @@
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
-
-export const DEPLOYMENT_URL_MAX_LENGTH = 300;
-
-/** 서버 검증(`^https?://.*`)과 같은 규칙. 서버는 대소문자를 구분하므로 `i` 플래그를 붙이지 않는다. */
-export const DEPLOYMENT_URL_PATTERN = /^https?:\/\//;
 
 export const ProjectFilterSchema = z.object({
   projectName: z.string().optional(),
@@ -37,10 +34,10 @@ export const AddProjectSchema = z
     deploymentUrl: z
       .string()
       .trim()
-      .max(DEPLOYMENT_URL_MAX_LENGTH, {
-        message: `배포 URL은 ${DEPLOYMENT_URL_MAX_LENGTH}자 이하로 입력해주세요.`,
+      .max(PROJECT_DEPLOYMENT_URL_MAX_LENGTH, {
+        message: `배포 URL은 ${PROJECT_DEPLOYMENT_URL_MAX_LENGTH}자 이하로 입력해주세요.`,
       })
-      .refine((value) => value === '' || DEPLOYMENT_URL_PATTERN.test(value), {
+      .refine((value) => value === '' || HTTP_URL_PATTERN.test(value), {
         message: 'http:// 또는 https://로 시작하는 주소를 입력해주세요.',
       })
       .optional(),

@@ -12,11 +12,11 @@ import {
   DialogTitle,
   Textarea,
 } from '@repo/shared/ui';
-import { cn, formatDate } from '@repo/shared/utils';
+import { cn, formatDate, getSafeUrl } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { getProjectRequestStatusLabel, getSafeDeploymentUrl } from '@/entities/project';
+import { getProjectRequestStatusLabel } from '@/entities/project';
 import { getMajorLabel } from '@/entities/student';
 import { useAcceptProjectRequest, useRejectProjectRequest } from '@/views/project-requests/model';
 
@@ -79,7 +79,7 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
   const isProcessing = isAccepting || isRejectPending;
   const canReview = request.requestStatus === 'PENDING';
   const isEdit = request.originalProjectId !== null;
-  const deploymentUrl = getSafeDeploymentUrl(request.deploymentUrl);
+  const deploymentUrl = getSafeUrl(request.deploymentUrl);
 
   const handleReject = () => {
     if (reason.trim().length === 0) {

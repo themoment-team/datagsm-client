@@ -12,14 +12,10 @@ import {
   SheetTitle,
   Skeleton,
 } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
+import { cn, getSafeUrl } from '@repo/shared/utils';
 import { ExternalLink } from 'lucide-react';
 
-import {
-  PROJECT_DEPLOYMENT_URL_PATTERN,
-  PROJECT_STATUS_LABEL,
-  STUDENT_MAJOR_LABEL,
-} from '@/entities/project';
+import { PROJECT_STATUS_LABEL, STUDENT_MAJOR_LABEL } from '@/entities/project';
 
 import { useGetPublicProject } from '../../model/useGetPublicProject';
 
@@ -71,10 +67,7 @@ const ProjectDetailSheet = ({ projectId, initialProject, onClose }: ProjectDetai
 
 const ProjectDetail = ({ project }: { project: PublicProject }) => {
   // 서버가 http(s)만 저장하지만, href에 넣는 값이라 한 번 더 걸러 javascript: 같은 스킴을 막는다.
-  const deploymentUrl =
-    project.deploymentUrl && PROJECT_DEPLOYMENT_URL_PATTERN.test(project.deploymentUrl)
-      ? project.deploymentUrl
-      : null;
+  const deploymentUrl = getSafeUrl(project.deploymentUrl);
 
   return (
     <>
