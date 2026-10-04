@@ -31,7 +31,24 @@ const editingProject: MyProject = {
   iconKey: ICON_KEY,
   deploymentUrl: 'https://datagsm.kr',
   club: null,
-  participants: [],
+  participants: [
+    {
+      id: 101,
+      name: '홍길동',
+      email: 's24001@gsm.hs.kr',
+      studentNumber: 1101,
+      major: 'SW_DEVELOPMENT',
+      sex: 'MAN',
+    },
+    {
+      id: 102,
+      name: '김영희',
+      email: 's24002@gsm.hs.kr',
+      studentNumber: 1102,
+      major: 'AI',
+      sex: 'WOMAN',
+    },
+  ],
   repositories: [],
   techStacks: [],
 };
@@ -94,6 +111,43 @@ describe('ProjectFormDialog 수정 신청', () => {
 
     await screen.findByText('수정 신청이 접수되었습니다.');
     expect(requests[0]?.body).toMatchObject({ iconKey: '', deploymentUrl: '' });
+  });
+
+  it('등록된 프로젝트를 수정하면 기존 참여자 ID를 그대로 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openEditDialog(editingProject);
+
+    await user.clear(within(dialog()).getByLabelText('설명'));
+    await user.type(within(dialog()).getByLabelText('설명'), '설명만 바꾼 수정안');
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests).toEqual([
+      {
+        method: 'PUT',
+        path: '/v1/students/me/projects/10',
+        body: expect.objectContaining({
+          description: '설명만 바꾼 수정안',
+          participantIds: [101, 102],
+        }),
+      },
+    ]);
+  });
+
+  it('등록 전 신청을 다시 내도 기존 참여자 ID를 유지한다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openEditDialog({ ...editingProject, projectId: null, status: null });
+
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    expect(requests).toEqual([
+      {
+        method: 'POST',
+        path: '/v1/students/me/projects',
+        body: expect.objectContaining({ participantIds: [101, 102] }),
+      },
+    ]);
   });
 
   it('등록 전 신청을 다시 내면 기존 아이콘 키를 함께 보낸다', async () => {

@@ -133,7 +133,9 @@ const ProjectFormDialog = ({
       description: form.description,
       startYear: form.startYear,
       clubId: form.clubId ?? NO_CLUB_ID,
-      participantIds: [],
+      // 참여자 선택 UI가 없는데 서버는 참여자 목록을 통째로 교체한다. 빈 배열을 보내면 수정 시
+      // 기존 참여자가 모두 빠지므로 수정·재신청에서는 기존 참여자를 그대로 보낸다.
+      participantIds: initial?.participants.map((participant) => participant.id) ?? [],
       repositories: form.repositories,
       techStacks: form.techStacks,
       // 빈 문자열은 삭제, 생략은 기존 값 유지라 비운 값은 ''로 보내야 지워진다.
