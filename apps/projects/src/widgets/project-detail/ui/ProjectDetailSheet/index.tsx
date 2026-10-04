@@ -28,6 +28,8 @@ interface ProjectDetailSheetProps {
 }
 
 const SECTION_TITLE_STYLE = 'text-foreground font-mono text-xs uppercase tracking-widest';
+const REPOSITORY_STYLE =
+  'text-muted-foreground inline-flex items-center gap-1 break-all font-mono text-xs';
 
 const ProjectDetailSheet = ({ projectId, initialProject, onClose }: ProjectDetailSheetProps) => {
   // 닫히는 애니메이션 동안 내용이 비지 않도록 마지막으로 연 프로젝트를 기억해 둔다.
@@ -165,20 +167,27 @@ const ProjectDetail = ({ project }: { project: PublicProject }) => {
           <section className={cn('flex flex-col gap-2')}>
             <h3 className={cn(SECTION_TITLE_STYLE)}>리포지토리</h3>
             <ul className={cn('flex flex-col gap-1')}>
-              {project.repositories.map((repo) => (
-                <li key={repo}>
-                  <a
-                    href={repo}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      'text-muted-foreground hover:text-foreground inline-flex items-center gap-1 break-all font-mono text-xs',
+              {project.repositories.map((repo) => {
+                // 서버가 리포지토리 스킴을 검사하지 않아, http(s)가 아니면 링크 대신 글자로만 보여 준다.
+                const repoUrl = getSafeUrl(repo);
+
+                return (
+                  <li key={repo}>
+                    {repoUrl ? (
+                      <a
+                        href={repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(REPOSITORY_STYLE, 'hover:text-foreground')}
+                      >
+                        <ExternalLink className={cn('h-3 w-3 flex-shrink-0')} /> {repo}
+                      </a>
+                    ) : (
+                      <span className={cn(REPOSITORY_STYLE)}>{repo}</span>
                     )}
-                  >
-                    <ExternalLink className={cn('h-3 w-3 flex-shrink-0')} /> {repo}
-                  </a>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

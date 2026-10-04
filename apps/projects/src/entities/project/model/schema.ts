@@ -33,7 +33,16 @@ export const projectFormSchema = z.object({
   clubId: z.number().int().nullable(),
   repositories: z
     .array(z.string().max(PROJECT_REPOSITORY_MAX_LENGTH))
-    .max(PROJECT_REPOSITORY_MAX_COUNT, `리포지토리는 최대 ${PROJECT_REPOSITORY_MAX_COUNT}개까지 등록할 수 있습니다`),
+    .max(
+      PROJECT_REPOSITORY_MAX_COUNT,
+      `리포지토리는 최대 ${PROJECT_REPOSITORY_MAX_COUNT}개까지 등록할 수 있습니다`,
+    )
+    // 서버는 스킴을 검사하지 않는데 공개 상세에서 링크로 걸린다.
+    // 항목별 에러는 TagInput 아래에 표시되지 않으므로 배열 단위로 검사한다.
+    .refine(
+      (repositories) => repositories.every((repository) => HTTP_URL_PATTERN.test(repository)),
+      '리포지토리는 http:// 또는 https://로 시작하는 주소만 입력할 수 있습니다',
+    ),
   techStacks: z
     .array(z.string().max(PROJECT_TECH_STACK_MAX_LENGTH))
     .max(PROJECT_TECH_STACK_MAX_COUNT, `기술 스택은 최대 ${PROJECT_TECH_STACK_MAX_COUNT}개까지 등록할 수 있습니다`),

