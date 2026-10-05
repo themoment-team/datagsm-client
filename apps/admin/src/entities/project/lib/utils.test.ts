@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { getProjectStatusLabel, getRepositoryLabel } from './utils';
+import { getDeploymentUrlLabel, getProjectStatusLabel, getRepositoryLabel } from './utils';
 
 describe('getProjectStatusLabel', () => {
   it('운영 상태를 보여주고, 모르는 값은 -로 보여준다', () => {
@@ -28,5 +28,19 @@ describe('getRepositoryLabel', () => {
     expect(getRepositoryLabel('themoment-team/datagsm-client')).toBe(
       'themoment-team/datagsm-client',
     );
+  });
+});
+
+describe('getDeploymentUrlLabel', () => {
+  it.each([
+    ['https://datagsm.kr', 'datagsm.kr'],
+    ['https://app.datagsm.kr/dashboard?tab=1', 'app.datagsm.kr'],
+    ['http://localhost:3000/', 'localhost:3000'],
+  ])('%s는 %s로 보여준다', (url, label) => {
+    expect(getDeploymentUrlLabel(url)).toBe(label);
+  });
+
+  it('URL이 아니면 입력 그대로 보여준다', () => {
+    expect(getDeploymentUrlLabel('datagsm.kr')).toBe('datagsm.kr');
   });
 });

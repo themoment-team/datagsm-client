@@ -1,3 +1,5 @@
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
 
 export const ProjectFilterSchema = z.object({
@@ -28,6 +30,17 @@ export const AddProjectSchema = z
     techStacks: z
       .array(z.string().max(50, { message: '기술 스택은 50자 이하로 입력해주세요.' }))
       .max(20, { message: '기술 스택은 최대 20개까지 등록할 수 있습니다.' }),
+    /** 빈 문자열이면 미입력. 서버는 공백을 걸러주지 않아 여기서 trim한 값을 보낸다. */
+    deploymentUrl: z
+      .string()
+      .trim()
+      .max(PROJECT_DEPLOYMENT_URL_MAX_LENGTH, {
+        message: `배포 URL은 ${PROJECT_DEPLOYMENT_URL_MAX_LENGTH}자 이하로 입력해주세요.`,
+      })
+      .refine((value) => value === '' || HTTP_URL_PATTERN.test(value), {
+        message: 'http:// 또는 https://로 시작하는 주소를 입력해주세요.',
+      })
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.status === 'ACTIVE') {

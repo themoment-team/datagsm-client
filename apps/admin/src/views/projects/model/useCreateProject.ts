@@ -13,6 +13,7 @@ export interface CreateProjectRequest {
   endYear?: number;
   repositories: string[];
   techStacks: string[];
+  deploymentUrl?: string;
 }
 
 export const useCreateProject = (

@@ -13,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
+import { cn, getSafeUrl } from '@repo/shared/utils';
 
-import { getRepositoryLabel } from '@/entities/project';
+import { getDeploymentUrlLabel, getRepositoryLabel } from '@/entities/project';
 
 interface ProjectListProps {
   projects: Project[];
@@ -92,6 +92,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
           <TableHead className={cn('w-[80px]')}>종료 연도</TableHead>
           <TableHead className={cn('w-[240px]')}>설명</TableHead>
           <TableHead className={cn('w-[200px]')}>리포지토리</TableHead>
+          <TableHead className={cn('w-[160px]')}>배포 URL</TableHead>
           <TableHead className={cn('w-[200px]')}>기술 스택</TableHead>
           <TableHead>동아리</TableHead>
           <TableHead className={cn('w-[160px]')}>
@@ -122,6 +123,9 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                   <Skeleton className={cn('h-5 w-32')} />
                 </TableCell>
                 <TableCell>
+                  <Skeleton className={cn('h-4 w-24')} />
+                </TableCell>
+                <TableCell>
                   <Skeleton className={cn('h-5 w-32')} />
                 </TableCell>
                 <TableCell>
@@ -134,6 +138,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
             ))
           : projects.map((project) => {
               const status = STATUS_BADGE[project.status];
+              const deploymentUrl = getSafeUrl(project.deploymentUrl);
 
               return (
                 <TableRow key={project.id} className={cn(TABLE_BODY_ROW_STYLE)}>
@@ -159,6 +164,23 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                   </TableCell>
                   <TableCell>
                     <TagCell items={project.repositories} format={getRepositoryLabel} />
+                  </TableCell>
+                  <TableCell className={cn('max-w-[160px]')}>
+                    {deploymentUrl ? (
+                      <a
+                        href={deploymentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={deploymentUrl}
+                        className={cn(
+                          'block truncate font-mono text-xs underline underline-offset-2',
+                        )}
+                      >
+                        {getDeploymentUrlLabel(deploymentUrl)}
+                      </a>
+                    ) : (
+                      <span className={cn('text-muted-foreground')}>-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <TagCell items={project.techStacks} />
