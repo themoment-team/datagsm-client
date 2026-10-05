@@ -238,6 +238,7 @@ export const accountUrl = {
   },
   patchAccountRole: (accountId: number) => `/v1/accounts/${accountId}/role`,
   patchAccountApproval: (accountId: number) => `/v1/accounts/${accountId}/approval`,
+  deleteAccountApproval: (accountId: number) => `/v1/accounts/${accountId}/approval`,
 } as const;
 
 export const oauthUrl = {

@@ -15,7 +15,7 @@ import {
   DataEditRequirementsResponse,
   STUDENT_DATA_EDIT_FIELDS,
 } from '@/entities/data-edit';
-import { DataEditForm, useGetOAuthSession } from '@/widgets/oauth';
+import { DataEditForm, OAuthSessionErrorFallback, useGetOAuthSession } from '@/widgets/oauth';
 
 const BUFFER_TIME_MS = 30000;
 const STORAGE_KEY = 'oauth_session_timestamp';
@@ -31,7 +31,14 @@ const OAuthAuthorizeForm = () => {
 
   const sessionExpiresAt = useRef<number | null>(null);
   const hasShownExpiredToast = useRef(false);
-  const { data: sessionResponse, isLoading: isLoadingServiceInfo } = useGetOAuthSession(token);
+  const {
+    data: sessionResponse,
+    isLoading: isLoadingServiceInfo,
+    isError: isSessionError,
+    error: sessionError,
+  } = useGetOAuthSession(token);
+  // 토큰이 없거나 거부(401)된 접근은 서버 장애가 아니라 잘못된 링크다. 재로그인만 안내한다.
+  const isInvalidAccess = !token || sessionError?.response?.status === 401;
   const sessionData = sessionResponse?.data;
   const serviceName = sessionData?.serviceName;
   const serviceScope = sessionData?.requestedScopes;
@@ -122,12 +129,6 @@ const OAuthAuthorizeForm = () => {
     }
 
     setIsPending(true);
-
-    if (!token) {
-      toast.error('인증 토큰이 없습니다. 다시 시도해주세요.');
-      setIsPending(false);
-      return;
-    }
 
     try {
       const response = await fetch('/api/oauth/authorize', {
@@ -241,6 +242,14 @@ const OAuthAuthorizeForm = () => {
     setCredentials(credentials);
     setDataEditFields(fields);
   };
+
+  if (isInvalidAccess) {
+    return <OAuthSessionErrorFallback windowLabel="Sign In" variant="invalid" />;
+  }
+
+  if (isSessionError) {
+    return <OAuthSessionErrorFallback windowLabel="Sign In" variant="unavailable" />;
+  }
 
   return (
     <div className="max-w-180 relative flex w-full flex-col items-center gap-6">
