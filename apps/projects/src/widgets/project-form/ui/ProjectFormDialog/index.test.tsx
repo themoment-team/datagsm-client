@@ -237,7 +237,8 @@ describe('ProjectFormDialog 아이콘 업로드 중 제출', () => {
 
     finishUpload();
     await screen.findByText('아이콘 업로드에 실패했습니다.');
-    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+    // 실패 토스트가 버튼 상태 갱신보다 먼저 뜰 수 있어, 버튼 문구가 돌아올 때까지 기다린다.
+    await user.click(await within(dialog()).findByRole('button', { name: '수정 신청' }));
 
     await screen.findByText('수정 신청이 접수되었습니다.');
     expect(requests[0]?.body).toMatchObject({ iconKey: ICON_KEY });
@@ -254,7 +255,7 @@ describe('ProjectFormDialog 아이콘 업로드 중 제출', () => {
     rerender(renderEditDialog(editingProject, false));
     rerender(renderEditDialog(editingProject));
 
-    expect(within(dialog()).getByRole('button', { name: '수정 신청' })).toBeEnabled();
+    expect(await within(dialog()).findByRole('button', { name: '수정 신청' })).toBeEnabled();
     finishUpload();
   });
 });
