@@ -71,7 +71,10 @@ const ParticipantField = ({
 
   return (
     <div className={cn('flex flex-col gap-1.5')}>
+      {/* 목록은 다이얼로그 밖(body)에 그려져, 다이얼로그의 스크롤 잠금이 휠·터치 스크롤을 막는다.
+          modal로 열면 팝오버가 자체 스크롤 잠금을 가져 목록 안에서는 스크롤된다. */}
       <Popover
+        modal
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
