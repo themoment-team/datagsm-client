@@ -4,8 +4,10 @@ import {
   apiPath,
   apiSuccess,
   createClub,
+  createMyAccount,
   createParticipantCandidateListData,
   createPublicClubListData,
+  createStudent,
   http,
   renderWithProviders,
   screen,
@@ -80,9 +82,11 @@ const otherHong: ParticipantCandidate = {
 interface MockProjectApiOptions {
   clubs?: ClubSummary[];
   candidates?: ParticipantCandidate[];
+  /** 로그인한 학생. 기본값은 수정 중인 프로젝트에 이미 참여 중인 홍길동이다. */
+  me?: ParticipantCandidate;
 }
 
-const mockProjectApi = ({ clubs = [], candidates = [] }: MockProjectApiOptions = {}) => {
+const mockProjectApi = ({ clubs = [], candidates = [], me = hong }: MockProjectApiOptions = {}) => {
   const requests: { method: string; path: string; body: unknown }[] = [];
   const record = async (method: string, request: Request) => {
     requests.push({
@@ -94,6 +98,18 @@ const mockProjectApi = ({ clubs = [], candidates = [] }: MockProjectApiOptions =
   };
   server.use(
     http.get(apiPath('/v1/public/clubs'), () => apiSuccess(createPublicClubListData(clubs))),
+    http.get(apiPath('/v1/accounts/my'), () =>
+      apiSuccess(
+        createMyAccount({
+          student: createStudent({
+            id: me.id,
+            name: me.name,
+            studentNumber: me.studentNumber!,
+            major: me.major!,
+          }),
+        }),
+      ),
+    ),
     http.get(apiPath('/v1/students/participant-candidates'), () =>
       apiSuccess(createParticipantCandidateListData(candidates)),
     ),
@@ -139,6 +155,10 @@ const openCreateDialog = () =>
 const dialog = () => screen.getByRole('dialog');
 
 const selectedParticipants = () => within(dialog()).getByRole('list', { name: '선택된 참여자' });
+
+/** 본인은 내 정보를 불러온 뒤에 추가되므로 명단이 나타날 때까지 기다린다. */
+const findSelectedParticipants = () =>
+  within(dialog()).findByRole('list', { name: '선택된 참여자' });
 
 /** 후보 목록을 열고(이미 열려 있으면 그대로) 검색어로 좁힌 뒤 고른다. 목록은 고른 뒤에도 열려 있다. */
 const pickParticipant = async (user: User, optionName: string, keyword?: string) => {
@@ -257,44 +277,75 @@ describe('ProjectFormDialog 참여자 선택', () => {
       {
         method: 'POST',
         path: '/v1/students/me/projects',
-        body: expect.objectContaining({ participantIds: [otherHong.id, kim.id] }),
+        body: expect.objectContaining({ participantIds: [hong.id, otherHong.id, kim.id] }),
       },
     ]);
   });
 
   it('이미 고른 학생은 후보에서 빠진다', async () => {
-    mockProjectApi({ candidates: [hong, kim] });
+    mockProjectApi({ candidates: [hong, kim, otherHong] });
     const { user } = openEditDialog({ ...editingProject, participants: [] });
 
-    await pickParticipant(user, '1101 · 홍길동 · 소프트웨어개발과');
+    await pickParticipant(user, '1102 · 김영희 · 인공지능과');
 
+    expect(screen.queryByRole('option', { name: '1102 · 김영희 · 인공지능과' })).toBeNull();
+    // 자동으로 추가된 본인도 후보에 나오지 않는다.
     expect(screen.queryByRole('option', { name: '1101 · 홍길동 · 소프트웨어개발과' })).toBeNull();
-    expect(screen.getByRole('option', { name: '1102 · 김영희 · 인공지능과' })).toBeVisible();
+    expect(screen.getByRole('option', { name: '2101 · 홍길동 · 인공지능과' })).toBeVisible();
   });
 
   it('명단에서 제외한 참여자는 빼고 보낸다', async () => {
     const requests = mockProjectApi({ candidates: [hong, kim] });
     const { user } = openEditDialog(editingProject);
 
-    await user.click(within(selectedParticipants()).getByRole('button', { name: /홍길동 제외/ }));
+    await user.click(within(selectedParticipants()).getByRole('button', { name: /김영희 제외/ }));
     await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
 
     await screen.findByText('수정 신청이 접수되었습니다.');
-    expect(requests[0]?.body).toMatchObject({ participantIds: [kim.id] });
+    expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id] });
   });
 
   it('후보에 없는 졸업한 참여자도 명단에 남기고 그대로 보낸다', async () => {
     // 후보에는 재학생만 내려오므로 졸업한 홍길동은 빠져 있다.
-    const requests = mockProjectApi({ candidates: [kim] });
+    const requests = mockProjectApi({ candidates: [kim], me: kim });
     const { user } = openEditDialog(editingProject);
 
-    expect(
-      await within(selectedParticipants()).findByText('1102 · 김영희 · 인공지능과'),
-    ).toBeVisible();
-    expect(
-      within(selectedParticipants()).getByText('1101 · 홍길동 · 소프트웨어개발과'),
-    ).toBeVisible();
+    expect(await within(selectedParticipants()).findByText(/^1102 · 김영희/)).toBeVisible();
+    expect(within(selectedParticipants()).getByText(/^1101 · 홍길동/)).toBeVisible();
 
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id, kim.id] });
+  });
+});
+
+describe('ProjectFormDialog 본인 자동 추가', () => {
+  it('새로 신청하면 본인이 참여자로 들어가 있고 제외할 수 없다', async () => {
+    const requests = mockProjectApi({ candidates: [hong, kim] });
+    const { user } = openCreateDialog();
+
+    expect(
+      within(await findSelectedParticipants()).getByText('1101 · 홍길동 · 소프트웨어개발과 (본인)'),
+    ).toBeVisible();
+    expect(within(selectedParticipants()).queryByRole('button')).toBeNull();
+
+    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
+    await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+    await user.click(within(dialog()).getByRole('button', { name: '신청' }));
+
+    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id] });
+  });
+
+  it('수정할 프로젝트에 본인이 빠져 있으면 기존 참여자 앞에 추가한다', async () => {
+    const requests = mockProjectApi({ candidates: [hong, kim] });
+    const { user } = openEditDialog({
+      ...editingProject,
+      participants: editingProject.participants.filter(({ id }) => id === kim.id),
+    });
+
+    await within(await findSelectedParticipants()).findByText(/본인/);
     await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
 
     await screen.findByText('수정 신청이 접수되었습니다.');

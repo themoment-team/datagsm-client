@@ -24,6 +24,8 @@ interface ParticipantFieldProps {
   onChange: (participantIds: number[]) => void;
   /** 고를 수 있는 학생과 이미 선택된 학생을 모두 담은 목록. 명단의 이름도 여기서 찾는다. */
   candidates: ParticipantCandidate[];
+  /** 명단에서 제외할 수 없는 학생(신청자 본인) */
+  lockedId?: number | null;
   isLoading?: boolean;
   isError?: boolean;
   disabled?: boolean;
@@ -38,6 +40,7 @@ const ParticipantField = ({
   value,
   onChange,
   candidates,
+  lockedId,
   isLoading,
   isError,
   disabled,
@@ -144,8 +147,9 @@ const ParticipantField = ({
             >
               <span className={cn('text-muted-foreground truncate font-mono text-xs leading-4')}>
                 {describeCandidate(candidate)}
+                {candidate.id === lockedId && ' (본인)'}
               </span>
-              {!disabled && (
+              {!disabled && candidate.id !== lockedId && (
                 <button
                   type="button"
                   className={cn(

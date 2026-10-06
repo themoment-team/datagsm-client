@@ -42,6 +42,7 @@ import {
 import { useGetMajorClubs } from '@/shared/hooks';
 
 import { useCreateProject } from '../../model/useCreateProject';
+import { useGetMyStudent } from '../../model/useGetMyStudent';
 import { useGetParticipantCandidates } from '../../model/useGetParticipantCandidates';
 import { useUpdateProject } from '../../model/useUpdateProject';
 import ParticipantField from '../ParticipantField';
@@ -95,6 +96,8 @@ const ProjectFormDialog = ({
     isLoading: isLoadingCandidates,
     isError: isCandidatesError,
   } = useGetParticipantCandidates({ enabled: open });
+  const { data: myStudent } = useGetMyStudent({ enabled: open });
+  const myStudentId = myStudent?.id ?? null;
 
   // 선택지에는 운영 중인 동아리만 내려온다. 폐지된 동아리에 속한 프로젝트를 수정할 때
   // 기존 동아리가 빈칸으로 보이지 않도록 합친다.
@@ -107,22 +110,29 @@ const ProjectFormDialog = ({
   }, [clubsData, initial]);
 
   // 후보에는 재학생만 내려온다. 졸업·자퇴한 기존 참여자가 명단에서 빠지지 않도록 합친다.
+  // 후보 조회가 실패해도 본인은 명단에 보이도록 내 정보도 합친다.
   const participantCandidates = useMemo(() => {
     const candidates = candidatesData?.data.students ?? [];
     const candidateIds = new Set(candidates.map((candidate) => candidate.id));
-    const currentParticipants = initial?.participants ?? [];
+    const extras = [...(initial?.participants ?? []), ...(myStudent ? [myStudent] : [])];
 
     return [
       ...candidates,
-      ...currentParticipants.filter((participant) => !candidateIds.has(participant.id)),
+      ...extras.filter(({ id }) => {
+        if (candidateIds.has(id)) return false;
+        candidateIds.add(id);
+        return true;
+      }),
     ];
-  }, [candidatesData, initial]);
+  }, [candidatesData, initial, myStudent]);
 
   const {
     register,
     control,
     handleSubmit,
     reset,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<ProjectFormType>({
     resolver: zodResolver(projectFormSchema),
@@ -132,6 +142,16 @@ const ProjectFormDialog = ({
   useEffect(() => {
     if (open) reset(buildDefaults(initial));
   }, [open, initial, reset]);
+
+  // 신청자 본인은 참여자로 자동 추가한다. 내 정보는 따로 불러오므로 폼을 초기화한 뒤에
+  // 입력 중인 값을 지우지 않고 본인만 앞에 끼워 넣는다.
+  useEffect(() => {
+    if (!open || myStudentId === null) return;
+
+    const participantIds = getValues('participantIds');
+    if (participantIds.includes(myStudentId)) return;
+    setValue('participantIds', [myStudentId, ...participantIds]);
+  }, [open, initial, myStudentId, getValues, setValue]);
 
   const handleSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: ['me-projects'] });
@@ -310,6 +330,7 @@ const ProjectFormDialog = ({
                   value={field.value}
                   onChange={field.onChange}
                   candidates={participantCandidates}
+                  lockedId={myStudentId}
                   isLoading={isLoadingCandidates}
                   isError={isCandidatesError}
                   disabled={isPending}
