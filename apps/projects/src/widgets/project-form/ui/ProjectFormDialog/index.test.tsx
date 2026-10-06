@@ -346,10 +346,68 @@ describe('ProjectFormDialog 본인 자동 추가', () => {
     });
 
     await within(await findSelectedParticipants()).findByText(/본인/);
+    const chips = within(selectedParticipants()).getAllByRole('listitem');
+    // 명단은 후보(학번) 순서가 아니라 고른 순서라 본인이 맨 앞에 온다.
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      expect.stringContaining('홍길동 · 소프트웨어개발과 (본인)'),
+      expect.stringContaining('김영희'),
+    ]);
     await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
 
     await screen.findByText('수정 신청이 접수되었습니다.');
     expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id, kim.id] });
+  });
+
+  it('내 정보를 불러오기 전에는 제출할 수 없고, 불러오면 본인을 담아 보낸다', async () => {
+    const requests = mockProjectApi({ candidates: [hong, kim] });
+    let respondMe!: () => void;
+    const meLoaded = new Promise<void>((resolve) => {
+      respondMe = resolve;
+    });
+    server.use(
+      http.get(apiPath('/v1/accounts/my'), async () => {
+        await meLoaded;
+        return apiSuccess(createMyAccount({ student: createStudent({ id: hong.id }) }));
+      }),
+    );
+    const { user } = openEditDialog({
+      ...editingProject,
+      participants: editingProject.participants.filter(({ id }) => id === kim.id),
+    });
+
+    const submitButton = within(dialog()).getByRole('button', { name: '수정 신청' });
+    expect(submitButton).toBeDisabled();
+
+    respondMe();
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id, kim.id] });
+  });
+});
+
+describe('ProjectFormDialog 후보 목록', () => {
+  it('검색어 없이 열면 50명까지만 보여 주고 나머지는 검색하도록 안내한다', async () => {
+    const many = Array.from(
+      { length: 60 },
+      (_, index): ParticipantCandidate => ({
+        id: 1000 + index,
+        name: `학생${index}`,
+        studentNumber: 3000 + index,
+        major: 'AI',
+      }),
+    );
+    mockProjectApi({ candidates: many });
+    const { user } = openCreateDialog();
+
+    await user.click(within(dialog()).getByRole('combobox', { name: '참여자 추가' }));
+
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(50));
+    expect(screen.getByText('외 10명 · 이름이나 학번을 입력해 찾아 주세요')).toBeVisible();
+
+    await user.type(screen.getByPlaceholderText('이름 또는 학번 검색...'), '3059');
+    expect(screen.getByRole('option', { name: '3059 · 학생59 · 인공지능과' })).toBeVisible();
   });
 });
 
@@ -386,6 +444,26 @@ describe('ProjectFormDialog 동아리 선택', () => {
 
     await screen.findByText('수정 신청이 접수되었습니다.');
     expect(requests[0]?.body).toMatchObject({ clubId: 7 });
+  });
+});
+
+describe('ProjectFormDialog 재신청 동아리', () => {
+  it('반려된 신규 신청의 동아리가 폐지됐으면 무소속으로 돌려 다시 신청한다', async () => {
+    const requests = mockProjectApi({ clubs: [{ id: 1, name: '운영동아리', type: 'MAJOR_CLUB' }] });
+    const { user } = openEditDialog({
+      ...editingProject,
+      projectId: null,
+      status: null,
+      club: createClub({ id: 7, name: '폐지된동아리', status: 'ABOLISHED' }),
+    });
+
+    await waitFor(() =>
+      expect(within(dialog()).getByLabelText('동아리')).toHaveTextContent('무소속'),
+    );
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ clubId: 0 });
   });
 });
 

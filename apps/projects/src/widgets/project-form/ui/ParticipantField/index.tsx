@@ -26,10 +26,15 @@ interface ParticipantFieldProps {
   candidates: ParticipantCandidate[];
   /** 명단에서 제외할 수 없는 학생(신청자 본인) */
   lockedId?: number | null;
+  /** 다이얼로그 안에서 쓸 때 다이얼로그 요소를 넘긴다. 기본값(body)이면 다이얼로그가 목록 스크롤을 막는다. */
+  portalContainer?: HTMLElement | null;
   isLoading?: boolean;
   isError?: boolean;
   disabled?: boolean;
 }
+
+/** 검색어 없이 열었을 때 후보 수백 명을 한꺼번에 그리지 않도록 보여줄 개수를 제한한다. */
+const MAX_VISIBLE_OPTIONS = 50;
 
 /** 동명이인을 구분할 수 있도록 학번·이름·학과를 함께 보여준다. */
 const describeCandidate = ({ name, studentNumber, major }: ParticipantCandidate) =>
@@ -41,6 +46,7 @@ const ParticipantField = ({
   onChange,
   candidates,
   lockedId,
+  portalContainer,
   isLoading,
   isError,
   disabled,
@@ -49,21 +55,36 @@ const ParticipantField = ({
   const [searchTerm, setSearchTerm] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selected = useMemo(
-    () => candidates.filter((candidate) => value.includes(candidate.id)),
-    [candidates, value],
+  const candidateById = useMemo(
+    () => new Map(candidates.map((candidate) => [candidate.id, candidate])),
+    [candidates],
   );
 
-  const options = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
+  // 고른 순서대로 보여준다. 후보에서 찾지 못한 ID도 그대로 전송되므로 숨기지 않고 ID로라도 보여준다.
+  const selected = useMemo(
+    () =>
+      value.map(
+        (id): ParticipantCandidate =>
+          candidateById.get(id) ?? { id, name: `학생 #${id}`, studentNumber: null, major: null },
+      ),
+    [candidateById, value],
+  );
 
-    return candidates.filter(
+  const { options, hiddenCount } = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    const selectedIds = new Set(value);
+    const matched = candidates.filter(
       (candidate) =>
-        !value.includes(candidate.id) &&
+        !selectedIds.has(candidate.id) &&
         (!keyword ||
           candidate.name.toLowerCase().includes(keyword) ||
           (candidate.studentNumber?.toString().includes(keyword) ?? false)),
     );
+
+    return {
+      options: matched.slice(0, MAX_VISIBLE_OPTIONS),
+      hiddenCount: Math.max(matched.length - MAX_VISIBLE_OPTIONS, 0),
+    };
   }, [candidates, value, searchTerm]);
 
   const emptyMessage = isLoading
@@ -74,10 +95,7 @@ const ParticipantField = ({
 
   return (
     <div className={cn('flex flex-col gap-1.5')}>
-      {/* 목록은 다이얼로그 밖(body)에 그려져, 다이얼로그의 스크롤 잠금이 휠·터치 스크롤을 막는다.
-          modal로 열면 팝오버가 자체 스크롤 잠금을 가져 목록 안에서는 스크롤된다. */}
       <Popover
-        modal
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
@@ -100,6 +118,7 @@ const ParticipantField = ({
           </button>
         </PopoverTrigger>
         <PopoverContent
+          container={portalContainer}
           className={cn(
             'border-foreground w-(--radix-popover-trigger-width) rounded-none border-2 p-0',
           )}
@@ -131,6 +150,11 @@ const ParticipantField = ({
                   {describeCandidate(candidate)}
                 </CommandItem>
               ))}
+              {hiddenCount > 0 && (
+                <p className={cn('text-muted-foreground px-2 py-1.5 text-xs')}>
+                  외 {hiddenCount}명 · 이름이나 학번을 입력해 찾아 주세요
+                </p>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>

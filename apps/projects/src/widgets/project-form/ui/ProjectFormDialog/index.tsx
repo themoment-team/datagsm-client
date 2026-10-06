@@ -96,18 +96,22 @@ const ProjectFormDialog = ({
     isLoading: isLoadingCandidates,
     isError: isCandidatesError,
   } = useGetParticipantCandidates({ enabled: open });
-  const { data: myStudent } = useGetMyStudent({ enabled: open });
+  const { data: myStudent, isLoading: isLoadingMyStudent } = useGetMyStudent({ enabled: open });
   const myStudentId = myStudent?.id ?? null;
 
-  // 선택지에는 운영 중인 동아리만 내려온다. 폐지된 동아리에 속한 프로젝트를 수정할 때
-  // 기존 동아리가 빈칸으로 보이지 않도록 합친다.
+  // 참여자 후보 목록을 다이얼로그 안에 그려야 다이얼로그의 스크롤 잠금에 막히지 않는다.
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
+
+  // 선택지에는 운영 중인 동아리만 내려온다. 폐지된 동아리에 속한 등록 프로젝트를 수정할 때
+  // 기존 동아리가 빈칸으로 보이지 않도록 합친다. 새 신청(재신청 포함)은 폐지된 동아리로 낼 수 없다.
   const clubs = useMemo(() => {
     const activeClubs = clubsData?.data.clubs ?? [];
     const currentClub = initial?.club;
 
-    if (!currentClub || activeClubs.some((club) => club.id === currentClub.id)) return activeClubs;
+    if (projectId == null || !currentClub) return activeClubs;
+    if (activeClubs.some((club) => club.id === currentClub.id)) return activeClubs;
     return [...activeClubs, currentClub];
-  }, [clubsData, initial]);
+  }, [clubsData, initial, projectId]);
 
   // 후보에는 재학생만 내려온다. 졸업·자퇴한 기존 참여자가 명단에서 빠지지 않도록 합친다.
   // 후보 조회가 실패해도 본인은 명단에 보이도록 내 정보도 합친다.
@@ -153,6 +157,15 @@ const ProjectFormDialog = ({
     setValue('participantIds', [myStudentId, ...participantIds]);
   }, [open, initial, myStudentId, getValues, setValue]);
 
+  // 반려된 신규 신청을 다시 낼 때 동아리가 그사이 폐지됐으면 선택지에 없으므로 무소속으로 돌린다.
+  useEffect(() => {
+    if (!open || projectId != null || !clubsData) return;
+
+    const clubId = getValues('clubId');
+    if (clubId === null || clubsData.data.clubs.some((club) => club.id === clubId)) return;
+    setValue('clubId', null);
+  }, [open, initial, projectId, clubsData, getValues, setValue]);
+
   const handleSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: ['me-projects'] });
     toast.success(message);
@@ -181,14 +194,20 @@ const ProjectFormDialog = ({
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
 
   const onSubmit = (form: ProjectFormType) => {
-    if (isUploadingIcon) return;
+    // 내 정보를 불러오기 전에 제출하면 본인이 참여자에서 빠지므로 막는다.
+    if (isUploadingIcon || isLoadingMyStudent) return;
+
+    const participantIds =
+      myStudentId === null || form.participantIds.includes(myStudentId)
+        ? form.participantIds
+        : [myStudentId, ...form.participantIds];
 
     const body: ProjectRequestBody = {
       name: form.name,
       description: form.description,
       startYear: form.startYear,
       clubId: form.clubId ?? NO_CLUB_ID,
-      participantIds: form.participantIds,
+      participantIds,
       repositories: form.repositories,
       techStacks: form.techStacks,
       // 빈 문자열은 삭제, 생략은 기존 값 유지라 비운 값은 ''로 보내야 지워진다.
@@ -220,7 +239,10 @@ const ProjectFormDialog = ({
       }}
     >
       {!isControlled && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-xl')}>
+      <DialogContent
+        ref={setDialogContent}
+        className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-xl')}
+      >
         <DialogHeader className={cn('border-foreground shrink-0 border-b-2 px-6 py-5')}>
           <DialogTitle className={cn('font-pixel text-[14px] leading-none')}>{title}</DialogTitle>
         </DialogHeader>
@@ -331,6 +353,7 @@ const ProjectFormDialog = ({
                   onChange={field.onChange}
                   candidates={participantCandidates}
                   lockedId={myStudentId}
+                  portalContainer={dialogContent}
                   isLoading={isLoadingCandidates}
                   isError={isCandidatesError}
                   disabled={isPending}
@@ -402,7 +425,7 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('flex justify-end pt-2')}>
-            <Button type="submit" disabled={isPending || isUploadingIcon}>
+            <Button type="submit" disabled={isPending || isUploadingIcon || isLoadingMyStudent}>
               {submitLabel}
             </Button>
           </div>
