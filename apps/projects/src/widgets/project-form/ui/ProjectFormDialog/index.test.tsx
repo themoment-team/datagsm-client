@@ -1,19 +1,24 @@
-import type { MyProject } from '@repo/shared/types';
+import type { ClubSummary, MyProject, ParticipantCandidate } from '@repo/shared/types';
 import {
   HttpResponse,
   apiPath,
   apiSuccess,
-  createClubListData,
+  createClub,
+  createParticipantCandidateListData,
+  createPublicClubListData,
   http,
   renderWithProviders,
   screen,
   server,
+  waitFor,
   within,
 } from '@repo/test-utils';
 import { File as NodeFile } from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 
 import ProjectFormDialog from '.';
+
+type User = ReturnType<typeof renderWithProviders>['user'];
 
 const ICON_KEY = 'project-icons/3f2504e0-4f89-11d3-9a0c-0305e82c3301.png';
 const NEW_ICON_KEY = 'project-icons/9b2c6a1e-7d3f-4e8a-b5c0-1f2e3d4c5b6a.png';
@@ -57,7 +62,27 @@ const editingProject: MyProject = {
   techStacks: [],
 };
 
-const mockProjectApi = () => {
+const hong: ParticipantCandidate = {
+  id: 101,
+  name: '홍길동',
+  studentNumber: 1101,
+  major: 'SW_DEVELOPMENT',
+};
+const kim: ParticipantCandidate = { id: 102, name: '김영희', studentNumber: 1102, major: 'AI' };
+/** 이름만으로는 구분되지 않는 동명이인 */
+const otherHong: ParticipantCandidate = {
+  id: 103,
+  name: '홍길동',
+  studentNumber: 2101,
+  major: 'AI',
+};
+
+interface MockProjectApiOptions {
+  clubs?: ClubSummary[];
+  candidates?: ParticipantCandidate[];
+}
+
+const mockProjectApi = ({ clubs = [], candidates = [] }: MockProjectApiOptions = {}) => {
   const requests: { method: string; path: string; body: unknown }[] = [];
   const record = async (method: string, request: Request) => {
     requests.push({
@@ -68,7 +93,10 @@ const mockProjectApi = () => {
     return apiSuccess(null);
   };
   server.use(
-    http.get(apiPath('/v1/clubs'), () => apiSuccess(createClubListData([]))),
+    http.get(apiPath('/v1/public/clubs'), () => apiSuccess(createPublicClubListData(clubs))),
+    http.get(apiPath('/v1/students/participant-candidates'), () =>
+      apiSuccess(createParticipantCandidateListData(candidates)),
+    ),
     http.post(apiPath('/v1/students/me/projects'), ({ request }) => record('POST', request)),
     http.put(apiPath('/v1/students/me/projects/:id'), ({ request }) => record('PUT', request)),
   );
@@ -105,7 +133,21 @@ const renderEditDialog = (initial: MyProject, open = true) => (
 
 const openEditDialog = (initial: MyProject) => renderWithProviders(renderEditDialog(initial));
 
+const openCreateDialog = () =>
+  renderWithProviders(<ProjectFormDialog mode="create" open onOpenChange={() => {}} />);
+
 const dialog = () => screen.getByRole('dialog');
+
+const selectedParticipants = () => within(dialog()).getByRole('list', { name: '선택된 참여자' });
+
+/** 후보 목록을 열고(이미 열려 있으면 그대로) 검색어로 좁힌 뒤 고른다. 목록은 고른 뒤에도 열려 있다. */
+const pickParticipant = async (user: User, optionName: string, keyword?: string) => {
+  const search = screen.queryByPlaceholderText('이름 또는 학번 검색...');
+  if (!search) await user.click(within(dialog()).getByRole('combobox', { name: '참여자 추가' }));
+
+  if (keyword) await user.type(screen.getByPlaceholderText('이름 또는 학번 검색...'), keyword);
+  await user.click(await screen.findByRole('option', { name: optionName }));
+};
 
 const iconInput = () => dialog().querySelector<HTMLInputElement>('input[type="file"]')!;
 
@@ -193,6 +235,106 @@ describe('ProjectFormDialog 수정 신청', () => {
         body: expect.objectContaining({ iconKey: ICON_KEY }),
       },
     ]);
+  });
+});
+
+describe('ProjectFormDialog 참여자 선택', () => {
+  it('이름과 학번으로 찾아 고른 참여자를 신청에 담아 보낸다', async () => {
+    const requests = mockProjectApi({ candidates: [hong, kim, otherHong] });
+    const { user } = openCreateDialog();
+
+    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
+    await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+
+    await pickParticipant(user, '2101 · 홍길동 · 인공지능과', '홍길동');
+    await pickParticipant(user, '1102 · 김영희 · 인공지능과', '1102');
+    await user.keyboard('{Escape}');
+
+    await user.click(within(dialog()).getByRole('button', { name: '신청' }));
+
+    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    expect(requests).toEqual([
+      {
+        method: 'POST',
+        path: '/v1/students/me/projects',
+        body: expect.objectContaining({ participantIds: [otherHong.id, kim.id] }),
+      },
+    ]);
+  });
+
+  it('이미 고른 학생은 후보에서 빠진다', async () => {
+    mockProjectApi({ candidates: [hong, kim] });
+    const { user } = openEditDialog({ ...editingProject, participants: [] });
+
+    await pickParticipant(user, '1101 · 홍길동 · 소프트웨어개발과');
+
+    expect(screen.queryByRole('option', { name: '1101 · 홍길동 · 소프트웨어개발과' })).toBeNull();
+    expect(screen.getByRole('option', { name: '1102 · 김영희 · 인공지능과' })).toBeVisible();
+  });
+
+  it('명단에서 제외한 참여자는 빼고 보낸다', async () => {
+    const requests = mockProjectApi({ candidates: [hong, kim] });
+    const { user } = openEditDialog(editingProject);
+
+    await user.click(within(selectedParticipants()).getByRole('button', { name: /홍길동 제외/ }));
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ participantIds: [kim.id] });
+  });
+
+  it('후보에 없는 졸업한 참여자도 명단에 남기고 그대로 보낸다', async () => {
+    // 후보에는 재학생만 내려오므로 졸업한 홍길동은 빠져 있다.
+    const requests = mockProjectApi({ candidates: [kim] });
+    const { user } = openEditDialog(editingProject);
+
+    expect(
+      await within(selectedParticipants()).findByText('1102 · 김영희 · 인공지능과'),
+    ).toBeVisible();
+    expect(
+      within(selectedParticipants()).getByText('1101 · 홍길동 · 소프트웨어개발과'),
+    ).toBeVisible();
+
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ participantIds: [hong.id, kim.id] });
+  });
+});
+
+describe('ProjectFormDialog 동아리 선택', () => {
+  it('운영 중인 전공 동아리만 선택지로 조회한다', async () => {
+    mockProjectApi();
+    let clubQuery: URLSearchParams | undefined;
+    server.use(
+      http.get(apiPath('/v1/public/clubs'), ({ request }) => {
+        clubQuery = new URL(request.url).searchParams;
+        return apiSuccess(createPublicClubListData([]));
+      }),
+    );
+
+    openCreateDialog();
+
+    await waitFor(() => expect(clubQuery).toBeDefined());
+    expect(Object.fromEntries(clubQuery!)).toEqual({
+      clubType: 'MAJOR_CLUB',
+      clubStatus: 'ACTIVE',
+    });
+  });
+
+  it('폐지되어 선택지에 없는 기존 동아리도 선택된 채로 보여주고 그대로 보낸다', async () => {
+    const requests = mockProjectApi({ clubs: [{ id: 1, name: '운영동아리', type: 'MAJOR_CLUB' }] });
+    const { user } = openEditDialog({
+      ...editingProject,
+      club: createClub({ id: 7, name: '폐지된동아리', status: 'ABOLISHED' }),
+    });
+
+    expect(within(dialog()).getByLabelText('동아리')).toHaveTextContent('폐지된동아리');
+
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ clubId: 7 });
   });
 });
 

@@ -51,8 +51,8 @@ const ProjectsPage = () => {
   const selectedProjectId =
     Number.isInteger(projectParam) && projectParam > 0 ? projectParam : null;
 
-  // 공개 페이지라 비로그인 상태에서도 호출된다. 401이 나도 토큰 갱신·리다이렉트는 타지 않는다.
-  const { data: clubsData } = useGetMajorClubs({ skipAuthRefresh: true });
+  // 폐지된 동아리의 프로젝트도 찾을 수 있도록 운영 상태를 가리지 않고 조회한다.
+  const { data: clubsData } = useGetMajorClubs();
 
   const clubOptions = useMemo<FilterOption[]>(
     () => [

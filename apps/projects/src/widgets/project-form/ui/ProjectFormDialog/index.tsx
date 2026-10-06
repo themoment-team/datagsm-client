@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
@@ -42,7 +42,9 @@ import {
 import { useGetMajorClubs } from '@/shared/hooks';
 
 import { useCreateProject } from '../../model/useCreateProject';
+import { useGetParticipantCandidates } from '../../model/useGetParticipantCandidates';
 import { useUpdateProject } from '../../model/useUpdateProject';
+import ParticipantField from '../ParticipantField';
 import ProjectIconField from '../ProjectIconField';
 
 interface ProjectFormDialogProps {
@@ -64,6 +66,7 @@ const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   description: initial?.description ?? '',
   startYear: initial?.startYear ?? currentYear,
   clubId: initial?.club?.id ?? null,
+  participantIds: initial?.participants.map((participant) => participant.id) ?? [],
   repositories: initial?.repositories ?? [],
   techStacks: initial?.techStacks ?? [],
   // 서버는 생략한 값을 원본 프로젝트 기준으로 채운다. 대기 중인 수정안이나 신규 신청을 다시 낼 때
@@ -86,8 +89,34 @@ const ProjectFormDialog = ({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
-  const { data: clubsData } = useGetMajorClubs({ enabled: open });
-  const clubs = clubsData?.data.clubs ?? [];
+  const { data: clubsData } = useGetMajorClubs({ enabled: open, status: 'ACTIVE' });
+  const {
+    data: candidatesData,
+    isLoading: isLoadingCandidates,
+    isError: isCandidatesError,
+  } = useGetParticipantCandidates({ enabled: open });
+
+  // 선택지에는 운영 중인 동아리만 내려온다. 폐지된 동아리에 속한 프로젝트를 수정할 때
+  // 기존 동아리가 빈칸으로 보이지 않도록 합친다.
+  const clubs = useMemo(() => {
+    const activeClubs = clubsData?.data.clubs ?? [];
+    const currentClub = initial?.club;
+
+    if (!currentClub || activeClubs.some((club) => club.id === currentClub.id)) return activeClubs;
+    return [...activeClubs, currentClub];
+  }, [clubsData, initial]);
+
+  // 후보에는 재학생만 내려온다. 졸업·자퇴한 기존 참여자가 명단에서 빠지지 않도록 합친다.
+  const participantCandidates = useMemo(() => {
+    const candidates = candidatesData?.data.students ?? [];
+    const candidateIds = new Set(candidates.map((candidate) => candidate.id));
+    const currentParticipants = initial?.participants ?? [];
+
+    return [
+      ...candidates,
+      ...currentParticipants.filter((participant) => !candidateIds.has(participant.id)),
+    ];
+  }, [candidatesData, initial]);
 
   const {
     register,
@@ -139,9 +168,7 @@ const ProjectFormDialog = ({
       description: form.description,
       startYear: form.startYear,
       clubId: form.clubId ?? NO_CLUB_ID,
-      // 참여자 선택 UI가 없는데 서버는 참여자 목록을 통째로 교체한다. 빈 배열을 보내면 수정 시
-      // 기존 참여자가 모두 빠지므로 수정·재신청에서는 기존 참여자를 그대로 보낸다.
-      participantIds: initial?.participants.map((participant) => participant.id) ?? [],
+      participantIds: form.participantIds,
       repositories: form.repositories,
       techStacks: form.techStacks,
       // 빈 문자열은 삭제, 생략은 기존 값 유지라 비운 값은 ''로 보내야 지워진다.
@@ -245,7 +272,9 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('space-y-2')}>
-            <Label className={cn(LABEL_STYLE)}>동아리</Label>
+            <Label htmlFor="clubId" className={cn(LABEL_STYLE)}>
+              동아리
+            </Label>
             <Controller
               control={control}
               name="clubId"
@@ -255,7 +284,7 @@ const ProjectFormDialog = ({
                   onValueChange={(value) => field.onChange(value === 'NONE' ? null : Number(value))}
                   disabled={isPending}
                 >
-                  <SelectTrigger className={cn('border-foreground rounded-none')}>
+                  <SelectTrigger id="clubId" className={cn('border-foreground rounded-none')}>
                     <SelectValue placeholder="동아리 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -267,6 +296,24 @@ const ProjectFormDialog = ({
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            />
+          </div>
+
+          <div className={cn('space-y-2')}>
+            <Label className={cn(LABEL_STYLE)}>참여자</Label>
+            <Controller
+              control={control}
+              name="participantIds"
+              render={({ field }) => (
+                <ParticipantField
+                  value={field.value}
+                  onChange={field.onChange}
+                  candidates={participantCandidates}
+                  isLoading={isLoadingCandidates}
+                  isError={isCandidatesError}
+                  disabled={isPending}
+                />
               )}
             />
           </div>
