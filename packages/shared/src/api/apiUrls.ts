@@ -1,4 +1,5 @@
 import {
+  ClubStatus,
   ClubType,
   ProjectRequestStatus,
   ProjectStatus,
@@ -48,6 +49,7 @@ export const studentUrl = {
   postStudentDataEditRequests: () => '/v1/students/data-edit-requests',
   patchMySpecialty: () => '/v1/students/me/specialty',
   patchMyGithubId: () => '/v1/students/me/github-id',
+  getParticipantCandidates: () => '/v1/students/participant-candidates',
 } as const;
 
 export const authUrl = {
@@ -159,6 +161,9 @@ export const clubUrl = {
   deleteClubById: (clubId: number) => `/v1/clubs/${clubId}`,
   getClubs: (page?: number, size?: number, type?: ClubType, clubName?: string, status?: string) => {
     return `/v1/clubs${buildQuery({ page, size, clubType: type, clubName, clubStatus: status })}`;
+  },
+  getPublicClubs: (type?: ClubType, status?: ClubStatus) => {
+    return `/v1/public/clubs${buildQuery({ clubType: type, clubStatus: status })}`;
   },
   postClub: () => '/v1/clubs',
   postClubImport: () => '/v1/clubs/imports',

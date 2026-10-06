@@ -1,4 +1,10 @@
-import type { ClubMember, Student, StudentListData } from '@repo/shared/types';
+import type {
+  ClubMember,
+  ParticipantCandidate,
+  ParticipantCandidateListData,
+  Student,
+  StudentListData,
+} from '@repo/shared/types';
 
 import { nextId } from './sequence';
 
@@ -55,3 +61,15 @@ export const createStudentListData = (
   students,
   ...overrides,
 });
+
+/** 프로젝트 참여자 후보 형태로 바꾼다. */
+export const toParticipantCandidate = ({
+  id,
+  name,
+  studentNumber,
+  major,
+}: Student): ParticipantCandidate => ({ id, name, studentNumber, major });
+
+export const createParticipantCandidateListData = (
+  students: ParticipantCandidate[] = [toParticipantCandidate(createStudent())],
+): ParticipantCandidateListData => ({ students });

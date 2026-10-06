@@ -1,4 +1,4 @@
-import type { Club, ClubListData } from '@repo/shared/types';
+import type { Club, ClubListData, ClubSummary, PublicClubListData } from '@repo/shared/types';
 
 import { nextId } from './sequence';
 
@@ -28,3 +28,10 @@ export const createClubListData = (
   clubs,
   ...overrides,
 });
+
+/** 공개 조회 응답 형태로 바꾼다. */
+export const toClubSummary = ({ id, name, type }: Club): ClubSummary => ({ id, name, type });
+
+export const createPublicClubListData = (
+  clubs: ClubSummary[] = [toClubSummary(createClub())],
+): PublicClubListData => ({ clubs });
