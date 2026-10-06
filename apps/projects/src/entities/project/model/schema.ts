@@ -31,6 +31,7 @@ export const projectFormSchema = z.object({
     .lte(CURRENT_YEAR + 1, '올바른 연도를 입력해 주세요'),
   /** null이면 무소속 */
   clubId: z.number().int().nullable(),
+  participantIds: z.array(z.number().int()),
   repositories: z
     .array(z.string().max(PROJECT_REPOSITORY_MAX_LENGTH))
     .max(

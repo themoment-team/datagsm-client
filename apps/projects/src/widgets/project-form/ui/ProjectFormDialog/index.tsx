@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
@@ -42,7 +42,10 @@ import {
 import { useGetMajorClubs } from '@/shared/hooks';
 
 import { useCreateProject } from '../../model/useCreateProject';
+import { useGetMyStudent } from '../../model/useGetMyStudent';
+import { useGetParticipantCandidates } from '../../model/useGetParticipantCandidates';
 import { useUpdateProject } from '../../model/useUpdateProject';
+import ParticipantField from '../ParticipantField';
 import ProjectIconField from '../ProjectIconField';
 
 interface ProjectFormDialogProps {
@@ -64,6 +67,7 @@ const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   description: initial?.description ?? '',
   startYear: initial?.startYear ?? currentYear,
   clubId: initial?.club?.id ?? null,
+  participantIds: initial?.participants.map((participant) => participant.id) ?? [],
   repositories: initial?.repositories ?? [],
   techStacks: initial?.techStacks ?? [],
   // 서버는 생략한 값을 원본 프로젝트 기준으로 채운다. 대기 중인 수정안이나 신규 신청을 다시 낼 때
@@ -86,14 +90,53 @@ const ProjectFormDialog = ({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
-  const { data: clubsData } = useGetMajorClubs({ enabled: open });
-  const clubs = clubsData?.data.clubs ?? [];
+  const { data: clubsData } = useGetMajorClubs({ enabled: open, status: 'ACTIVE' });
+  const {
+    data: candidatesData,
+    isLoading: isLoadingCandidates,
+    isError: isCandidatesError,
+  } = useGetParticipantCandidates({ enabled: open });
+  const { data: myStudent, isLoading: isLoadingMyStudent } = useGetMyStudent({ enabled: open });
+  const myStudentId = myStudent?.id ?? null;
+
+  // 참여자 후보 목록을 다이얼로그 안에 그려야 다이얼로그의 스크롤 잠금에 막히지 않는다.
+  const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
+
+  // 선택지에는 운영 중인 동아리만 내려온다. 폐지된 동아리에 속한 등록 프로젝트를 수정할 때
+  // 기존 동아리가 빈칸으로 보이지 않도록 합친다. 새 신청(재신청 포함)은 폐지된 동아리로 낼 수 없다.
+  const clubs = useMemo(() => {
+    const activeClubs = clubsData?.data.clubs ?? [];
+    const currentClub = initial?.club;
+
+    if (projectId == null || !currentClub) return activeClubs;
+    if (activeClubs.some((club) => club.id === currentClub.id)) return activeClubs;
+    return [...activeClubs, currentClub];
+  }, [clubsData, initial, projectId]);
+
+  // 후보에는 재학생만 내려온다. 졸업·자퇴한 기존 참여자가 명단에서 빠지지 않도록 합친다.
+  // 후보 조회가 실패해도 본인은 명단에 보이도록 내 정보도 합친다.
+  const participantCandidates = useMemo(() => {
+    const candidates = candidatesData?.data.students ?? [];
+    const candidateIds = new Set(candidates.map((candidate) => candidate.id));
+    const extras = [...(initial?.participants ?? []), ...(myStudent ? [myStudent] : [])];
+
+    return [
+      ...candidates,
+      ...extras.filter(({ id }) => {
+        if (candidateIds.has(id)) return false;
+        candidateIds.add(id);
+        return true;
+      }),
+    ];
+  }, [candidatesData, initial, myStudent]);
 
   const {
     register,
     control,
     handleSubmit,
     reset,
+    getValues,
+    setValue,
     formState: { errors },
   } = useForm<ProjectFormType>({
     resolver: zodResolver(projectFormSchema),
@@ -103,6 +146,25 @@ const ProjectFormDialog = ({
   useEffect(() => {
     if (open) reset(buildDefaults(initial));
   }, [open, initial, reset]);
+
+  // 신청자 본인은 참여자로 자동 추가한다. 내 정보는 따로 불러오므로 폼을 초기화한 뒤에
+  // 입력 중인 값을 지우지 않고 본인만 앞에 끼워 넣는다.
+  useEffect(() => {
+    if (!open || myStudentId === null) return;
+
+    const participantIds = getValues('participantIds');
+    if (participantIds.includes(myStudentId)) return;
+    setValue('participantIds', [myStudentId, ...participantIds]);
+  }, [open, initial, myStudentId, getValues, setValue]);
+
+  // 반려된 신규 신청을 다시 낼 때 동아리가 그사이 폐지됐으면 선택지에 없으므로 무소속으로 돌린다.
+  useEffect(() => {
+    if (!open || projectId != null || !clubsData) return;
+
+    const clubId = getValues('clubId');
+    if (clubId === null || clubsData.data.clubs.some((club) => club.id === clubId)) return;
+    setValue('clubId', null);
+  }, [open, initial, projectId, clubsData, getValues, setValue]);
 
   const handleSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: ['me-projects'] });
@@ -132,16 +194,20 @@ const ProjectFormDialog = ({
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
 
   const onSubmit = (form: ProjectFormType) => {
-    if (isUploadingIcon) return;
+    // 내 정보를 불러오기 전에 제출하면 본인이 참여자에서 빠지므로 막는다.
+    if (isUploadingIcon || isLoadingMyStudent) return;
+
+    const participantIds =
+      myStudentId === null || form.participantIds.includes(myStudentId)
+        ? form.participantIds
+        : [myStudentId, ...form.participantIds];
 
     const body: ProjectRequestBody = {
       name: form.name,
       description: form.description,
       startYear: form.startYear,
       clubId: form.clubId ?? NO_CLUB_ID,
-      // 참여자 선택 UI가 없는데 서버는 참여자 목록을 통째로 교체한다. 빈 배열을 보내면 수정 시
-      // 기존 참여자가 모두 빠지므로 수정·재신청에서는 기존 참여자를 그대로 보낸다.
-      participantIds: initial?.participants.map((participant) => participant.id) ?? [],
+      participantIds,
       repositories: form.repositories,
       techStacks: form.techStacks,
       // 빈 문자열은 삭제, 생략은 기존 값 유지라 비운 값은 ''로 보내야 지워진다.
@@ -173,7 +239,10 @@ const ProjectFormDialog = ({
       }}
     >
       {!isControlled && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-xl')}>
+      <DialogContent
+        ref={setDialogContent}
+        className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-xl')}
+      >
         <DialogHeader className={cn('border-foreground shrink-0 border-b-2 px-6 py-5')}>
           <DialogTitle className={cn('font-pixel text-[14px] leading-none')}>{title}</DialogTitle>
         </DialogHeader>
@@ -245,7 +314,9 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('space-y-2')}>
-            <Label className={cn(LABEL_STYLE)}>동아리</Label>
+            <Label htmlFor="clubId" className={cn(LABEL_STYLE)}>
+              동아리
+            </Label>
             <Controller
               control={control}
               name="clubId"
@@ -255,7 +326,7 @@ const ProjectFormDialog = ({
                   onValueChange={(value) => field.onChange(value === 'NONE' ? null : Number(value))}
                   disabled={isPending}
                 >
-                  <SelectTrigger className={cn('border-foreground rounded-none')}>
+                  <SelectTrigger id="clubId" className={cn('border-foreground rounded-none')}>
                     <SelectValue placeholder="동아리 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -267,6 +338,26 @@ const ProjectFormDialog = ({
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            />
+          </div>
+
+          <div className={cn('space-y-2')}>
+            <Label className={cn(LABEL_STYLE)}>참여자</Label>
+            <Controller
+              control={control}
+              name="participantIds"
+              render={({ field }) => (
+                <ParticipantField
+                  value={field.value}
+                  onChange={field.onChange}
+                  candidates={participantCandidates}
+                  lockedId={myStudentId}
+                  portalContainer={dialogContent}
+                  isLoading={isLoadingCandidates}
+                  isError={isCandidatesError}
+                  disabled={isPending}
+                />
               )}
             />
           </div>
@@ -334,7 +425,7 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('flex justify-end pt-2')}>
-            <Button type="submit" disabled={isPending || isUploadingIcon}>
+            <Button type="submit" disabled={isPending || isUploadingIcon || isLoadingMyStudent}>
               {submitLabel}
             </Button>
           </div>

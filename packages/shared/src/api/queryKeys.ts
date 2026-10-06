@@ -41,6 +41,7 @@ export const studentQueryKeys = {
   postStudentDataEditRequests: () => ['students', 'data-edit-requests'] as const,
   patchMySpecialty: () => ['students', 'me', 'specialty', 'update'] as const,
   patchMyGithubId: () => ['students', 'me', 'github-id', 'update'] as const,
+  getParticipantCandidates: () => ['students', 'participant-candidates'] as const,
 } as const;
 
 export const authQueryKeys = {
@@ -114,6 +115,8 @@ export const clubQueryKeys = {
   deleteClubById: () => ['clubs', 'delete'] as const,
   getClubs: (page?: number, size?: number, type?: string, clubName?: string, status?: string) =>
     ['clubs', 'list', { page, size, type, clubName, status }] as const,
+  getPublicClubs: (type?: string, status?: string) =>
+    ['clubs', 'public', { type, status }] as const,
   postClub: () => ['clubs', 'create'] as const,
   postClubImport: () => ['clubs', 'imports'] as const,
   getClubExport: () => ['clubs', 'exports', 'excel'] as const,

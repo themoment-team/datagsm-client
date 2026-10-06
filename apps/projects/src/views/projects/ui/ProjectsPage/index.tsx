@@ -51,19 +51,24 @@ const ProjectsPage = () => {
   const selectedProjectId =
     Number.isInteger(projectParam) && projectParam > 0 ? projectParam : null;
 
-  // 공개 페이지라 비로그인 상태에서도 호출된다. 401이 나도 토큰 갱신·리다이렉트는 타지 않는다.
-  const { data: clubsData } = useGetMajorClubs({ skipAuthRefresh: true });
+  // 폐지된 동아리의 프로젝트도 찾을 수 있도록 운영 상태를 가리지 않고 조회한다.
+  // 응답에 운영 상태가 없어, 운영 중인 목록(신청 폼과 같은 캐시)에 없는 동아리를 폐지로 표시한다.
+  const { data: clubsData } = useGetMajorClubs();
+  const { data: activeClubsData } = useGetMajorClubs({ status: 'ACTIVE' });
 
-  const clubOptions = useMemo<FilterOption[]>(
-    () => [
+  const clubOptions = useMemo<FilterOption[]>(() => {
+    const activeClubIds = activeClubsData
+      ? new Set(activeClubsData.data.clubs.map((club) => club.id))
+      : null;
+
+    return [
       { value: ALL, label: '전체' },
       ...(clubsData?.data.clubs ?? []).map((club) => ({
         value: String(club.id),
-        label: club.name,
+        label: activeClubIds && !activeClubIds.has(club.id) ? `${club.name} (폐지)` : club.name,
       })),
-    ],
-    [clubsData],
-  );
+    ];
+  }, [clubsData, activeClubsData]);
 
   const { data, isLoading, isError } = useGetPublicProjects({
     projectName: filters.projectName || undefined,

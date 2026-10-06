@@ -7,6 +7,7 @@ const validInput = {
   description: '학교 데이터를 제공하는 API 서비스',
   startYear: 2024,
   clubId: null,
+  participantIds: [],
   repositories: [],
   techStacks: [],
   iconKey: null,
