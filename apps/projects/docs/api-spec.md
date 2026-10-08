@@ -4,6 +4,12 @@
 
 ## 서버 변경사항 (최신)
 
+- **프로젝트 카테고리 추가** (server PR #457)
+  - 요청(2-4·2-5·3-5)에 `category`, 응답(1-1·1-2·2-1·3-1·3-2)에 `category: ProjectCategory | null`이 추가됐다. 웹훅 `project.updated`에도 `category`로 실린다.
+  - 값은 `PERSONAL`(개인) / `TEAM`(팀) / `CLUB`(동아리) / `IDEA_FESTIVAL`(아이디어페스티벌). 기존 프로젝트는 `null`(미분류)이다.
+  - 선택 값이다. 수정 시 생략하면 **원본 프로젝트의 현재 값을 유지**하며, 한 번 지정한 카테고리를 `null`로 되돌릴 수는 없다.
+  - 1-1·3-5 목록 조회에 `category` 필터가 추가됐다. 필터를 지정하면 `null`인 프로젝트는 제외된다.
+  - `CLUB`과 `clubId`는 서로 검증하지 않는다. 동아리 소속이어도 `PERSONAL`·`TEAM`일 수 있다.
 - **신청용 동아리·참여자 선택지 조회 API 추가** (server PR #456)
   - `GET /v1/public/clubs`(1-3)와 `GET /v1/students/participant-candidates`(2-6)가 추가됐다. 기존 `GET /v1/clubs`·`GET /v1/students`는 어드민 전용이라 학생 화면에서 쓸 수 없다.
   - 참여자 후보에는 **재학생만** 내려온다. 졸업·자퇴한 기존 참여자는 후보에 없으므로 수정 화면에서는 2-1 응답의 `participants`와 합쳐서 보여준다.
@@ -62,6 +68,7 @@
 |---|---|
 | `requestStatus` | `PENDING`(신청 대기 중) / `ACCEPTED`(수락) / `REJECTED`(거절) |
 | `status` (운영 상태) | `ACTIVE`(운영 중) / `ENDED`(종료) |
+| `category` | `PERSONAL`(개인 프로젝트) / `TEAM`(팀 프로젝트) / `CLUB`(동아리 프로젝트) / `IDEA_FESTIVAL`(아이디어페스티벌). 미분류는 `null` |
 | `role` | `OWNER`(신청자) / `PARTICIPANT`(참여자) |
 | `club.type` | `MAJOR_CLUB`(전공동아리) / `AUTONOMOUS_CLUB`(창체동아리) |
 | `major` | `SW_DEVELOPMENT` / `SMART_IOT` / `AI` |
@@ -78,6 +85,7 @@
 | `projectName` | string | - | 이름 검색 (앞글자 우선, 없으면 부분일치) |
 | `clubId` | number | - | 동아리 필터 |
 | `status` | enum | - | 미입력 시 전체 |
+| `category` | enum | - | 미입력 시 전체. 지정하면 미분류(`null`)는 제외 |
 | `page` | number | `0` | |
 | `size` | number | `20` | 최대 100 |
 | `sortBy` | enum | - | `ID` / `NAME` |
@@ -97,6 +105,7 @@
       "startYear": 2024,
       "endYear": null,
       "status": "ACTIVE",
+      "category": "CLUB",
       "iconUrl": "https://cdn.datagsm.kr/project-icons/{uuid}.png",
       "deploymentUrl": "https://datagsm.kr",
       "club": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" },
@@ -160,6 +169,7 @@
       "startYear": 2024,
       "endYear": null,
       "status": "ACTIVE",
+      "category": "CLUB",
       "iconUrl": "https://cdn.datagsm.kr/project-icons/{uuid}.png",
       "iconKey": "project-icons/{uuid}.png",
       "deploymentUrl": "https://datagsm.kr",
@@ -226,7 +236,7 @@ Body: <binary>
 ### 2-4. 프로젝트 신청 (신규) — `POST /v1/students/me/projects`
 
 ```json
-{ "name": "...", "description": "...", "startYear": 2024, "clubId": 1, "participantIds": [1,2,3], "repositories": ["..."], "techStacks": ["..."], "iconKey": "project-icons/{uuid}.png", "deploymentUrl": "https://datagsm.kr" }
+{ "name": "...", "description": "...", "startYear": 2024, "category": "CLUB", "clubId": 1, "participantIds": [1,2,3], "repositories": ["..."], "techStacks": ["..."], "iconKey": "project-icons/{uuid}.png", "deploymentUrl": "https://datagsm.kr" }
 ```
 
 | 필드 | 필수 | 제약 |
@@ -234,6 +244,7 @@ Body: <binary>
 | `name` | O | 1~100자 |
 | `description` | O | 1~500자 |
 | `startYear` | O | 양수 |
+| `category` | X | `PERSONAL` / `TEAM` / `CLUB` / `IDEA_FESTIVAL`. 수정 시 생략하면 현재 값 유지 (`null`로 되돌릴 수 없음) |
 | `clubId` | X | **무소속은 `0` 또는 생략** |
 | `participantIds` | X | 기본 `[]` |
 | `repositories` | X | 최대 20개, 각 300자 |
@@ -252,6 +263,7 @@ Body: <binary>
 - **신청자와 참여자 모두** 수정 가능.
 - 원본 프로젝트는 어드민 수락 시점에만 변경된다.
 - `iconKey`·`deploymentUrl`은 생략하면 **원본 프로젝트의 현재 값**을 유지하고 `""`이면 삭제한다. 대기 중인 수정안은 원본과 값이 다를 수 있으니 화면에 보이는 값을 그대로 보낸다.
+- `category`도 생략하면 원본 프로젝트의 현재 값을 유지한다. 삭제 수단은 없다.
 - 그 밖의 필드는 보낸 값으로 **통째로 교체**된다. `participantIds`를 `[]`로 보내면 참여자가 모두 빠지므로, 수정·재신청 폼은 기존 참여자를 초기값으로 채우고 화면에 남아 있는 참여자를 모두 보낸다.
 - 참여자가 자신을 빼고 수정 신청하면 수락된 뒤에는 수정 권한이 없어지고 내 프로젝트 목록(2-1)에서도 빠진다.
 
@@ -316,14 +328,14 @@ Body: <binary>
 
 | Method | Path | 설명 |
 |---|---|---|
-| `GET` | `/v1/projects` | 목록 조회 (기본 `status=ACTIVE`) |
+| `GET` | `/v1/projects` | 목록 조회 (기본 `status=ACTIVE`, `category` 필터 지원) |
 | `POST` | `/v1/projects` | 직접 생성 |
 | `PUT` | `/v1/projects/{projectId}` | 직접 수정 |
 | `DELETE` | `/v1/projects/{projectId}` | 삭제 (신청 이력도 함께 정리) |
 | `POST` | `/v1/projects/{projectId}/end` | 종료 처리 (`endYear` 필요) |
 | `POST` | `/v1/projects/{projectId}/reactivate` | 운영 재개 |
 
-`POST`/`PUT` 바디는 2-4 필드에 `status`, `endYear`가 추가된 형태. `iconKey`·`deploymentUrl`은 생략하면 현재 값 유지, `""`이면 삭제.
+`POST`/`PUT` 바디는 2-4 필드에 `status`, `endYear`가 추가된 형태. `iconKey`·`deploymentUrl`은 생략하면 현재 값 유지, `""`이면 삭제. `category`는 생략하면 현재 값 유지.
 
 > **주의**: 어드민 API는 `clubId=0`을 무소속으로 해석하지 않는다. 무소속으로 만들려면 `clubId`를 **생략하거나 `null`**로 보내야 하며, `0`을 보내면 `404`가 발생한다. (`clubId=0` → 무소속 변환은 학생 신청 API에만 적용.)
 
