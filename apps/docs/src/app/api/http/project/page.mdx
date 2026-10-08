@@ -36,6 +36,7 @@ GET /v1/projects
 | `projectName`   | `String`        | 선택    | 프로젝트 이름                                               | `DataGSM 프로젝트` |
 | `clubId`        | `Long`          | 선택    | 동아리 ID                                                | `1`            |
 | `status`        | `ProjectStatus` | 선택    | 프로젝트 운영 상태 (`ACTIVE`, `ENDED`, 기본값: `ACTIVE`)        | `ACTIVE`       |
+| `category`      | `ProjectCategory` | 선택  | 프로젝트 카테고리 (`PERSONAL`, `TEAM`, `CLUB`, `IDEA_FESTIVAL`, 미입력 시 전체 조회) | `TEAM` |
 | `page`          | `Int`           | 선택    | 페이지 번호 (기본값: 0)                                       | `0`            |
 | `size`          | `Int`           | 선택    | 페이지 크기 (기본값: 100)                                     | `100`          |
 | `sortBy`        | `ProjectSortBy` | 선택    | 정렬 기준 (ID, NAME)                                      | `NAME`         |
@@ -74,6 +75,7 @@ GET /v1/projects
 | `startYear`    | `Int`                      | 프로젝트 시작 연도                                   | `2024`                 |
 | `endYear`      | `Int?`                     | 프로젝트 종료 연도 (운영 중인 경우 `null`)                 | `2025`                 |
 | `status`       | `ProjectStatus`            | 프로젝트 운영 상태 (`ACTIVE`: 운영 중, `ENDED`: 종료)    | `ACTIVE`               |
+| `category`     | `ProjectCategory?`         | 프로젝트 카테고리 (미분류인 경우 `null`)                  | `TEAM`                 |
 | `iconUrl`      | `String?`                  | 프로젝트 아이콘 URL (없는 경우 `null`)                | `https://cdn.datagsm.kr/project-icons/uuid.png` |
 | `iconKey`      | `String?`                  | 프로젝트 아이콘 오브젝트 키. 수정 시 생략하면 이 값이 유지됩니다 (없는 경우 `null`) | `project-icons/uuid.png` |
 | `deploymentUrl` | `String?`                 | 프로젝트 배포 URL (없는 경우 `null`)                  | `https://datagsm.kr`   |
@@ -81,6 +83,19 @@ GET /v1/projects
 | `participants` | `List<ParticipantInfoDto>` | 프로젝트 참가자 목록                                  | -                      |
 | `repositories` | `List<String>`             | 프로젝트 리포지토리 URL 목록 (최대 20개)                   | -                      |
 | `techStacks`   | `List<String>`             | 프로젝트 기술 스택 목록 (최대 20개)                       | -                      |
+
+### 프로젝트 카테고리 (ProjectCategory)
+
+프로젝트를 분류하는 기준입니다. 카테고리가 지정되지 않은 프로젝트는 `category`가 `null`로 반환됩니다.
+
+| 값               | 의미       |
+|-----------------|----------|
+| `PERSONAL`      | 개인 프로젝트  |
+| `TEAM`          | 팀 프로젝트   |
+| `CLUB`          | 동아리 프로젝트 |
+| `IDEA_FESTIVAL` | 아이디어페스티벌 |
+
+`category` 파라미터로 특정 카테고리의 프로젝트만 조회할 수 있으며, 이때 카테고리가 `null`인 프로젝트는 결과에 포함되지 않습니다.
 
 ### 동아리 요약 객체 (ClubSummaryDto)
 
@@ -120,6 +135,14 @@ curl -X GET "https://openapi.datagsm.kr/v1/projects?sortBy=NAME&sortDirection=AS
   -H "X-API-KEY: your-api-key-here"
 ```
 
+#### 카테고리로 필터링한 요청 예시
+
+```bash
+# 팀 프로젝트만 조회
+curl -X GET "https://openapi.datagsm.kr/v1/projects?category=TEAM&page=0&size=50" \
+  -H "X-API-KEY: your-api-key-here"
+```
+
 ### 응답 예시
 
 ```json
@@ -138,6 +161,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/projects?sortBy=NAME&sortDirection=AS
         "startYear": 2024,
         "endYear": null,
         "status": "ACTIVE",
+        "category": "TEAM",
         "iconUrl": "https://cdn.datagsm.kr/project-icons/uuid.png",
         "iconKey": "project-icons/uuid.png",
         "deploymentUrl": "https://datagsm.kr",
