@@ -11,6 +11,7 @@ import {
   http,
   renderWithProviders,
   screen,
+  selectOption,
   server,
   waitFor,
   within,
@@ -170,6 +171,15 @@ const pickParticipant = async (user: User, optionName: string, keyword?: string)
   await user.click(await screen.findByRole('option', { name: optionName }));
 };
 
+const categorySelect = () => within(dialog()).getByLabelText('카테고리');
+
+/** 새 신청에서 반드시 채워야 하는 이름·설명·카테고리를 입력한다. */
+const fillRequiredFields = async (user: User) => {
+  await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
+  await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+  await selectOption(user, categorySelect(), '팀 프로젝트');
+};
+
 const iconInput = () => dialog().querySelector<HTMLInputElement>('input[type="file"]')!;
 
 // vitest의 jsdom 호환 계층이 jsdom File을 Node Blob으로 바꾸지 못해 미리보기 URL 생성과
@@ -259,13 +269,69 @@ describe('ProjectFormDialog 수정 신청', () => {
   });
 });
 
+describe('ProjectFormDialog 카테고리 선택', () => {
+  it('새 신청은 고른 카테고리를 담아 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openCreateDialog();
+
+    await fillRequiredFields(user);
+    await selectOption(user, categorySelect(), '아이디어페스티벌');
+    await user.click(within(dialog()).getByRole('button', { name: '신청' }));
+
+    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ category: 'IDEA_FESTIVAL' });
+  });
+
+  it('카테고리를 고르지 않으면 신청하지 않고 고르라고 안내한다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openCreateDialog();
+
+    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
+    await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+    // 내 정보를 불러오기 전에는 제출 버튼이 잠겨 있다.
+    const submitButton = within(dialog()).getByRole('button', { name: '신청' });
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+
+    expect(await within(dialog()).findByText('카테고리를 선택해 주세요')).toBeVisible();
+    expect(requests).toEqual([]);
+  });
+
+  it('수정할 때 건드리지 않은 카테고리를 그대로 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openEditDialog({ ...editingProject, category: 'CLUB' });
+
+    expect(categorySelect()).toHaveTextContent('동아리 프로젝트');
+    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ category: 'CLUB' });
+  });
+
+  it('미분류 프로젝트는 카테고리를 골라야 수정 신청할 수 있다', async () => {
+    const requests = mockProjectApi();
+    const { user } = openEditDialog({ ...editingProject, category: null });
+
+    const submitButton = within(dialog()).getByRole('button', { name: '수정 신청' });
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+    expect(await within(dialog()).findByText('카테고리를 선택해 주세요')).toBeVisible();
+    expect(requests).toEqual([]);
+
+    await selectOption(user, categorySelect(), '개인 프로젝트');
+    await user.click(submitButton);
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ category: 'PERSONAL' });
+  });
+});
+
 describe('ProjectFormDialog 참여자 선택', () => {
   it('이름과 학번으로 찾아 고른 참여자를 신청에 담아 보낸다', async () => {
     const requests = mockProjectApi({ candidates: [hong, kim, otherHong] });
     const { user } = openCreateDialog();
 
-    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
-    await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+    await fillRequiredFields(user);
 
     await pickParticipant(user, '2101 · 홍길동 · 인공지능과', '홍길동');
     await pickParticipant(user, '1102 · 김영희 · 인공지능과', '1102');
@@ -331,8 +397,7 @@ describe('ProjectFormDialog 본인 자동 추가', () => {
     ).toBeVisible();
     expect(within(selectedParticipants()).queryByRole('button')).toBeNull();
 
-    await user.type(within(dialog()).getByLabelText('프로젝트 이름'), 'DataGSM');
-    await user.type(within(dialog()).getByLabelText('설명'), '학교 데이터 API');
+    await fillRequiredFields(user);
     await user.click(within(dialog()).getByRole('button', { name: '신청' }));
 
     await screen.findByText('프로젝트 신청이 접수되었습니다.');

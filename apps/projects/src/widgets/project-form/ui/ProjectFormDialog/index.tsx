@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import {
+  PROJECT_CATEGORIES,
+  PROJECT_CATEGORY_LABEL,
+  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
+} from '@repo/shared/constants';
 import type { BaseApiResponse, MyProject, ProjectRequestBody } from '@repo/shared/types';
 import {
   Button,
@@ -36,6 +40,7 @@ import {
   PROJECT_REPOSITORY_MAX_LENGTH,
   PROJECT_TECH_STACK_MAX_COUNT,
   PROJECT_TECH_STACK_MAX_LENGTH,
+  type ProjectFormInput,
   type ProjectFormType,
   projectFormSchema,
 } from '@/entities/project';
@@ -62,10 +67,11 @@ const LABEL_STYLE = 'text-muted-foreground font-mono text-xs uppercase tracking-
 
 const currentYear = new Date().getFullYear();
 
-const buildDefaults = (initial?: MyProject): ProjectFormType => ({
+const buildDefaults = (initial?: MyProject): ProjectFormInput => ({
   name: initial?.name ?? '',
   description: initial?.description ?? '',
   startYear: initial?.startYear ?? currentYear,
+  category: initial?.category ?? null,
   clubId: initial?.club?.id ?? null,
   participantIds: initial?.participants.map((participant) => participant.id) ?? [],
   repositories: initial?.repositories ?? [],
@@ -138,7 +144,7 @@ const ProjectFormDialog = ({
     getValues,
     setValue,
     formState: { errors },
-  } = useForm<ProjectFormType>({
+  } = useForm<ProjectFormInput, unknown, ProjectFormType>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: buildDefaults(initial),
   });
@@ -206,6 +212,7 @@ const ProjectFormDialog = ({
       name: form.name,
       description: form.description,
       startYear: form.startYear,
+      category: form.category,
       clubId: form.clubId ?? NO_CLUB_ID,
       participantIds,
       repositories: form.repositories,
@@ -311,6 +318,36 @@ const ProjectFormDialog = ({
               disabled={isPending}
             />
             <FormErrorMessage error={errors.startYear} />
+          </div>
+
+          <div className={cn('space-y-2')}>
+            <Label htmlFor="category" className={cn(LABEL_STYLE)}>
+              카테고리
+            </Label>
+            <Controller
+              control={control}
+              name="category"
+              render={({ field }) => (
+                <Select
+                  // 빈 문자열이어야 고르기 전 상태로 돌아가 placeholder가 보인다.
+                  value={field.value ?? ''}
+                  onValueChange={field.onChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="category" className={cn('border-foreground rounded-none')}>
+                    <SelectValue placeholder="카테고리 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROJECT_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {PROJECT_CATEGORY_LABEL[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <FormErrorMessage error={errors.category} />
           </div>
 
           <div className={cn('space-y-2')}>
