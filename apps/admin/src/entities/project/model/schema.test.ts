@@ -7,6 +7,7 @@ const activeProject = {
   name: 'DataGSM',
   description: '학교 데이터 API',
   startYear: 2025,
+  category: 'TEAM',
   clubId: null,
   participantIds: [1],
   status: 'ACTIVE',
@@ -35,12 +36,14 @@ describe('AddProjectSchema', () => {
         name: '',
         description: '',
         startYear: undefined,
+        category: undefined,
         participantIds: [],
       }),
     ).toMatchObject({
       name: '프로젝트명을 입력해주세요.',
       description: '프로젝트 설명을 입력해주세요.',
       startYear: '시작 연도를 입력해주세요.',
+      category: '카테고리를 선택해주세요.',
       participantIds: '한 명 이상의 팀원을 선택해주세요.',
     });
   });

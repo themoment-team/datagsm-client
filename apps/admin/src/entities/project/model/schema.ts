@@ -1,4 +1,4 @@
-import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import { PROJECT_CATEGORIES, PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
 
@@ -6,6 +6,7 @@ export const ProjectFilterSchema = z.object({
   projectName: z.string().optional(),
   clubId: z.number().optional(),
   status: z.enum(['ACTIVE', 'ENDED']).optional(),
+  category: z.enum(PROJECT_CATEGORIES).optional(),
 });
 
 export type ProjectFilterType = z.infer<typeof ProjectFilterSchema>;
@@ -18,6 +19,8 @@ export const AddProjectSchema = z
       .number({ message: '시작 연도를 입력해주세요.' })
       .int()
       .min(1900, { message: '1900년 이후의 연도를 입력해주세요.' }),
+    // 서버는 생략을 허용하지만 미분류는 카테고리 필터에서 빠지므로 폼에서는 반드시 고르게 한다.
+    category: z.enum(PROJECT_CATEGORIES, { message: '카테고리를 선택해주세요.' }),
     clubId: z.number().nullable().optional(),
     participantIds: z.array(z.number()).min(1, { message: '한 명 이상의 팀원을 선택해주세요.' }),
     status: z.enum(['ACTIVE', 'ENDED'], {

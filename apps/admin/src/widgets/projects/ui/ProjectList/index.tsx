@@ -1,3 +1,4 @@
+import { getProjectCategoryLabel } from '@repo/shared/constants';
 import { Project, ProjectStatus } from '@repo/shared/types';
 import {
   Badge,
@@ -88,6 +89,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
         <TableRow className={cn(TABLE_HEAD_ROW_STYLE)}>
           <TableHead className={cn('w-[160px]')}>이름</TableHead>
           <TableHead className={cn('w-[140px]')}>상태</TableHead>
+          <TableHead className={cn('w-[140px]')}>카테고리</TableHead>
           <TableHead className={cn('w-[80px]')}>시작 연도</TableHead>
           <TableHead className={cn('w-[80px]')}>종료 연도</TableHead>
           <TableHead className={cn('w-[240px]')}>설명</TableHead>
@@ -109,6 +111,9 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                 </TableCell>
                 <TableCell>
                   <Skeleton className={cn('h-6 w-20')} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className={cn('h-4 w-20')} />
                 </TableCell>
                 <TableCell>
                   <Skeleton className={cn('h-4 w-10')} />
@@ -156,6 +161,9 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                       />
                       {status.label}
                     </span>
+                  </TableCell>
+                  <TableCell className={cn(!project.category && 'text-muted-foreground')}>
+                    {getProjectCategoryLabel(project.category)}
                   </TableCell>
                   <TableCell>{project.startYear}</TableCell>
                   <TableCell>{project.endYear ?? '-'}</TableCell>

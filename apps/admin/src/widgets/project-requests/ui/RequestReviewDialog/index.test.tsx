@@ -49,6 +49,21 @@ describe('RequestReviewDialog', () => {
     expect(within(dialog()).queryByRole('link', { name: unsafeRepo })).not.toBeInTheDocument();
   });
 
+  it('신청한 카테고리를 보여 주고, 없으면 미분류로 보여 준다', () => {
+    const { rerender } = renderWithProviders(
+      <RequestReviewDialog
+        request={{ ...pendingRequest, category: 'IDEA_FESTIVAL' }}
+        open
+        onOpenChange={() => {}}
+      />,
+    );
+    expect(within(dialog()).getByText('아이디어페스티벌')).toBeInTheDocument();
+
+    rerender(<RequestReviewDialog request={pendingRequest} open onOpenChange={() => {}} />);
+
+    expect(within(dialog()).getByText('미분류')).toBeInTheDocument();
+  });
+
   it('상태 뱃지를 신청 카드와 같은 모양으로 보여 준다', () => {
     const acceptedRequest: ProjectEditRequest = {
       ...pendingRequest,

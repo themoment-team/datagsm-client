@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { getProjectCategoryLabel } from '@repo/shared/constants';
 import type { BaseApiResponse, ProjectEditRequest } from '@repo/shared/types';
 import {
   Badge,
@@ -156,7 +157,13 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
             </p>
           </div>
 
-          <div className={cn('grid grid-cols-2 gap-4')}>
+          <div className={cn('grid grid-cols-3 gap-4')}>
+            <div className={cn('space-y-1')}>
+              <p className={cn(LABEL_STYLE)}>카테고리</p>
+              <p className={cn(request.category ? 'text-foreground text-sm' : EMPTY_STYLE)}>
+                {getProjectCategoryLabel(request.category)}
+              </p>
+            </div>
             <div className={cn('space-y-1')}>
               <p className={cn(LABEL_STYLE)}>동아리</p>
               <p className={cn('text-foreground text-sm')}>{request.club?.name ?? '무소속'}</p>

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import {
+  PROJECT_CATEGORIES,
+  PROJECT_CATEGORY_LABEL,
+  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
+} from '@repo/shared/constants';
 import { Club, Project, Student } from '@repo/shared/types';
 import {
   Button,
@@ -109,6 +113,8 @@ const ProjectFormDialog = ({
           name: project.name,
           description: project.description,
           startYear: project.startYear,
+          // 미분류 프로젝트는 비워 두어, 수정할 때 카테고리를 고르게 한다.
+          category: project.category ?? undefined,
           clubId: project.club?.id || 0,
           participantIds: project.participants.map((p) => p.id),
           status: project.status,
@@ -122,6 +128,7 @@ const ProjectFormDialog = ({
           name: '',
           description: '',
           startYear: undefined,
+          category: undefined,
           clubId: 0,
           participantIds: [],
           status: 'ACTIVE',
@@ -269,6 +276,28 @@ const ProjectFormDialog = ({
                 placeholder="프로젝트명을 입력하세요"
                 className={cn(FORM_FIELD_STYLE)}
                 {...register('name')}
+              />
+            </FormField>
+
+            <FormField label="카테고리" htmlFor="category" error={errors.category}>
+              <Controller
+                control={control}
+                name="category"
+                render={({ field }) => (
+                  // 빈 문자열이어야 고르기 전 상태로 돌아가 placeholder가 보인다.
+                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <SelectTrigger id="category" className={cn(FORM_TRIGGER_STYLE)}>
+                      <SelectValue placeholder="카테고리를 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {PROJECT_CATEGORY_LABEL[category]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </FormField>
 

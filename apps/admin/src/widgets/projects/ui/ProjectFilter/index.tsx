@@ -1,3 +1,8 @@
+import {
+  PROJECT_CATEGORIES,
+  PROJECT_CATEGORY_LABEL,
+  parseProjectCategory,
+} from '@repo/shared/constants';
 import { Club } from '@repo/shared/types';
 import { FilterOption, FilterSelect, Input } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -9,6 +14,15 @@ import { ProjectFilterType } from '@/entities/project';
 const STATUS_OPTIONS: FilterOption[] = [
   { value: 'ACTIVE', label: '운영 중' },
   { value: 'ENDED', label: '운영 종료' },
+];
+
+/** 서버가 미분류만 조회하는 방법을 주지 않아 미분류 선택지는 없다. */
+const CATEGORY_OPTIONS: FilterOption[] = [
+  { value: 'all', label: '전체' },
+  ...PROJECT_CATEGORIES.map((category) => ({
+    value: category,
+    label: PROJECT_CATEGORY_LABEL[category],
+  })),
 ];
 
 interface ProjectFilterProps {
@@ -53,6 +67,20 @@ const ProjectFilter = ({ control, clubs }: ProjectFilterProps) => {
               options={STATUS_OPTIONS}
               value={field.value ?? 'ACTIVE'}
               onChange={field.onChange}
+              className={cn('w-[200px]')}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="category"
+          render={({ field }) => (
+            <FilterSelect
+              label="카테고리"
+              options={CATEGORY_OPTIONS}
+              value={field.value ?? 'all'}
+              onChange={(value) => field.onChange(parseProjectCategory(value))}
               className={cn('w-[200px]')}
             />
           )}

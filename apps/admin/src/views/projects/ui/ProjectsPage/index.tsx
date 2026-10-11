@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { parseProjectCategory } from '@repo/shared/constants';
 import { useDebounce, useURLFilters } from '@repo/shared/hooks';
 import { Project } from '@repo/shared/types';
 import { CommonPagination, PageTitleBar, PageWindow } from '@repo/shared/ui';
@@ -56,6 +57,7 @@ const ProjectsPage = () => {
       projectName: searchParams.get('projectName') || '',
       clubId: searchParams.get('clubId') ? Number(searchParams.get('clubId')) : undefined,
       status: searchParams.get('status') === 'ENDED' ? 'ENDED' : 'ACTIVE',
+      category: parseProjectCategory(searchParams.get('category')),
       page: Number(searchParams.get('page')) || 0,
     }),
     [searchParams],
@@ -67,6 +69,7 @@ const ProjectsPage = () => {
       projectName: initialValues.projectName,
       clubId: initialValues.clubId,
       status: initialValues.status,
+      category: initialValues.category,
     },
   });
 
@@ -89,6 +92,7 @@ const ProjectsPage = () => {
       projectName: initialValues.projectName,
       clubId: initialValues.clubId,
       status: initialValues.status,
+      category: initialValues.category,
     });
   }, [initialValues, reset]);
 
@@ -98,7 +102,8 @@ const ProjectsPage = () => {
     const hasChanged =
       debouncedProjectName !== initialValues.projectName ||
       filters.clubId !== initialValues.clubId ||
-      filters.status !== initialValues.status;
+      filters.status !== initialValues.status ||
+      filters.category !== initialValues.category;
 
     if (hasChanged) {
       updateURL(
@@ -106,11 +111,20 @@ const ProjectsPage = () => {
           projectName: debouncedProjectName,
           clubId: filters.clubId,
           status: filters.status,
+          category: filters.category,
         },
         0,
       );
     }
-  }, [debouncedProjectName, filters.clubId, filters.status, initialValues, updateURL, isDirty]);
+  }, [
+    debouncedProjectName,
+    filters.clubId,
+    filters.status,
+    filters.category,
+    initialValues,
+    updateURL,
+    isDirty,
+  ]);
 
   const handlePageChange = (page: number) => {
     updateURL(
@@ -118,6 +132,7 @@ const ProjectsPage = () => {
         projectName: debouncedProjectName,
         clubId: filters.clubId,
         status: filters.status,
+        category: filters.category,
       },
       page,
     );
@@ -129,6 +144,7 @@ const ProjectsPage = () => {
     projectName: debouncedProjectName || undefined,
     clubId: filters.clubId,
     status: filters.status,
+    category: filters.category,
   };
 
   const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects(queryParams);

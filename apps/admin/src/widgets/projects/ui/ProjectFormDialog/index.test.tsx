@@ -111,6 +111,7 @@ describe('ProjectFormDialog 추가', () => {
     await user.type(field('프로젝트명'), 'DataGSM');
     await user.type(field('시작 연도'), '2025');
     await user.type(field('설명'), '학교 데이터 API');
+    await selectOption(user, field('카테고리'), '팀 프로젝트');
     await user.type(field('리포지토리'), 'https://github.com/themoment-team/datagsm-client{Enter}');
     await user.type(field('기술 스택'), 'Next.js{Enter}');
     await addMember(user, '2101 김팀원');
@@ -125,6 +126,7 @@ describe('ProjectFormDialog 추가', () => {
           name: 'DataGSM',
           description: '학교 데이터 API',
           startYear: 2025,
+          category: 'TEAM',
           clubId: null,
           participantIds: [1],
           status: 'ACTIVE',
@@ -142,6 +144,7 @@ describe('ProjectFormDialog 추가', () => {
     await user.type(field('프로젝트명'), 'DataGSM');
     await user.type(field('시작 연도'), '2025');
     await user.type(field('설명'), '학교 데이터 API');
+    await selectOption(user, field('카테고리'), '팀 프로젝트');
     await addMember(user, '2101 김팀원');
     await user.type(field('배포 URL'), '  https://datagsm.kr  ');
     await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
@@ -157,6 +160,7 @@ describe('ProjectFormDialog 추가', () => {
     await user.type(field('프로젝트명'), 'DataGSM');
     await user.type(field('시작 연도'), '2025');
     await user.type(field('설명'), '학교 데이터 API');
+    await selectOption(user, field('카테고리'), '팀 프로젝트');
     await addMember(user, '2101 김팀원');
     await user.type(field('배포 URL'), 'datagsm.kr');
     await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
@@ -165,6 +169,22 @@ describe('ProjectFormDialog 추가', () => {
       await screen.findByText('http:// 또는 https://로 시작하는 주소를 입력해주세요.', {
         selector: 'li *',
       }),
+    ).toBeInTheDocument();
+    expect(requests).toEqual([]);
+  });
+
+  it('카테고리를 고르지 않으면 요청하지 않고 고르라고 안내한다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openCreateDialog();
+
+    await user.type(field('프로젝트명'), 'DataGSM');
+    await user.type(field('시작 연도'), '2025');
+    await user.type(field('설명'), '학교 데이터 API');
+    await addMember(user, '2101 김팀원');
+    await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
+
+    expect(
+      await screen.findByText('카테고리를 선택해주세요.', { selector: 'li *' }),
     ).toBeInTheDocument();
     expect(requests).toEqual([]);
   });
@@ -210,6 +230,7 @@ describe('ProjectFormDialog 수정', () => {
     description: '학교 데이터 API',
     startYear: 2024,
     status: 'ACTIVE',
+    category: 'TEAM',
     club: clubs[0]!,
     participants: [toClubMember(students[0]!)],
   });
@@ -239,6 +260,35 @@ describe('ProjectFormDialog 수정', () => {
         body: expect.objectContaining({ description: '학교 데이터 API v2', clubId: 5 }),
       },
     ]);
+  });
+
+  it('카테고리를 바꾸면 바꾼 값으로 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog(baseProject);
+
+    expect(field('카테고리')).toHaveTextContent('팀 프로젝트');
+    await selectOption(user, field('카테고리'), '동아리 프로젝트');
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ category: 'CLUB' });
+  });
+
+  it('미분류 프로젝트는 카테고리를 골라야 수정할 수 있다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog({ ...baseProject, category: null });
+
+    await submit(user);
+    expect(
+      await screen.findByText('카테고리를 선택해주세요.', { selector: 'li *' }),
+    ).toBeInTheDocument();
+    expect(requests).toEqual([]);
+
+    await selectOption(user, field('카테고리'), '개인 프로젝트');
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ category: 'PERSONAL' });
   });
 
   it('운영 중인 프로젝트를 종료로 바꾸면 정보 수정 뒤 종료 처리한다', async () => {
