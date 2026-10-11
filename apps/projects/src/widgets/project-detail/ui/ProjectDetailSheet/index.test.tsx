@@ -85,6 +85,17 @@ describe('ProjectDetailSheet', () => {
     expect(requestedIds).toEqual([7]);
   });
 
+  it('카테고리를 보여 주고, 없으면 미분류로 보여 준다', async () => {
+    mockProjectDetail(() => apiSuccess({ ...publicProject, category: null }));
+
+    renderWithProviders(
+      <ProjectDetailSheet projectId={7} initialProject={publicProject} onClose={() => {}} />,
+    );
+
+    expect(within(dialog()).getByText('팀 프로젝트')).toBeInTheDocument();
+    expect(await within(dialog()).findByText('미분류')).toBeInTheDocument();
+  });
+
   it('없는 프로젝트면 찾을 수 없다는 안내를 보여 준다', async () => {
     mockProjectDetail(() => apiError(404, 'Project not found'));
 

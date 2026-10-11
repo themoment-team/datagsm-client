@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { parseProjectCategory } from '@repo/shared/constants';
 import { useURLFilters } from '@repo/shared/hooks';
 import type { ProjectStatus } from '@repo/shared/types';
 import { Button, CommonPagination, type FilterOption, PageHeader } from '@repo/shared/ui';
@@ -30,6 +31,7 @@ const ProjectsPage = () => {
     projectName: string;
     status: string;
     sort: string;
+    category: string;
     clubId: string;
   }>();
 
@@ -40,6 +42,8 @@ const ProjectsPage = () => {
       projectName: searchParams.get('projectName') ?? '',
       status: searchParams.get('status') ?? ALL,
       sort: searchParams.get('sort') ?? DEFAULT_PROJECT_SORT,
+      // 목록에 없는 값은 전체로 본다. 그대로 넘기면 서버가 400을 돌려준다.
+      category: parseProjectCategory(searchParams.get('category')) ?? ALL,
       clubId: searchParams.get('clubId') ?? ALL,
       page: Number(searchParams.get('page')) || 0,
     };
@@ -73,6 +77,7 @@ const ProjectsPage = () => {
   const { data, isLoading, isError } = useGetPublicProjects({
     projectName: filters.projectName || undefined,
     status: filters.status === ALL ? undefined : (filters.status as ProjectStatus),
+    category: parseProjectCategory(filters.category),
     clubId: filters.clubId === ALL ? undefined : Number(filters.clubId),
     sortBy,
     sortDirection,
@@ -86,6 +91,7 @@ const ProjectsPage = () => {
   const handleSearch = (value: string) => updateURL({ projectName: value }, 0);
   const handleStatus = (value: string) => updateURL({ status: value }, 0);
   const handleSort = (value: string) => updateURL({ sort: value }, 0);
+  const handleCategory = (value: string) => updateURL({ category: value }, 0);
   const handleClub = (value: string) => updateURL({ clubId: value }, 0);
   const handlePage = (page: number) => updateURL({}, page);
 
@@ -133,11 +139,13 @@ const ProjectsPage = () => {
             defaultSearch={filters.projectName}
             status={filters.status}
             sort={filters.sort}
+            category={filters.category}
             clubId={filters.clubId}
             clubOptions={clubOptions}
             onSearchSubmit={handleSearch}
             onStatusChange={handleStatus}
             onSortChange={handleSort}
+            onCategoryChange={handleCategory}
             onClubChange={handleClub}
           />
         </div>

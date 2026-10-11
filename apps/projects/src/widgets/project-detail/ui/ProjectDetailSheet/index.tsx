@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { getProjectCategoryLabel } from '@repo/shared/constants';
 import type { PublicProject } from '@repo/shared/types';
 import {
   Badge,
@@ -100,6 +101,7 @@ const ProjectDetail = ({ project }: { project: PublicProject }) => {
               <Badge variant={project.status === 'ACTIVE' ? 'default' : 'secondary'}>
                 {PROJECT_STATUS_LABEL[project.status]}
               </Badge>
+              <Badge variant="outline">{getProjectCategoryLabel(project.category)}</Badge>
             </div>
             <p className={cn('text-muted-foreground mt-1 font-mono text-xs')}>
               {project.club?.name ?? '무소속'} · {project.startYear}

@@ -1,5 +1,6 @@
 'use client';
 
+import { getProjectCategoryLabel } from '@repo/shared/constants';
 import type { MyProject } from '@repo/shared/types';
 import { Badge, Button } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -13,7 +14,7 @@ interface MyProjectCardProps {
 }
 
 const MyProjectCard = ({ project, onEdit }: MyProjectCardProps) => {
-  const { name, description, iconUrl, club, startYear, endYear, rejectReason } = project;
+  const { name, description, category, iconUrl, club, startYear, endYear, rejectReason } = project;
 
   const display = getMyProjectDisplay(project);
 
@@ -45,7 +46,10 @@ const MyProjectCard = ({ project, onEdit }: MyProjectCardProps) => {
           </p>
         </div>
 
-        <Badge variant={display.badgeVariant}>{display.badgeLabel}</Badge>
+        <div className={cn('flex flex-shrink-0 flex-col items-end gap-1')}>
+          <Badge variant={display.badgeVariant}>{display.badgeLabel}</Badge>
+          <Badge variant="outline">{getProjectCategoryLabel(category)}</Badge>
+        </div>
       </div>
 
       {display.notice && (
