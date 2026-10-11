@@ -1,6 +1,7 @@
 import { ApiResponse, Club, ClubMember, StudentMajor } from '@repo/shared/types';
 
 export type ProjectStatus = 'ACTIVE' | 'ENDED';
+export type ProjectCategory = 'PERSONAL' | 'TEAM' | 'CLUB' | 'IDEA_FESTIVAL';
 export type ProjectRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 export type ProjectParticipantRole = 'OWNER' | 'PARTICIPANT';
 export type ProjectSortBy = 'ID' | 'NAME';
@@ -14,6 +15,8 @@ export interface Project {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
+  /** 카테고리가 생기기 전에 등록된 프로젝트는 null(미분류) */
+  category: ProjectCategory | null;
   iconUrl?: string | null;
   iconKey?: string | null;
   deploymentUrl?: string | null;
@@ -36,6 +39,8 @@ export interface ProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
+  /** 지정하면 미분류(null) 프로젝트는 빠진다 */
+  category?: ProjectCategory;
   page: number;
   size: number;
 }
@@ -56,6 +61,7 @@ export interface PublicProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
+  category: ProjectCategory | null;
   iconUrl: string | null;
   deploymentUrl: string | null;
   club: Club | null;
@@ -77,6 +83,8 @@ export interface PublicProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
+  /** 지정하면 미분류(null) 프로젝트는 빠진다 */
+  category?: ProjectCategory;
   page?: number;
   size?: number;
   sortBy?: ProjectSortBy;
@@ -98,6 +106,7 @@ export interface MyProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus | null;
+  category: ProjectCategory | null;
   iconUrl: string | null;
   /** 대기 중인 수정안이 있으면 수정안의 키. 수정 시 아이콘을 유지하려면 그대로 보낸다 */
   iconKey: string | null;
@@ -124,6 +133,8 @@ export interface ProjectRequestBody {
   name: string;
   description: string;
   startYear: number;
+  /** 생략하면 현재 값을 유지한다. 한 번 지정하면 미분류로 되돌릴 수 없다 */
+  category?: ProjectCategory;
   /** 무소속은 0 또는 생략 */
   clubId?: number;
   participantIds?: number[];
@@ -144,6 +155,7 @@ export interface ProjectEditRequest {
   name: string;
   description: string;
   startYear: number;
+  category: ProjectCategory | null;
   iconUrl: string | null;
   iconKey: string | null;
   deploymentUrl: string | null;

@@ -8,6 +8,7 @@ import {
   clientUrl,
   clubUrl,
   projectUrl,
+  publicProjectUrl,
   studentUrl,
 } from './apiUrls';
 
@@ -103,6 +104,24 @@ describe('projectUrl.getProjects', () => {
       clubId: '0',
       status: 'ENDED',
     });
+  });
+
+  it('category를 넘기면 쿼리에 넣는다', () => {
+    expect(queryOf(projectUrl.getProjects({ category: 'IDEA_FESTIVAL' }))).toEqual({
+      category: 'IDEA_FESTIVAL',
+    });
+  });
+});
+
+describe('publicProjectUrl.getPublicProjects', () => {
+  it('인자가 없으면 쿼리 없이 경로만 돌려준다', () => {
+    expect(publicProjectUrl.getPublicProjects({})).toBe('/v1/public/projects');
+  });
+
+  it('category를 넘기면 다른 필터와 함께 쿼리에 넣는다', () => {
+    expect(
+      queryOf(publicProjectUrl.getPublicProjects({ status: 'ACTIVE', category: 'TEAM', page: 0 })),
+    ).toEqual({ status: 'ACTIVE', category: 'TEAM', page: '0' });
   });
 });
 

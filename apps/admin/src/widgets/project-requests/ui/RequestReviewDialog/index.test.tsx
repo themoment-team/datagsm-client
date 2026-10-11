@@ -12,6 +12,7 @@ const pendingRequest: ProjectEditRequest = {
   name: 'DataGSM',
   description: '학교 데이터 API',
   startYear: 2024,
+  category: null,
   iconUrl: null,
   iconKey: null,
   deploymentUrl: null,

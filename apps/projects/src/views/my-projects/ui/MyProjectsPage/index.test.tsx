@@ -35,6 +35,7 @@ const myProject: MyProject = {
   startYear: 2024,
   endYear: null,
   status: 'ACTIVE',
+  category: null,
   iconUrl: null,
   iconKey: null,
   deploymentUrl: null,

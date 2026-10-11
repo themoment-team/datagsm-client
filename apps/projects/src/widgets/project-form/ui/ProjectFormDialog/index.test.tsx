@@ -38,6 +38,7 @@ const editingProject: MyProject = {
   startYear: 2024,
   endYear: null,
   status: 'ACTIVE',
+  category: 'TEAM',
   iconUrl: `https://cdn.datagsm.kr/${ICON_KEY}`,
   iconKey: ICON_KEY,
   deploymentUrl: 'https://datagsm.kr',

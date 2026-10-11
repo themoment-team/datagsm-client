@@ -21,6 +21,7 @@ const publicProject: PublicProject = {
   startYear: 2024,
   endYear: null,
   status: 'ACTIVE',
+  category: 'TEAM',
   iconUrl: null,
   deploymentUrl: 'https://datagsm.kr',
   club: null,
