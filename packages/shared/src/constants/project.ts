@@ -9,6 +9,7 @@ export const PROJECT_CATEGORIES = [
   'TEAM',
   'CLUB',
   'IDEA_FESTIVAL',
+  'NOT_DEPLOYED',
 ] as const satisfies readonly ProjectCategory[];
 
 /** 프로젝트·어드민 양쪽 화면에서 같은 이름으로 보여준다. */
@@ -17,6 +18,7 @@ export const PROJECT_CATEGORY_LABEL: Record<ProjectCategory, string> = {
   TEAM: '팀 프로젝트',
   CLUB: '동아리 프로젝트',
   IDEA_FESTIVAL: '아이디어페스티벌',
+  NOT_DEPLOYED: '미배포 프로젝트',
 };
 
 export const PROJECT_UNCATEGORIZED_LABEL = '미분류';

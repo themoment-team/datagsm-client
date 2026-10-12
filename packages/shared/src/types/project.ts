@@ -1,7 +1,7 @@
 import { ApiResponse, Club, ClubMember, StudentMajor } from '@repo/shared/types';
 
 export type ProjectStatus = 'ACTIVE' | 'ENDED';
-export type ProjectCategory = 'PERSONAL' | 'TEAM' | 'CLUB' | 'IDEA_FESTIVAL';
+export type ProjectCategory = 'PERSONAL' | 'TEAM' | 'CLUB' | 'IDEA_FESTIVAL' | 'NOT_DEPLOYED';
 export type ProjectRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 export type ProjectParticipantRole = 'OWNER' | 'PARTICIPANT';
 export type ProjectSortBy = 'ID' | 'NAME';

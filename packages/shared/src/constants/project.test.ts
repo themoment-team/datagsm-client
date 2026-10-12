@@ -10,6 +10,7 @@ describe('getProjectCategoryLabel', () => {
       '팀 프로젝트',
       '동아리 프로젝트',
       '아이디어페스티벌',
+      '미배포 프로젝트',
     ]);
   });
 
