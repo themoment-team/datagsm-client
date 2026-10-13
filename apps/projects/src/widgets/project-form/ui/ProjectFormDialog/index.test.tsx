@@ -318,11 +318,11 @@ describe('ProjectFormDialog 카테고리 선택', () => {
     expect(await within(dialog()).findByText('카테고리를 선택해 주세요')).toBeVisible();
     expect(requests).toEqual([]);
 
-    await selectOption(user, categorySelect(), '개인 프로젝트');
+    await selectOption(user, categorySelect(), '토이 프로젝트');
     await user.click(submitButton);
 
     await screen.findByText('수정 신청이 접수되었습니다.');
-    expect(requests[0]?.body).toMatchObject({ category: 'PERSONAL' });
+    expect(requests[0]?.body).toMatchObject({ category: 'TOY_PROJECT' });
   });
 });
 

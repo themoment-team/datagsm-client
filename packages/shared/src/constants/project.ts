@@ -3,9 +3,9 @@ import type { ProjectCategory } from '@repo/shared/types';
 /** 서버의 배포 URL 길이 제한 */
 export const PROJECT_DEPLOYMENT_URL_MAX_LENGTH = 300;
 
-/** 서버 ProjectCategory와 이름이 같아야 한다. 필터와 선택지에 이 순서로 보여준다. */
+/** 서버 ProjectCategory와 이름·순서가 같아야 한다. 필터와 선택지에 이 순서로 보여준다. */
 export const PROJECT_CATEGORIES = [
-  'PERSONAL',
+  'TOY_PROJECT',
   'TEAM',
   'CLUB',
   'IDEA_FESTIVAL',
@@ -14,11 +14,11 @@ export const PROJECT_CATEGORIES = [
 
 /** 프로젝트·어드민 양쪽 화면에서 같은 이름으로 보여준다. */
 export const PROJECT_CATEGORY_LABEL: Record<ProjectCategory, string> = {
-  PERSONAL: '개인 프로젝트',
+  TOY_PROJECT: '토이 프로젝트',
   TEAM: '팀 프로젝트',
   CLUB: '동아리 프로젝트',
   IDEA_FESTIVAL: '아이디어페스티벌',
-  NOT_DEPLOYED: '미배포 프로젝트',
+  NOT_DEPLOYED: '미배포',
 };
 
 export const PROJECT_UNCATEGORIZED_LABEL = '미분류';

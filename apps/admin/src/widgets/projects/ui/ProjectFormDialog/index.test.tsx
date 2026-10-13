@@ -284,11 +284,11 @@ describe('ProjectFormDialog 수정', () => {
     ).toBeInTheDocument();
     expect(requests).toEqual([]);
 
-    await selectOption(user, field('카테고리'), '개인 프로젝트');
+    await selectOption(user, field('카테고리'), '토이 프로젝트');
     await submit(user);
 
     await screen.findByText('프로젝트 데이터가 수정되었습니다.');
-    expect(requests[0]?.body).toMatchObject({ category: 'PERSONAL' });
+    expect(requests[0]?.body).toMatchObject({ category: 'TOY_PROJECT' });
   });
 
   it('운영 중인 프로젝트를 종료로 바꾸면 정보 수정 뒤 종료 처리한다', async () => {

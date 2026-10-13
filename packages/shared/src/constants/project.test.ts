@@ -6,11 +6,11 @@ import { PROJECT_CATEGORIES, getProjectCategoryLabel, parseProjectCategory } fro
 describe('getProjectCategoryLabel', () => {
   it('카테고리를 한글 이름으로 바꾼다', () => {
     expect(PROJECT_CATEGORIES.map(getProjectCategoryLabel)).toEqual([
-      '개인 프로젝트',
+      '토이 프로젝트',
       '팀 프로젝트',
       '동아리 프로젝트',
       '아이디어페스티벌',
-      '미배포 프로젝트',
+      '미배포',
     ]);
   });
 
@@ -28,7 +28,7 @@ describe('parseProjectCategory', () => {
     expect(parseProjectCategory(value)).toBeUndefined();
   });
 
-  it.each(['foo', 'team', 'ACTIVE'])('목록에 없는 %s는 전체로 본다', (value) => {
+  it.each(['foo', 'team', 'ACTIVE', 'PERSONAL'])('목록에 없는 %s는 전체로 본다', (value) => {
     expect(parseProjectCategory(value)).toBeUndefined();
   });
 });
