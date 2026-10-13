@@ -11,6 +11,7 @@ import {
 import type { BaseApiResponse, MyProject, ProjectRequestBody } from '@repo/shared/types';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -40,7 +41,6 @@ import {
   PROJECT_REPOSITORY_MAX_LENGTH,
   PROJECT_TECH_STACK_MAX_COUNT,
   PROJECT_TECH_STACK_MAX_LENGTH,
-  type ProjectFormInput,
   type ProjectFormType,
   projectFormSchema,
 } from '@/entities/project';
@@ -67,11 +67,11 @@ const LABEL_STYLE = 'text-muted-foreground font-mono text-xs uppercase tracking-
 
 const currentYear = new Date().getFullYear();
 
-const buildDefaults = (initial?: MyProject): ProjectFormInput => ({
+const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   name: initial?.name ?? '',
   description: initial?.description ?? '',
   startYear: initial?.startYear ?? currentYear,
-  category: initial?.category ?? null,
+  categories: initial?.categories ?? [],
   clubId: initial?.club?.id ?? null,
   participantIds: initial?.participants.map((participant) => participant.id) ?? [],
   repositories: initial?.repositories ?? [],
@@ -144,7 +144,7 @@ const ProjectFormDialog = ({
     getValues,
     setValue,
     formState: { errors },
-  } = useForm<ProjectFormInput, unknown, ProjectFormType>({
+  } = useForm<ProjectFormType>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: buildDefaults(initial),
   });
@@ -212,7 +212,7 @@ const ProjectFormDialog = ({
       name: form.name,
       description: form.description,
       startYear: form.startYear,
-      category: form.category,
+      categories: form.categories,
       clubId: form.clubId ?? NO_CLUB_ID,
       participantIds,
       repositories: form.repositories,
@@ -321,33 +321,50 @@ const ProjectFormDialog = ({
           </div>
 
           <div className={cn('space-y-2')}>
-            <Label htmlFor="category" className={cn(LABEL_STYLE)}>
-              카테고리
-            </Label>
+            <Label className={cn(LABEL_STYLE)}>카테고리</Label>
             <Controller
               control={control}
-              name="category"
+              name="categories"
               render={({ field }) => (
-                <Select
-                  // 빈 문자열이어야 고르기 전 상태로 돌아가 placeholder가 보인다.
-                  value={field.value ?? ''}
-                  onValueChange={field.onChange}
-                  disabled={isPending}
+                <div
+                  role="group"
+                  aria-label="카테고리"
+                  className={cn('flex flex-wrap gap-x-4 gap-y-2')}
                 >
-                  <SelectTrigger id="category" className={cn('border-foreground rounded-none')}>
-                    <SelectValue placeholder="카테고리 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROJECT_CATEGORIES.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {PROJECT_CATEGORY_LABEL[category]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {PROJECT_CATEGORIES.map((category) => {
+                    const isSelected = field.value.includes(category);
+
+                    return (
+                      <div key={category} className={cn('flex items-center gap-2')}>
+                        <Checkbox
+                          id={`category-${category}`}
+                          checked={isSelected}
+                          onCheckedChange={() =>
+                            field.onChange(
+                              isSelected
+                                ? field.value.filter((selected) => selected !== category)
+                                : [...field.value, category],
+                            )
+                          }
+                          disabled={isPending}
+                        />
+                        <label
+                          htmlFor={`category-${category}`}
+                          className={cn('cursor-pointer text-sm')}
+                        >
+                          {PROJECT_CATEGORY_LABEL[category]}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             />
-            <FormErrorMessage error={errors.category} />
+            {errors.categories?.message && (
+              <p className={cn('text-destructive font-mono text-xs')}>
+                {errors.categories.message}
+              </p>
+            )}
           </div>
 
           <div className={cn('space-y-2')}>

@@ -107,7 +107,7 @@ export interface MyProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus | null;
-  category: ProjectCategory | null;
+  categories: ProjectCategory[];
   iconUrl: string | null;
   /** 대기 중인 수정안이 있으면 수정안의 키. 수정 시 아이콘을 유지하려면 그대로 보낸다 */
   iconKey: string | null;
@@ -134,8 +134,8 @@ export interface ProjectRequestBody {
   name: string;
   description: string;
   startYear: number;
-  /** 생략하면 현재 값을 유지한다. 한 번 지정하면 미분류로 되돌릴 수 없다 */
-  category?: ProjectCategory;
+  /** 생략하면 현재 값을 유지하고, 빈 배열이면 모두 해제한다 */
+  categories?: ProjectCategory[];
   /** 무소속은 0 또는 생략 */
   clubId?: number;
   participantIds?: number[];

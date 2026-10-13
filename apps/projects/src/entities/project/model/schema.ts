@@ -1,5 +1,4 @@
 import { PROJECT_CATEGORIES, PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
-import type { ProjectCategory } from '@repo/shared/types';
 import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
 
@@ -31,16 +30,10 @@ export const projectFormSchema = z.object({
     .gte(2000, '올바른 연도를 입력해 주세요')
     .lte(CURRENT_YEAR + 1, '올바른 연도를 입력해 주세요'),
   /**
-   * 고르기 전에는 null. 서버는 생략을 허용하지만 미분류는 카테고리 필터에서 빠지므로
-   * 폼에서는 반드시 고르게 한다.
+   * 서버는 빈 목록도 받지만 미분류는 카테고리 필터에서 빠지므로
+   * 신청할 때는 하나 이상 고르게 한다.
    */
-  category: z
-    .enum(PROJECT_CATEGORIES)
-    .nullable()
-    .refine(
-      (category): category is ProjectCategory => category !== null,
-      '카테고리를 선택해 주세요',
-    ),
+  categories: z.array(z.enum(PROJECT_CATEGORIES)).min(1, '카테고리를 하나 이상 선택해 주세요'),
   /** null이면 무소속 */
   clubId: z.number().int().nullable(),
   participantIds: z.array(z.number().int()),
@@ -74,7 +67,4 @@ export const projectFormSchema = z.object({
     ),
 });
 
-/** 폼에 담기는 값. 카테고리는 고르기 전이라 null일 수 있다. */
-export type ProjectFormInput = z.input<typeof projectFormSchema>;
-/** 검증을 통과한 값 */
 export type ProjectFormType = z.infer<typeof projectFormSchema>;
