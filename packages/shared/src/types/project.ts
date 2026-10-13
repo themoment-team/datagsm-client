@@ -61,7 +61,8 @@ export interface PublicProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
-  category: ProjectCategory | null;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
   iconUrl: string | null;
   deploymentUrl: string | null;
   club: Club | null;
@@ -83,7 +84,7 @@ export interface PublicProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
-  /** 지정하면 미분류(null) 프로젝트는 빠진다 */
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
   category?: ProjectCategory;
   page?: number;
   size?: number;

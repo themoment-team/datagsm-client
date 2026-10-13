@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { getProjectCategoryLabel } from '@repo/shared/constants';
+import { getProjectCategoryLabels } from '@repo/shared/constants';
 import type { PublicProject } from '@repo/shared/types';
 import { Badge } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -16,7 +16,7 @@ interface ProjectCardProps {
 const MAX_VISIBLE_TECH = 4;
 
 const ProjectCard = ({ project, href }: ProjectCardProps) => {
-  const { name, description, status, category, iconUrl, club, startYear, endYear, techStacks } =
+  const { name, description, status, categories, iconUrl, club, startYear, endYear, techStacks } =
     project;
 
   return (
@@ -53,12 +53,17 @@ const ProjectCard = ({ project, href }: ProjectCardProps) => {
           </p>
         </div>
 
-        <div className={cn('flex flex-shrink-0 flex-col items-end gap-1')}>
-          <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>
-            {PROJECT_STATUS_LABEL[status]}
+        <Badge variant={status === 'ACTIVE' ? 'default' : 'secondary'}>
+          {PROJECT_STATUS_LABEL[status]}
+        </Badge>
+      </div>
+
+      <div className={cn('flex flex-wrap gap-1')}>
+        {getProjectCategoryLabels(categories).map((label) => (
+          <Badge key={label} variant="outline">
+            {label}
           </Badge>
-          <Badge variant="outline">{getProjectCategoryLabel(category)}</Badge>
-        </div>
+        ))}
       </div>
 
       <p className={cn('text-muted-foreground line-clamp-2 text-sm')}>{description}</p>

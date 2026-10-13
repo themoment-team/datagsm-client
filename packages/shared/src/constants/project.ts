@@ -28,6 +28,17 @@ export const getProjectCategoryLabel = (category: ProjectCategory | null | undef
   category ? PROJECT_CATEGORY_LABEL[category] : PROJECT_UNCATEGORIZED_LABEL;
 
 /**
+ * 프로젝트의 카테고리 이름 목록. 카테고리가 하나도 없으면 미분류 하나만 돌려준다.
+ * 카테고리를 지원하기 전 서버는 categories를 내려주지 않으므로 없는 값도 미분류로 본다.
+ */
+export const getProjectCategoryLabels = (
+  categories: readonly ProjectCategory[] | null | undefined,
+) =>
+  categories?.length
+    ? categories.map((category) => PROJECT_CATEGORY_LABEL[category])
+    : [PROJECT_UNCATEGORIZED_LABEL];
+
+/**
  * URL의 category 값을 카테고리로 바꾼다. 목록에 없는 값은 전체(undefined)로 본다.
  * 검증 없이 넘기면 `?category=foo`가 그대로 서버로 가 400이 난다.
  */

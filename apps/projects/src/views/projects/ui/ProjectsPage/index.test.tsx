@@ -53,7 +53,7 @@ const publicProject: PublicProject = {
   startYear: 2024,
   endYear: null,
   status: 'ACTIVE',
-  category: 'TEAM',
+  categories: ['TEAM'],
   iconUrl: null,
   deploymentUrl: null,
   club: null,
@@ -110,16 +110,18 @@ describe('ProjectsPage 카테고리 필터', () => {
 });
 
 describe('ProjectsPage 카테고리 표시', () => {
-  it('카드에 카테고리를 보여주고, 없으면 미분류로 보여준다', async () => {
+  it('카드에 카테고리를 모두 보여주고, 없으면 미분류로 보여준다', async () => {
     mockPublicProjects([
-      publicProject,
-      { ...publicProject, id: 8, name: '구 포털', category: null },
+      { ...publicProject, categories: ['TEAM', 'NOT_DEPLOYED'] },
+      { ...publicProject, id: 8, name: '구 포털', categories: [] },
     ]);
 
     renderWithProviders(<ProjectsPage />);
 
     const card = await screen.findByRole('link', { name: /DataGSM/ });
     expect(within(card).getByText('팀 프로젝트')).toBeInTheDocument();
+    expect(within(card).getByText('미배포')).toBeInTheDocument();
+    expect(within(card).queryByText('미분류')).not.toBeInTheDocument();
     expect(within(screen.getByRole('link', { name: /구 포털/ })).getByText('미분류')).toBeVisible();
   });
 });
