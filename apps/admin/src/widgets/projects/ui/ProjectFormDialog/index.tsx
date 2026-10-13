@@ -8,6 +8,7 @@ import {
 import { Club, Project, Student } from '@repo/shared/types';
 import {
   Button,
+  Checkbox,
   Command,
   CommandEmpty,
   CommandInput,
@@ -113,8 +114,7 @@ const ProjectFormDialog = ({
           name: project.name,
           description: project.description,
           startYear: project.startYear,
-          // 미분류 프로젝트는 비워 두어, 수정할 때 카테고리를 고르게 한다.
-          category: project.category ?? undefined,
+          categories: project.categories ?? [],
           clubId: project.club?.id || 0,
           participantIds: project.participants.map((p) => p.id),
           status: project.status,
@@ -128,7 +128,7 @@ const ProjectFormDialog = ({
           name: '',
           description: '',
           startYear: undefined,
-          category: undefined,
+          categories: [],
           clubId: 0,
           participantIds: [],
           status: 'ACTIVE',
@@ -279,28 +279,6 @@ const ProjectFormDialog = ({
               />
             </FormField>
 
-            <FormField label="카테고리" htmlFor="category" error={errors.category}>
-              <Controller
-                control={control}
-                name="category"
-                render={({ field }) => (
-                  // 빈 문자열이어야 고르기 전 상태로 돌아가 placeholder가 보인다.
-                  <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                    <SelectTrigger id="category" className={cn(FORM_TRIGGER_STYLE)}>
-                      <SelectValue placeholder="카테고리를 선택하세요" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROJECT_CATEGORIES.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {PROJECT_CATEGORY_LABEL[category]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </FormField>
-
             <FormField label="동아리" htmlFor="clubId" error={errors.clubId}>
               <Controller
                 control={control}
@@ -372,6 +350,50 @@ const ProjectFormDialog = ({
                 />
               </FormField>
             )}
+
+            <FormField label="카테고리" className={cn('col-span-2')}>
+              <Controller
+                control={control}
+                name="categories"
+                render={({ field }) => {
+                  const selected = field.value ?? [];
+
+                  return (
+                    <div
+                      role="group"
+                      aria-label="카테고리"
+                      className={cn('flex flex-wrap gap-x-4 gap-y-2')}
+                    >
+                      {PROJECT_CATEGORIES.map((category) => {
+                        const isSelected = selected.includes(category);
+
+                        return (
+                          <div key={category} className={cn('flex items-center gap-2')}>
+                            <Checkbox
+                              id={`category-${category}`}
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                field.onChange(
+                                  isSelected
+                                    ? selected.filter((item) => item !== category)
+                                    : [...selected, category],
+                                )
+                              }
+                            />
+                            <label
+                              htmlFor={`category-${category}`}
+                              className={cn('cursor-pointer text-sm')}
+                            >
+                              {PROJECT_CATEGORY_LABEL[category]}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }}
+              />
+            </FormField>
 
             <FormField
               label="설명"

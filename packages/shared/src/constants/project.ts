@@ -23,10 +23,6 @@ export const PROJECT_CATEGORY_LABEL: Record<ProjectCategory, string> = {
 
 export const PROJECT_UNCATEGORIZED_LABEL = '미분류';
 
-/** 카테고리가 없는(null) 프로젝트는 미분류로 보여준다. */
-export const getProjectCategoryLabel = (category: ProjectCategory | null | undefined) =>
-  category ? PROJECT_CATEGORY_LABEL[category] : PROJECT_UNCATEGORIZED_LABEL;
-
 /**
  * 프로젝트의 카테고리 이름 목록. 카테고리가 하나도 없으면 미분류 하나만 돌려준다.
  * 카테고리를 지원하기 전 서버는 categories를 내려주지 않으므로 없는 값도 미분류로 본다.

@@ -165,6 +165,7 @@ const ProjectsPage = () => {
     resolver: zodResolver(AddProjectSchema),
     defaultValues: {
       status: 'ACTIVE',
+      categories: [],
       participantIds: [],
       clubId: 0,
       repositories: [],

@@ -13,7 +13,7 @@ export const createProject = (overrides: Partial<Project> = {}): Project => {
     startYear: 2025,
     endYear: null,
     status: 'ACTIVE',
-    category: null,
+    categories: [],
     club: null,
     participants: [],
     repositories: [],

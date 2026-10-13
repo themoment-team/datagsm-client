@@ -12,7 +12,7 @@ const pendingRequest: ProjectEditRequest = {
   name: 'DataGSM',
   description: '학교 데이터 API',
   startYear: 2024,
-  category: null,
+  categories: [],
   iconUrl: null,
   iconKey: null,
   deploymentUrl: null,
@@ -49,15 +49,17 @@ describe('RequestReviewDialog', () => {
     expect(within(dialog()).queryByRole('link', { name: unsafeRepo })).not.toBeInTheDocument();
   });
 
-  it('신청한 카테고리를 보여 주고, 없으면 미분류로 보여 준다', () => {
+  it('신청한 카테고리를 모두 보여 주고, 없으면 미분류로 보여 준다', () => {
     const { rerender } = renderWithProviders(
       <RequestReviewDialog
-        request={{ ...pendingRequest, category: 'IDEA_FESTIVAL' }}
+        request={{ ...pendingRequest, categories: ['IDEA_FESTIVAL', 'NOT_DEPLOYED'] }}
         open
         onOpenChange={() => {}}
       />,
     );
     expect(within(dialog()).getByText('아이디어페스티벌')).toBeInTheDocument();
+    expect(within(dialog()).getByText('미배포')).toBeInTheDocument();
+    expect(within(dialog()).queryByText('미분류')).not.toBeInTheDocument();
 
     rerender(<RequestReviewDialog request={pendingRequest} open onOpenChange={() => {}} />);
 

@@ -15,8 +15,8 @@ export interface Project {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
-  /** 카테고리가 생기기 전에 등록된 프로젝트는 null(미분류) */
-  category: ProjectCategory | null;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
   iconUrl?: string | null;
   iconKey?: string | null;
   deploymentUrl?: string | null;
@@ -39,7 +39,7 @@ export interface ProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
-  /** 지정하면 미분류(null) 프로젝트는 빠진다 */
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
   category?: ProjectCategory;
   page: number;
   size: number;
@@ -156,7 +156,7 @@ export interface ProjectEditRequest {
   name: string;
   description: string;
   startYear: number;
-  category: ProjectCategory | null;
+  categories: ProjectCategory[];
   iconUrl: string | null;
   iconKey: string | null;
   deploymentUrl: string | null;

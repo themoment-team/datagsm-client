@@ -7,7 +7,7 @@ export interface CreateProjectRequest {
   name: string;
   description: string;
   startYear: number;
-  category: ProjectCategory;
+  categories: ProjectCategory[];
   clubId?: number | null;
   participantIds: number[];
   status: 'ACTIVE' | 'ENDED';

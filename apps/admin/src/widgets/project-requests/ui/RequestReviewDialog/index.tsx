@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { getProjectCategoryLabel } from '@repo/shared/constants';
+import { PROJECT_CATEGORY_LABEL, PROJECT_UNCATEGORIZED_LABEL } from '@repo/shared/constants';
 import type { BaseApiResponse, ProjectEditRequest } from '@repo/shared/types';
 import {
   Badge,
@@ -157,13 +157,7 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
             </p>
           </div>
 
-          <div className={cn('grid grid-cols-3 gap-4')}>
-            <div className={cn('space-y-1')}>
-              <p className={cn(LABEL_STYLE)}>카테고리</p>
-              <p className={cn(request.category ? 'text-foreground text-sm' : EMPTY_STYLE)}>
-                {getProjectCategoryLabel(request.category)}
-              </p>
-            </div>
+          <div className={cn('grid grid-cols-2 gap-4')}>
             <div className={cn('space-y-1')}>
               <p className={cn(LABEL_STYLE)}>동아리</p>
               <p className={cn('text-foreground text-sm')}>{request.club?.name ?? '무소속'}</p>
@@ -175,6 +169,21 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
           </div>
 
           {/* 아래 항목은 비어 있어도 섹션을 남긴다. "신청자가 입력하지 않음"과 "화면에 없음"을 구분해야 하기 때문. */}
+          <div className={cn('space-y-1')}>
+            <p className={cn(LABEL_STYLE)}>카테고리</p>
+            {request.categories?.length ? (
+              <div className={cn('flex flex-wrap gap-1')}>
+                {request.categories.map((category) => (
+                  <Badge key={category} variant="outline">
+                    {PROJECT_CATEGORY_LABEL[category]}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className={cn(EMPTY_STYLE)}>{PROJECT_UNCATEGORIZED_LABEL}</p>
+            )}
+          </div>
+
           <div className={cn('space-y-1')}>
             <p className={cn(LABEL_STYLE)}>배포 URL</p>
             {deploymentUrl ? (
