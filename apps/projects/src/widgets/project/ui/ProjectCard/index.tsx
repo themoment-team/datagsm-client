@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { getProjectCategoryLabels } from '@repo/shared/constants';
+import { PROJECT_CATEGORY_LABEL } from '@repo/shared/constants';
 import type { PublicProject } from '@repo/shared/types';
 import { Badge } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -58,13 +58,16 @@ const ProjectCard = ({ project, href }: ProjectCardProps) => {
         </Badge>
       </div>
 
-      <div className={cn('flex flex-wrap gap-1')}>
-        {getProjectCategoryLabels(categories).map((label) => (
-          <Badge key={label} variant="outline">
-            {label}
-          </Badge>
-        ))}
-      </div>
+      {/* 공개 화면에서 미분류는 방문자에게 주는 정보가 없어, 카테고리가 없으면 줄을 숨긴다. */}
+      {categories.length > 0 && (
+        <div className={cn('flex flex-wrap gap-1')}>
+          {categories.map((category) => (
+            <Badge key={category} variant="outline">
+              {PROJECT_CATEGORY_LABEL[category]}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <p className={cn('text-muted-foreground line-clamp-2 text-sm')}>{description}</p>
 

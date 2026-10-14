@@ -110,7 +110,7 @@ describe('ProjectsPage 카테고리 필터', () => {
 });
 
 describe('ProjectsPage 카테고리 표시', () => {
-  it('카드에 카테고리를 모두 보여주고, 없으면 미분류로 보여준다', async () => {
+  it('카드에 카테고리를 모두 보여주고, 카테고리가 없으면 미분류 배지를 붙이지 않는다', async () => {
     mockPublicProjects([
       { ...publicProject, categories: ['TEAM', 'NOT_DEPLOYED'] },
       { ...publicProject, id: 8, name: '구 포털', categories: [] },
@@ -121,7 +121,9 @@ describe('ProjectsPage 카테고리 표시', () => {
     const card = await screen.findByRole('link', { name: /DataGSM/ });
     expect(within(card).getByText('팀 프로젝트')).toBeInTheDocument();
     expect(within(card).getByText('미배포')).toBeInTheDocument();
-    expect(within(card).queryByText('미분류')).not.toBeInTheDocument();
-    expect(within(screen.getByRole('link', { name: /구 포털/ })).getByText('미분류')).toBeVisible();
+
+    const uncategorizedCard = screen.getByRole('link', { name: /구 포털/ });
+    expect(within(uncategorizedCard).queryByText('미분류')).not.toBeInTheDocument();
+    expect(within(uncategorizedCard).queryByText('팀 프로젝트')).not.toBeInTheDocument();
   });
 });

@@ -85,8 +85,10 @@ describe('ProjectDetailSheet', () => {
     expect(requestedIds).toEqual([7]);
   });
 
-  it('카테고리를 모두 보여 주고, 없으면 미분류로 보여 준다', async () => {
-    mockProjectDetail(() => apiSuccess({ ...publicProject, categories: [] }));
+  it('카테고리를 모두 보여 주고, 카테고리가 없으면 미분류 배지를 붙이지 않는다', async () => {
+    mockProjectDetail(() =>
+      apiSuccess({ ...publicProject, description: '최신 설명', categories: [] }),
+    );
 
     renderWithProviders(
       <ProjectDetailSheet projectId={7} initialProject={publicProject} onClose={() => {}} />,
@@ -94,8 +96,11 @@ describe('ProjectDetailSheet', () => {
 
     expect(within(dialog()).getByText('팀 프로젝트')).toBeInTheDocument();
     expect(within(dialog()).getByText('미배포')).toBeInTheDocument();
-    expect(await within(dialog()).findByText('미분류')).toBeInTheDocument();
+
+    // 카테고리가 빠진 조회 응답이 반영되면 배지가 모두 사라진다.
+    expect(await within(dialog()).findByText('최신 설명')).toBeInTheDocument();
     expect(within(dialog()).queryByText('팀 프로젝트')).not.toBeInTheDocument();
+    expect(within(dialog()).queryByText('미분류')).not.toBeInTheDocument();
   });
 
   it('없는 프로젝트면 찾을 수 없다는 안내를 보여 준다', async () => {
