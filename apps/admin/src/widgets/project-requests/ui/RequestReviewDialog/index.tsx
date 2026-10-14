@@ -171,7 +171,7 @@ const RequestReviewDialog = ({ request, open, onOpenChange }: RequestReviewDialo
           {/* 아래 항목은 비어 있어도 섹션을 남긴다. "신청자가 입력하지 않음"과 "화면에 없음"을 구분해야 하기 때문. */}
           <div className={cn('space-y-1')}>
             <p className={cn(LABEL_STYLE)}>카테고리</p>
-            {request.categories?.length ? (
+            {request.categories.length > 0 ? (
               <div className={cn('flex flex-wrap gap-1')}>
                 {request.categories.map((category) => (
                   <Badge key={category} variant="outline">

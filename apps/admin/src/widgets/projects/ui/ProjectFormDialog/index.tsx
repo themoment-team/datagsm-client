@@ -110,7 +110,7 @@ const ProjectFormDialog = ({
           name: project.name,
           description: project.description,
           startYear: project.startYear,
-          categories: project.categories ?? [],
+          categories: project.categories,
           clubId: project.club?.id || 0,
           participantIds: project.participants.map((p) => p.id),
           status: project.status,

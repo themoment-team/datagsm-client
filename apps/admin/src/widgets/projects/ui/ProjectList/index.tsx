@@ -166,9 +166,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                   </TableCell>
                   <TableCell>
                     <TagCell
-                      items={project.categories?.map(
-                        (category) => PROJECT_CATEGORY_LABEL[category],
-                      )}
+                      items={project.categories.map((category) => PROJECT_CATEGORY_LABEL[category])}
                       emptyLabel={PROJECT_UNCATEGORIZED_LABEL}
                     />
                   </TableCell>

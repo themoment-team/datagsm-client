@@ -364,20 +364,15 @@ describe('ProjectFormDialog 수정', () => {
     expect(requests[0]?.body).toMatchObject({ deploymentUrl: '' });
   });
 
-  it('응답에 카테고리·리포지토리·기술 스택이 없는 프로젝트도 수정할 수 있다', async () => {
+  it('응답에 리포지토리·기술 스택이 없는 프로젝트도 수정할 수 있다', async () => {
     const requests = mockProjectApi();
-    const legacyProject = {
-      ...baseProject,
-      categories: undefined,
-      repositories: undefined,
-      techStacks: undefined,
-    };
+    const legacyProject = { ...baseProject, repositories: undefined, techStacks: undefined };
     const { user } = await openEditDialog(legacyProject as unknown as Project);
 
     await submit(user);
 
     await screen.findByText('프로젝트 데이터가 수정되었습니다.');
-    expect(requests[0]?.body).toMatchObject({ categories: [], repositories: [], techStacks: [] });
+    expect(requests[0]?.body).toMatchObject({ repositories: [], techStacks: [] });
   });
 
   it('수정에 실패하면 안내하고 종료·재개 처리를 하지 않는다', async () => {

@@ -20,8 +20,8 @@ describe('getProjectCategoryLabels', () => {
     expect(getProjectCategoryLabels(['NOT_DEPLOYED', 'TEAM'])).toEqual(['미배포', '팀 프로젝트']);
   });
 
-  it.each([[[]], [null], [undefined]])('%j는 미분류 하나로 돌려준다', (categories) => {
-    expect(getProjectCategoryLabels(categories)).toEqual(['미분류']);
+  it('카테고리가 없으면 미분류 하나로 돌려준다', () => {
+    expect(getProjectCategoryLabels([])).toEqual(['미분류']);
   });
 });
 

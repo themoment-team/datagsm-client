@@ -35,14 +35,9 @@ export const PROJECT_CATEGORY_FILTER_OPTIONS: { value: string; label: string }[]
   })),
 ];
 
-/**
- * 프로젝트의 카테고리 이름 목록. 카테고리가 하나도 없으면 미분류 하나만 돌려준다.
- * 카테고리를 지원하기 전 서버는 categories를 내려주지 않으므로 없는 값도 미분류로 본다.
- */
-export const getProjectCategoryLabels = (
-  categories: readonly ProjectCategory[] | null | undefined,
-) =>
-  categories?.length
+/** 프로젝트의 카테고리 이름 목록. 카테고리가 하나도 없으면 미분류 하나만 돌려준다. */
+export const getProjectCategoryLabels = (categories: readonly ProjectCategory[]) =>
+  categories.length > 0
     ? categories.map((category) => PROJECT_CATEGORY_LABEL[category])
     : [PROJECT_UNCATEGORIZED_LABEL];
 
