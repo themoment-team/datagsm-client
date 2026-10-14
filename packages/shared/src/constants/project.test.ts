@@ -1,7 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { PROJECT_CATEGORIES, getProjectCategoryLabels, parseProjectCategory } from './project';
+import {
+  PROJECT_CATEGORIES,
+  PROJECT_CATEGORY_FILTER_OPTIONS,
+  getProjectCategoryLabels,
+  parseProjectCategory,
+} from './project';
 
 describe('getProjectCategoryLabels', () => {
   it('카테고리마다 한글 이름을 받은 순서대로 돌려준다', () => {
@@ -17,6 +22,16 @@ describe('getProjectCategoryLabels', () => {
 
   it.each([[[]], [null], [undefined]])('%j는 미분류 하나로 돌려준다', (categories) => {
     expect(getProjectCategoryLabels(categories)).toEqual(['미분류']);
+  });
+});
+
+describe('PROJECT_CATEGORY_FILTER_OPTIONS', () => {
+  it('전체 다음에 카테고리를 선언 순서대로 두고, 미분류 선택지는 두지 않는다', () => {
+    expect(PROJECT_CATEGORY_FILTER_OPTIONS.map(({ value }) => value)).toEqual([
+      'all',
+      ...PROJECT_CATEGORIES,
+    ]);
+    expect(PROJECT_CATEGORY_FILTER_OPTIONS.map(({ label }) => label)).not.toContain('미분류');
   });
 });
 

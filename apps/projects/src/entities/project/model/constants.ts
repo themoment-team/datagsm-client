@@ -1,4 +1,3 @@
-import { PROJECT_CATEGORIES, PROJECT_CATEGORY_LABEL } from '@repo/shared/constants';
 import type {
   ProjectIconContentType,
   ProjectRequestStatus,
@@ -30,15 +29,6 @@ export const PROJECT_STATUS_FILTER_OPTIONS: FilterOption[] = [
   { value: 'all', label: '전체' },
   { value: 'ACTIVE', label: '운영 중' },
   { value: 'ENDED', label: '종료' },
-];
-
-/** 서버가 미분류만 조회하는 방법을 주지 않아 미분류 선택지는 없다. */
-export const PROJECT_CATEGORY_FILTER_OPTIONS: FilterOption[] = [
-  { value: 'all', label: '전체' },
-  ...PROJECT_CATEGORIES.map((category) => ({
-    value: category,
-    label: PROJECT_CATEGORY_LABEL[category],
-  })),
 ];
 
 export const PROJECT_REQUEST_STATUS_FILTER_OPTIONS: FilterOption[] = [

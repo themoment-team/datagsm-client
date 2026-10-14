@@ -37,3 +37,4 @@ export { FormField, FORM_FIELD_STYLE, FORM_TRIGGER_STYLE } from './FormField';
 export { GradeMemberPicker } from './GradeMemberPicker';
 export { AuthWindow } from './AuthWindow';
 export { TagInput } from './TagInput';
+export { ProjectCategoryCheckboxGroup } from './ProjectCategoryCheckboxGroup';

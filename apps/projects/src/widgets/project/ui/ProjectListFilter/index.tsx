@@ -2,15 +2,12 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 
+import { PROJECT_CATEGORY_FILTER_OPTIONS } from '@repo/shared/constants';
 import { Button, type FilterOption, FilterSelect, Input } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { Search } from 'lucide-react';
 
-import {
-  PROJECT_CATEGORY_FILTER_OPTIONS,
-  PROJECT_SORT_OPTIONS,
-  PROJECT_STATUS_FILTER_OPTIONS,
-} from '@/entities/project';
+import { PROJECT_SORT_OPTIONS, PROJECT_STATUS_FILTER_OPTIONS } from '@/entities/project';
 
 interface ProjectListFilterProps {
   /** URL에 반영된 검색어. 바뀌면 입력창도 이 값으로 맞춘다. */

@@ -3,15 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  PROJECT_CATEGORIES,
-  PROJECT_CATEGORY_LABEL,
-  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
-} from '@repo/shared/constants';
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import type { BaseApiResponse, MyProject, ProjectRequestBody } from '@repo/shared/types';
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -20,6 +15,7 @@ import {
   FormErrorMessage,
   Input,
   Label,
+  ProjectCategoryCheckboxGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -326,38 +322,11 @@ const ProjectFormDialog = ({
               control={control}
               name="categories"
               render={({ field }) => (
-                <div
-                  role="group"
-                  aria-label="카테고리"
-                  className={cn('flex flex-wrap gap-x-4 gap-y-2')}
-                >
-                  {PROJECT_CATEGORIES.map((category) => {
-                    const isSelected = field.value.includes(category);
-
-                    return (
-                      <div key={category} className={cn('flex items-center gap-2')}>
-                        <Checkbox
-                          id={`category-${category}`}
-                          checked={isSelected}
-                          onCheckedChange={() =>
-                            field.onChange(
-                              isSelected
-                                ? field.value.filter((selected) => selected !== category)
-                                : [...field.value, category],
-                            )
-                          }
-                          disabled={isPending}
-                        />
-                        <label
-                          htmlFor={`category-${category}`}
-                          className={cn('cursor-pointer text-sm')}
-                        >
-                          {PROJECT_CATEGORY_LABEL[category]}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
+                <ProjectCategoryCheckboxGroup
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isPending}
+                />
               )}
             />
             {errors.categories?.message && (

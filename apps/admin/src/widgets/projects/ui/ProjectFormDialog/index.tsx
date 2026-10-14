@@ -1,14 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  PROJECT_CATEGORIES,
-  PROJECT_CATEGORY_LABEL,
-  PROJECT_DEPLOYMENT_URL_MAX_LENGTH,
-} from '@repo/shared/constants';
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { Club, Project, Student } from '@repo/shared/types';
 import {
   Button,
-  Checkbox,
   Command,
   CommandEmpty,
   CommandInput,
@@ -26,6 +21,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ProjectCategoryCheckboxGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -355,43 +351,12 @@ const ProjectFormDialog = ({
               <Controller
                 control={control}
                 name="categories"
-                render={({ field }) => {
-                  const selected = field.value ?? [];
-
-                  return (
-                    <div
-                      role="group"
-                      aria-label="카테고리"
-                      className={cn('flex flex-wrap gap-x-4 gap-y-2')}
-                    >
-                      {PROJECT_CATEGORIES.map((category) => {
-                        const isSelected = selected.includes(category);
-
-                        return (
-                          <div key={category} className={cn('flex items-center gap-2')}>
-                            <Checkbox
-                              id={`category-${category}`}
-                              checked={isSelected}
-                              onCheckedChange={() =>
-                                field.onChange(
-                                  isSelected
-                                    ? selected.filter((item) => item !== category)
-                                    : [...selected, category],
-                                )
-                              }
-                            />
-                            <label
-                              htmlFor={`category-${category}`}
-                              className={cn('cursor-pointer text-sm')}
-                            >
-                              {PROJECT_CATEGORY_LABEL[category]}
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                }}
+                render={({ field }) => (
+                  <ProjectCategoryCheckboxGroup
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
               />
             </FormField>
 

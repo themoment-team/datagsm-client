@@ -24,6 +24,18 @@ export const PROJECT_CATEGORY_LABEL: Record<ProjectCategory, string> = {
 export const PROJECT_UNCATEGORIZED_LABEL = '미분류';
 
 /**
+ * 두 앱이 함께 쓰는 카테고리 필터 선택지. 'all'은 FilterSelect와 useURLFilters가 전체로 보는 값이다.
+ * 서버가 미분류만 조회하는 방법을 주지 않아 미분류 선택지는 없다.
+ */
+export const PROJECT_CATEGORY_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: '전체' },
+  ...PROJECT_CATEGORIES.map((category) => ({
+    value: category,
+    label: PROJECT_CATEGORY_LABEL[category],
+  })),
+];
+
+/**
  * 프로젝트의 카테고리 이름 목록. 카테고리가 하나도 없으면 미분류 하나만 돌려준다.
  * 카테고리를 지원하기 전 서버는 categories를 내려주지 않으므로 없는 값도 미분류로 본다.
  */
