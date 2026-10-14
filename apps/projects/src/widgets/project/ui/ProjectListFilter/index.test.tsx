@@ -11,11 +11,13 @@ const baseProps: FilterProps = {
   defaultSearch: '',
   status: 'all',
   sort: 'ID:DESC',
+  category: 'all',
   clubId: 'all',
   clubOptions: [{ value: 'all', label: '전체' }],
   onSearchSubmit: () => {},
   onStatusChange: () => {},
   onSortChange: () => {},
+  onCategoryChange: () => {},
   onClubChange: () => {},
 };
 

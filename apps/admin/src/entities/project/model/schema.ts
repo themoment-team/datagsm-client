@@ -1,4 +1,4 @@
-import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import { PROJECT_CATEGORIES, PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
 
@@ -6,6 +6,7 @@ export const ProjectFilterSchema = z.object({
   projectName: z.string().optional(),
   clubId: z.number().optional(),
   status: z.enum(['ACTIVE', 'ENDED']).optional(),
+  category: z.enum(PROJECT_CATEGORIES).optional(),
 });
 
 export type ProjectFilterType = z.infer<typeof ProjectFilterSchema>;
@@ -18,6 +19,8 @@ export const AddProjectSchema = z
       .number({ message: '시작 연도를 입력해주세요.' })
       .int()
       .min(1900, { message: '1900년 이후의 연도를 입력해주세요.' }),
+    // 빈 배열이면 미분류. 미분류 프로젝트를 종료만 처리할 수도 있어 어드민은 고르지 않아도 된다.
+    categories: z.array(z.enum(PROJECT_CATEGORIES)),
     clubId: z.number().nullable().optional(),
     participantIds: z.array(z.number()).min(1, { message: '한 명 이상의 팀원을 선택해주세요.' }),
     status: z.enum(['ACTIVE', 'ENDED'], {

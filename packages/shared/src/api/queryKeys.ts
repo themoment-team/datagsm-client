@@ -77,6 +77,7 @@ export const projectQueryKeys = {
     projectName?: string;
     clubId?: number;
     status?: string;
+    category?: string;
   }) => ['projects', 'list', params] as const,
   postProject: () => ['projects', 'create'] as const,
 } as const;
@@ -86,6 +87,7 @@ export const publicProjectQueryKeys = {
     projectName?: string;
     clubId?: number;
     status?: string;
+    category?: string;
     page?: number;
     size?: number;
     sortBy?: string;

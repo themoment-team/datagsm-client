@@ -15,6 +15,7 @@ import {
   FormErrorMessage,
   Input,
   Label,
+  ProjectCategoryCheckboxGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -66,6 +67,7 @@ const buildDefaults = (initial?: MyProject): ProjectFormType => ({
   name: initial?.name ?? '',
   description: initial?.description ?? '',
   startYear: initial?.startYear ?? currentYear,
+  categories: initial?.categories ?? [],
   clubId: initial?.club?.id ?? null,
   participantIds: initial?.participants.map((participant) => participant.id) ?? [],
   repositories: initial?.repositories ?? [],
@@ -206,6 +208,7 @@ const ProjectFormDialog = ({
       name: form.name,
       description: form.description,
       startYear: form.startYear,
+      categories: form.categories,
       clubId: form.clubId ?? NO_CLUB_ID,
       participantIds,
       repositories: form.repositories,
@@ -311,6 +314,26 @@ const ProjectFormDialog = ({
               disabled={isPending}
             />
             <FormErrorMessage error={errors.startYear} />
+          </div>
+
+          <div className={cn('space-y-2')}>
+            <Label className={cn(LABEL_STYLE)}>카테고리</Label>
+            <Controller
+              control={control}
+              name="categories"
+              render={({ field }) => (
+                <ProjectCategoryCheckboxGroup
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isPending}
+                />
+              )}
+            />
+            {errors.categories?.message && (
+              <p className={cn('text-destructive font-mono text-xs')}>
+                {errors.categories.message}
+              </p>
+            )}
           </div>
 
           <div className={cn('space-y-2')}>

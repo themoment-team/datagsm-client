@@ -2,7 +2,7 @@ import type { Project, ProjectListData } from '@repo/shared/types';
 
 import { nextId } from './sequence';
 
-/** 기본값은 동아리·참여자·리포지토리·기술 스택이 없는 진행 중인 프로젝트다. */
+/** 기본값은 카테고리·동아리·참여자·리포지토리·기술 스택이 없는 진행 중인 프로젝트다. */
 export const createProject = (overrides: Partial<Project> = {}): Project => {
   const id = overrides.id ?? nextId();
 
@@ -13,6 +13,7 @@ export const createProject = (overrides: Partial<Project> = {}): Project => {
     startYear: 2025,
     endYear: null,
     status: 'ACTIVE',
+    categories: [],
     club: null,
     participants: [],
     repositories: [],

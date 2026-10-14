@@ -35,6 +35,7 @@ const myProject: MyProject = {
   startYear: 2024,
   endYear: null,
   status: 'ACTIVE',
+  categories: [],
   iconUrl: null,
   iconKey: null,
   deploymentUrl: null,
@@ -95,6 +96,25 @@ describe('MyProjectsPage', () => {
 
     expect(await screen.findByText(EMPTY_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByText(GENERIC_ERROR_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it('카드에 카테고리를 모두 보여 주고, 없으면 미분류로 보여 준다', async () => {
+    mockMyProjects(() =>
+      apiSuccess({
+        totalElements: 2,
+        projects: [
+          { ...myProject, categories: ['CLUB', 'IDEA_FESTIVAL'] },
+          { ...myProject, projectId: 11, name: '구 포털' },
+        ],
+      }),
+    );
+
+    renderWithProviders(<MyProjectsPage />);
+
+    expect(await screen.findByText('동아리 프로젝트')).toBeInTheDocument();
+    expect(screen.getByText('아이디어페스티벌')).toBeInTheDocument();
+    // 카테고리가 있는 카드에는 미분류가 붙지 않아 한 번만 나온다.
+    expect(screen.getByText('미분류')).toBeInTheDocument();
   });
 
   it('신규 신청의 requestId와 등록된 프로젝트의 projectId가 같아도 두 카드를 key 충돌 없이 보여 준다', async () => {

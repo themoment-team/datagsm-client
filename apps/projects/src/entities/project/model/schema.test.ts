@@ -6,6 +6,7 @@ const validInput = {
   name: 'DataGSM',
   description: '학교 데이터를 제공하는 API 서비스',
   startYear: 2024,
+  categories: ['TEAM'],
   clubId: null,
   participantIds: [],
   repositories: [],
@@ -38,6 +39,33 @@ describe('projectFormSchema', () => {
   it('리포지토리가 20개를 초과하면 실패한다', () => {
     const repositories = Array.from({ length: 21 }, (_, index) => `https://repo/${index}`);
     expect(projectFormSchema.safeParse({ ...validInput, repositories }).success).toBe(false);
+  });
+
+  describe('categories', () => {
+    it('여러 개를 고를 수 있다', () => {
+      expect(
+        projectFormSchema.safeParse({ ...validInput, categories: ['TEAM', 'NOT_DEPLOYED'] })
+          .success,
+      ).toBe(true);
+    });
+
+    it('하나도 고르지 않으면 선택하라는 안내와 함께 실패한다', () => {
+      const result = projectFormSchema.safeParse({ ...validInput, categories: [] });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toContainEqual(
+        expect.objectContaining({
+          path: ['categories'],
+          message: '카테고리를 하나 이상 선택해 주세요',
+        }),
+      );
+    });
+
+    it('서버에 없는 카테고리가 섞여 있으면 실패한다', () => {
+      expect(
+        projectFormSchema.safeParse({ ...validInput, categories: ['TEAM', 'SCHOOL'] }).success,
+      ).toBe(false);
+    });
   });
 
   describe('repositories', () => {

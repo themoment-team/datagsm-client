@@ -1,6 +1,7 @@
 import {
   ClubStatus,
   ClubType,
+  ProjectCategory,
   ProjectRequestStatus,
   ProjectStatus,
   StudentRole,
@@ -95,6 +96,7 @@ export const projectUrl = {
     projectName?: string;
     clubId?: number;
     status?: 'ACTIVE' | 'ENDED';
+    category?: ProjectCategory;
   }) => {
     return `/v1/projects${buildQuery({
       page: params.page,
@@ -102,6 +104,7 @@ export const projectUrl = {
       projectName: params.projectName,
       clubId: params.clubId,
       status: params.status,
+      category: params.category,
     })}`;
   },
   postProject: () => '/v1/projects',
@@ -112,6 +115,7 @@ export const publicProjectUrl = {
     projectName?: string;
     clubId?: number;
     status?: ProjectStatus;
+    category?: ProjectCategory;
     page?: number;
     size?: number;
     sortBy?: 'ID' | 'NAME';
@@ -121,6 +125,7 @@ export const publicProjectUrl = {
       projectName: params.projectName,
       clubId: params.clubId,
       status: params.status,
+      category: params.category,
       page: params.page,
       size: params.size,
       sortBy: params.sortBy,

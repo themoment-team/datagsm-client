@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { PROJECT_CATEGORY_LABEL } from '@repo/shared/constants';
 import type { PublicProject } from '@repo/shared/types';
 import {
   Badge,
@@ -100,6 +101,12 @@ const ProjectDetail = ({ project }: { project: PublicProject }) => {
               <Badge variant={project.status === 'ACTIVE' ? 'default' : 'secondary'}>
                 {PROJECT_STATUS_LABEL[project.status]}
               </Badge>
+              {/* 목록 카드와 같이 카테고리가 없으면 미분류 배지를 붙이지 않는다. */}
+              {project.categories.map((category) => (
+                <Badge key={category} variant="outline">
+                  {PROJECT_CATEGORY_LABEL[category]}
+                </Badge>
+              ))}
             </div>
             <p className={cn('text-muted-foreground mt-1 font-mono text-xs')}>
               {project.club?.name ?? '무소속'} · {project.startYear}

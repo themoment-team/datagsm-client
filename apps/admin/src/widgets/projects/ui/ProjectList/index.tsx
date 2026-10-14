@@ -1,3 +1,4 @@
+import { PROJECT_CATEGORY_LABEL, PROJECT_UNCATEGORIZED_LABEL } from '@repo/shared/constants';
 import { Project, ProjectStatus } from '@repo/shared/types';
 import {
   Badge,
@@ -44,12 +45,14 @@ const MAX_VISIBLE_TAGS = 2;
 interface TagCellProps {
   items?: string[];
   format?: (item: string) => string;
+  /** 항목이 없을 때 보여줄 글자 */
+  emptyLabel?: string;
 }
 
 /** 문자열 목록을 칩으로 보여주고, 길면 +N으로 접는 셀. */
-const TagCell = ({ items, format }: TagCellProps) => {
+const TagCell = ({ items, format, emptyLabel = '-' }: TagCellProps) => {
   if (!items?.length) {
-    return <span className={cn('text-muted-foreground')}>-</span>;
+    return <span className={cn('text-muted-foreground')}>{emptyLabel}</span>;
   }
 
   const visibleItems = items.slice(0, MAX_VISIBLE_TAGS);
@@ -88,6 +91,7 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
         <TableRow className={cn(TABLE_HEAD_ROW_STYLE)}>
           <TableHead className={cn('w-[160px]')}>이름</TableHead>
           <TableHead className={cn('w-[140px]')}>상태</TableHead>
+          <TableHead className={cn('w-[180px]')}>카테고리</TableHead>
           <TableHead className={cn('w-[80px]')}>시작 연도</TableHead>
           <TableHead className={cn('w-[80px]')}>종료 연도</TableHead>
           <TableHead className={cn('w-[240px]')}>설명</TableHead>
@@ -109,6 +113,9 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                 </TableCell>
                 <TableCell>
                   <Skeleton className={cn('h-6 w-20')} />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className={cn('h-4 w-20')} />
                 </TableCell>
                 <TableCell>
                   <Skeleton className={cn('h-4 w-10')} />
@@ -156,6 +163,12 @@ const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps
                       />
                       {status.label}
                     </span>
+                  </TableCell>
+                  <TableCell>
+                    <TagCell
+                      items={project.categories.map((category) => PROJECT_CATEGORY_LABEL[category])}
+                      emptyLabel={PROJECT_UNCATEGORIZED_LABEL}
+                    />
                   </TableCell>
                   <TableCell>{project.startYear}</TableCell>
                   <TableCell>{project.endYear ?? '-'}</TableCell>

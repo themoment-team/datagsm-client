@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 
+import { PROJECT_CATEGORY_FILTER_OPTIONS } from '@repo/shared/constants';
 import { Button, type FilterOption, FilterSelect, Input } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { Search } from 'lucide-react';
@@ -13,12 +14,14 @@ interface ProjectListFilterProps {
   defaultSearch: string;
   status: string;
   sort: string;
+  category: string;
   clubId: string;
   /** '전체'를 포함한 동아리 선택지. 목록을 못 불러오면 전체만 남아 필터가 숨겨진다. */
   clubOptions: FilterOption[];
   onSearchSubmit: (value: string) => void;
   onStatusChange: (value: string) => void;
   onSortChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
   onClubChange: (value: string) => void;
 }
 
@@ -26,11 +29,13 @@ const ProjectListFilter = ({
   defaultSearch,
   status,
   sort,
+  category,
   clubId,
   clubOptions,
   onSearchSubmit,
   onStatusChange,
   onSortChange,
+  onCategoryChange,
   onClubChange,
 }: ProjectListFilterProps) => {
   const [search, setSearch] = useState(defaultSearch);
@@ -60,6 +65,12 @@ const ProjectListFilter = ({
       </form>
 
       <div className={cn('flex flex-wrap items-center gap-2')}>
+        <FilterSelect
+          label="카테고리"
+          options={PROJECT_CATEGORY_FILTER_OPTIONS}
+          value={category}
+          onChange={onCategoryChange}
+        />
         {clubOptions.length > 1 && (
           <FilterSelect
             label="동아리"

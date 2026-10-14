@@ -1,6 +1,7 @@
 import { ApiResponse, Club, ClubMember, StudentMajor } from '@repo/shared/types';
 
 export type ProjectStatus = 'ACTIVE' | 'ENDED';
+export type ProjectCategory = 'TOY_PROJECT' | 'TEAM' | 'CLUB' | 'IDEA_FESTIVAL' | 'NOT_DEPLOYED';
 export type ProjectRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
 export type ProjectParticipantRole = 'OWNER' | 'PARTICIPANT';
 export type ProjectSortBy = 'ID' | 'NAME';
@@ -14,6 +15,8 @@ export interface Project {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
   iconUrl?: string | null;
   iconKey?: string | null;
   deploymentUrl?: string | null;
@@ -36,6 +39,8 @@ export interface ProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
+  category?: ProjectCategory;
   page: number;
   size: number;
 }
@@ -56,6 +61,8 @@ export interface PublicProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
   iconUrl: string | null;
   deploymentUrl: string | null;
   club: Club | null;
@@ -77,6 +84,8 @@ export interface PublicProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
+  category?: ProjectCategory;
   page?: number;
   size?: number;
   sortBy?: ProjectSortBy;
@@ -98,6 +107,7 @@ export interface MyProject {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus | null;
+  categories: ProjectCategory[];
   iconUrl: string | null;
   /** 대기 중인 수정안이 있으면 수정안의 키. 수정 시 아이콘을 유지하려면 그대로 보낸다 */
   iconKey: string | null;
@@ -124,6 +134,8 @@ export interface ProjectRequestBody {
   name: string;
   description: string;
   startYear: number;
+  /** 생략하면 현재 값을 유지하고, 빈 배열이면 모두 해제한다 */
+  categories?: ProjectCategory[];
   /** 무소속은 0 또는 생략 */
   clubId?: number;
   participantIds?: number[];
@@ -144,6 +156,7 @@ export interface ProjectEditRequest {
   name: string;
   description: string;
   startYear: number;
+  categories: ProjectCategory[];
   iconUrl: string | null;
   iconKey: string | null;
   deploymentUrl: string | null;

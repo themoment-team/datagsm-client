@@ -1,3 +1,4 @@
+import { PROJECT_CATEGORY_FILTER_OPTIONS, parseProjectCategory } from '@repo/shared/constants';
 import { Club } from '@repo/shared/types';
 import { FilterOption, FilterSelect, Input } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
@@ -53,6 +54,20 @@ const ProjectFilter = ({ control, clubs }: ProjectFilterProps) => {
               options={STATUS_OPTIONS}
               value={field.value ?? 'ACTIVE'}
               onChange={field.onChange}
+              className={cn('w-[200px]')}
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="category"
+          render={({ field }) => (
+            <FilterSelect
+              label="카테고리"
+              options={PROJECT_CATEGORY_FILTER_OPTIONS}
+              value={field.value ?? 'all'}
+              onChange={(value) => field.onChange(parseProjectCategory(value))}
               className={cn('w-[200px]')}
             />
           )}

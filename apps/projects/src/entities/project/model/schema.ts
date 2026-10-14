@@ -1,4 +1,4 @@
-import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
+import { PROJECT_CATEGORIES, PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { HTTP_URL_PATTERN } from '@repo/shared/utils';
 import { z } from 'zod';
 
@@ -29,6 +29,11 @@ export const projectFormSchema = z.object({
     .int('연도는 정수로 입력해 주세요')
     .gte(2000, '올바른 연도를 입력해 주세요')
     .lte(CURRENT_YEAR + 1, '올바른 연도를 입력해 주세요'),
+  /**
+   * 서버는 빈 목록도 받지만 미분류는 카테고리 필터에서 빠지므로
+   * 신청할 때는 하나 이상 고르게 한다.
+   */
+  categories: z.array(z.enum(PROJECT_CATEGORIES)).min(1, '카테고리를 하나 이상 선택해 주세요'),
   /** null이면 무소속 */
   clubId: z.number().int().nullable(),
   participantIds: z.array(z.number().int()),

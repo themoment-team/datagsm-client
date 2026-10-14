@@ -40,6 +40,7 @@ const ProjectFormDialogWithForm = (props: {
     resolver: zodResolver(AddProjectSchema),
     defaultValues: {
       status: 'ACTIVE',
+      categories: [],
       participantIds: [],
       clubId: 0,
       repositories: [],
@@ -90,6 +91,8 @@ const mockProjectApi = ({ update = () => apiSuccess(null) }: { update?: () => Re
 
 const dialog = () => screen.getByRole('dialog');
 const field = (label: string) => within(dialog()).getByLabelText(label);
+const categoryCheckbox = (name: string) =>
+  within(within(dialog()).getByRole('group', { name: '카테고리' })).getByRole('checkbox', { name });
 
 const addMember = async (user: User, optionText: string) => {
   await user.click(within(dialog()).getByRole('combobox', { name: '' }));
@@ -111,6 +114,8 @@ describe('ProjectFormDialog 추가', () => {
     await user.type(field('프로젝트명'), 'DataGSM');
     await user.type(field('시작 연도'), '2025');
     await user.type(field('설명'), '학교 데이터 API');
+    await user.click(categoryCheckbox('팀 프로젝트'));
+    await user.click(categoryCheckbox('미배포'));
     await user.type(field('리포지토리'), 'https://github.com/themoment-team/datagsm-client{Enter}');
     await user.type(field('기술 스택'), 'Next.js{Enter}');
     await addMember(user, '2101 김팀원');
@@ -125,6 +130,7 @@ describe('ProjectFormDialog 추가', () => {
           name: 'DataGSM',
           description: '학교 데이터 API',
           startYear: 2025,
+          categories: ['TEAM', 'NOT_DEPLOYED'],
           clubId: null,
           participantIds: [1],
           status: 'ACTIVE',
@@ -169,6 +175,20 @@ describe('ProjectFormDialog 추가', () => {
     expect(requests).toEqual([]);
   });
 
+  it('카테고리를 고르지 않으면 빈 배열로 보내 미분류로 등록한다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openCreateDialog();
+
+    await user.type(field('프로젝트명'), 'DataGSM');
+    await user.type(field('시작 연도'), '2025');
+    await user.type(field('설명'), '학교 데이터 API');
+    await addMember(user, '2101 김팀원');
+    await user.click(within(dialog()).getByRole('button', { name: '+ Add Project' }));
+
+    await screen.findByText('프로젝트가 등록되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ categories: [] });
+  });
+
   it('검증에 걸리면 요청하지 않고 첫 번째 에러를 토스트로 알린다', async () => {
     const requests = mockProjectApi();
     const { user } = await openCreateDialog();
@@ -210,6 +230,7 @@ describe('ProjectFormDialog 수정', () => {
     description: '학교 데이터 API',
     startYear: 2024,
     status: 'ACTIVE',
+    categories: ['TEAM'],
     club: clubs[0]!,
     participants: [toClubMember(students[0]!)],
   });
@@ -239,6 +260,43 @@ describe('ProjectFormDialog 수정', () => {
         body: expect.objectContaining({ description: '학교 데이터 API v2', clubId: 5 }),
       },
     ]);
+  });
+
+  it('카테고리를 더 고르면 기존 카테고리와 함께 보낸다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog(baseProject);
+
+    expect(categoryCheckbox('팀 프로젝트')).toBeChecked();
+    expect(categoryCheckbox('동아리 프로젝트')).not.toBeChecked();
+    await user.click(categoryCheckbox('동아리 프로젝트'));
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ categories: ['TEAM', 'CLUB'] });
+  });
+
+  it('카테고리를 모두 해제하면 빈 배열로 보내 미분류로 되돌린다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog(baseProject);
+
+    await user.click(categoryCheckbox('팀 프로젝트'));
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests[0]?.body).toMatchObject({ categories: [] });
+  });
+
+  it('미분류 프로젝트는 카테고리를 고르지 않아도 종료 처리할 수 있다', async () => {
+    const requests = mockProjectApi();
+    const { user } = await openEditDialog({ ...baseProject, categories: [] });
+
+    await selectOption(user, field('운영 상태'), '종료');
+    await user.type(field('종료 연도'), '2026');
+    await submit(user);
+
+    await screen.findByText('프로젝트 데이터가 수정되었습니다.');
+    expect(requests.map(({ path }) => path)).toEqual(['/v1/projects/11', '/v1/projects/11/end']);
+    expect(requests[0]?.body).toMatchObject({ categories: [] });
   });
 
   it('운영 중인 프로젝트를 종료로 바꾸면 정보 수정 뒤 종료 처리한다', async () => {

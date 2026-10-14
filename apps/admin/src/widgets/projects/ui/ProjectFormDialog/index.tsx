@@ -21,6 +21,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ProjectCategoryCheckboxGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -109,6 +110,7 @@ const ProjectFormDialog = ({
           name: project.name,
           description: project.description,
           startYear: project.startYear,
+          categories: project.categories,
           clubId: project.club?.id || 0,
           participantIds: project.participants.map((p) => p.id),
           status: project.status,
@@ -122,6 +124,7 @@ const ProjectFormDialog = ({
           name: '',
           description: '',
           startYear: undefined,
+          categories: [],
           clubId: 0,
           participantIds: [],
           status: 'ACTIVE',
@@ -343,6 +346,19 @@ const ProjectFormDialog = ({
                 />
               </FormField>
             )}
+
+            <FormField label="카테고리" className={cn('col-span-2')}>
+              <Controller
+                control={control}
+                name="categories"
+                render={({ field }) => (
+                  <ProjectCategoryCheckboxGroup
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </FormField>
 
             <FormField
               label="설명"
