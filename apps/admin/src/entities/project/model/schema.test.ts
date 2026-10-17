@@ -1,0 +1,148 @@
+// @vitest-environment node
+import { describe, expect, it } from 'vitest';
+
+import { AddProjectSchema } from './schema';
+
+const activeProject = {
+  name: 'DataGSM',
+  description: '학교 데이터 API',
+  startYear: 2025,
+  categories: ['TEAM'],
+  clubId: null,
+  participantIds: [1],
+  status: 'ACTIVE',
+  repositories: [],
+  techStacks: [],
+};
+
+const issuesOf = (input: object) => {
+  const result = AddProjectSchema.safeParse(input);
+  return result.success
+    ? {}
+    : Object.fromEntries(
+        result.error.issues.reverse().map((issue) => [issue.path.join('.'), issue.message]),
+      );
+};
+
+describe('AddProjectSchema', () => {
+  it('진행 중인 프로젝트는 종료 연도 없이 통과한다', () => {
+    expect(issuesOf(activeProject)).toEqual({});
+  });
+
+  it('필수 값이 없으면 항목별로 안내한다', () => {
+    expect(
+      issuesOf({
+        ...activeProject,
+        name: '',
+        description: '',
+        startYear: undefined,
+        participantIds: [],
+      }),
+    ).toMatchObject({
+      name: '프로젝트명을 입력해주세요.',
+      description: '프로젝트 설명을 입력해주세요.',
+      startYear: '시작 연도를 입력해주세요.',
+      participantIds: '한 명 이상의 팀원을 선택해주세요.',
+    });
+  });
+
+  describe('카테고리', () => {
+    it('고르지 않아도 되고 여러 개를 고를 수도 있다', () => {
+      expect(issuesOf({ ...activeProject, categories: [] })).toEqual({});
+      expect(issuesOf({ ...activeProject, categories: ['TEAM', 'NOT_DEPLOYED'] })).toEqual({});
+    });
+
+    it('서버에 없는 카테고리는 거부한다', () => {
+      expect(issuesOf({ ...activeProject, categories: ['TEAM', 'SCHOOL'] })).toHaveProperty(
+        'categories.1',
+      );
+    });
+  });
+
+  describe('종료된 프로젝트', () => {
+    const endedProject = { ...activeProject, status: 'ENDED', endYear: 2026 };
+
+    it('시작 연도 이후의 종료 연도가 있으면 통과한다', () => {
+      expect(issuesOf(endedProject)).toEqual({});
+      expect(issuesOf({ ...endedProject, endYear: 2025 })).toEqual({});
+    });
+
+    it('종료 연도가 없으면 거부한다', () => {
+      expect(issuesOf({ ...endedProject, endYear: undefined })).toEqual({
+        endYear: '종료 연도를 입력해주세요.',
+      });
+    });
+
+    it('종료 연도가 시작 연도보다 이르면 거부한다', () => {
+      expect(issuesOf({ ...endedProject, endYear: 2024 })).toEqual({
+        endYear: '종료 연도는 시작 연도보다 크거나 같아야 합니다.',
+      });
+    });
+  });
+
+  describe('리포지토리·기술 스택', () => {
+    it('리포지토리 URL은 300자, 기술 스택은 50자까지 받는다', () => {
+      expect(
+        issuesOf({
+          ...activeProject,
+          repositories: ['a'.repeat(301)],
+          techStacks: ['b'.repeat(51)],
+        }),
+      ).toEqual({
+        'repositories.0': '리포지토리 URL은 300자 이하로 입력해주세요.',
+        'techStacks.0': '기술 스택은 50자 이하로 입력해주세요.',
+      });
+    });
+
+    it('각각 20개까지 등록할 수 있다', () => {
+      const items = (count: number) => Array.from({ length: count }, (_, i) => `item-${i}`);
+
+      expect(
+        issuesOf({ ...activeProject, repositories: items(20), techStacks: items(20) }),
+      ).toEqual({});
+      expect(
+        issuesOf({ ...activeProject, repositories: items(21), techStacks: items(21) }),
+      ).toEqual({
+        repositories: '리포지토리는 최대 20개까지 등록할 수 있습니다.',
+        techStacks: '기술 스택은 최대 20개까지 등록할 수 있습니다.',
+      });
+    });
+  });
+
+  describe('배포 URL', () => {
+    const parseUrl = (deploymentUrl?: string) =>
+      AddProjectSchema.safeParse({ ...activeProject, deploymentUrl });
+
+    it.each([undefined, '', 'https://datagsm.kr', 'http://localhost:3000/path?q=1'])(
+      '%s는 통과한다',
+      (url) => {
+        expect(parseUrl(url).success).toBe(true);
+      },
+    );
+
+    it('앞뒤 공백을 지운 값으로 통과한다', () => {
+      expect(parseUrl('  https://datagsm.kr  ').data?.deploymentUrl).toBe('https://datagsm.kr');
+    });
+
+    it.each([
+      'javascript:alert(1)',
+      'ftp://datagsm.kr',
+      'datagsm.kr',
+      // 서버 정규식은 대소문자를 구분한다
+      'HTTPS://datagsm.kr',
+    ])('%s는 거부한다', (url) => {
+      expect(issuesOf({ ...activeProject, deploymentUrl: url })).toEqual({
+        deploymentUrl: 'http:// 또는 https://로 시작하는 주소를 입력해주세요.',
+      });
+    });
+
+    it('300자까지 받는다', () => {
+      const atLimit = `https://${'a'.repeat(300 - 'https://'.length)}`;
+
+      expect(parseUrl(atLimit).success).toBe(true);
+      expect(issuesOf({ ...activeProject, deploymentUrl: `${atLimit}a` })).toEqual({
+        deploymentUrl: '배포 URL은 300자 이하로 입력해주세요.',
+      });
+    });
+  });
+});

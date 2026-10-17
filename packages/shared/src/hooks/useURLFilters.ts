@@ -15,7 +15,8 @@ export const useURLFilters = <T extends object>() => {
 
       // 필터 업데이트
       Object.entries(newFilters as Record<string, unknown>).forEach(([key, value]) => {
-        if (value && value !== 'all') {
+        // 0과 false는 값으로 보고, undefined·null·빈 문자열·'all'만 지운다
+        if (value !== undefined && value !== null && value !== '' && value !== 'all') {
           params.set(key, String(value));
         } else {
           params.delete(key);

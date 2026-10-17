@@ -20,14 +20,18 @@ interface TeacherApprovalListProps {
   accounts?: AccountListItem[];
   isLoading?: boolean;
   isApproving?: boolean;
+  isRejecting?: boolean;
   onApprove?: (accountId: number) => void;
+  onReject?: (accountId: number) => void;
 }
 
 const TeacherApprovalList = ({
   accounts,
   isLoading,
   isApproving,
+  isRejecting,
   onApprove,
+  onReject,
 }: TeacherApprovalListProps) => {
   if (!isLoading && !accounts?.length) {
     return (
@@ -108,13 +112,13 @@ const TeacherApprovalList = ({
                       onConfirm={() => onApprove?.(account.id)}
                     />
 
-                    {/* TODO: 선생님 역할 신청 거절(계정 삭제) API 연동 (현재는 시안 반영용 UI) */}
                     <ConfirmDialog
                       trigger={
                         <Button
                           type="button"
                           variant="pixel-destructive"
                           className={cn('h-6 border px-2')}
+                          disabled={isRejecting}
                         >
                           Delete
                         </Button>
@@ -124,6 +128,7 @@ const TeacherApprovalList = ({
                       description="거절하면 해당 계정은 삭제되며 되돌릴 수 없습니다."
                       confirmLabel="확인"
                       confirmVariant="pixel-destructive"
+                      onConfirm={() => onReject?.(account.id)}
                     />
                   </div>
                 </TableCell>

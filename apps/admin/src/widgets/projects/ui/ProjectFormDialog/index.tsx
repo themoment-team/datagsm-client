@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { PROJECT_DEPLOYMENT_URL_MAX_LENGTH } from '@repo/shared/constants';
 import { Club, Project, Student } from '@repo/shared/types';
 import {
   Button,
@@ -20,6 +21,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  ProjectCategoryCheckboxGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -108,24 +110,28 @@ const ProjectFormDialog = ({
           name: project.name,
           description: project.description,
           startYear: project.startYear,
+          categories: project.categories,
           clubId: project.club?.id || 0,
           participantIds: project.participants.map((p) => p.id),
           status: project.status,
           endYear: project.endYear ?? undefined,
           repositories: project.repositories ?? [],
           techStacks: project.techStacks ?? [],
+          deploymentUrl: project.deploymentUrl ?? '',
         });
       } else if (mode === 'create') {
         reset({
           name: '',
           description: '',
           startYear: undefined,
+          categories: [],
           clubId: 0,
           participantIds: [],
           status: 'ACTIVE',
           endYear: undefined,
           repositories: [],
           techStacks: [],
+          deploymentUrl: '',
         });
       }
     }
@@ -150,6 +156,8 @@ const ProjectFormDialog = ({
       ...data,
       clubId: data.clubId === 0 ? null : data.clubId,
       endYear: data.status === 'ENDED' ? data.endYear : undefined,
+      // 수정에서 필드를 빼면 서버가 기존 값을 유지하므로, 비운 값은 ''로 보내야 지워진다.
+      deploymentUrl: mode === 'edit' ? (data.deploymentUrl ?? '') : data.deploymentUrl || undefined,
     };
 
     try {
@@ -339,6 +347,19 @@ const ProjectFormDialog = ({
               </FormField>
             )}
 
+            <FormField label="카테고리" className={cn('col-span-2')}>
+              <Controller
+                control={control}
+                name="categories"
+                render={({ field }) => (
+                  <ProjectCategoryCheckboxGroup
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+            </FormField>
+
             <FormField
               label="설명"
               htmlFor="description"
@@ -352,6 +373,22 @@ const ProjectFormDialog = ({
                   'border-foreground min-h-[80px] resize-none rounded-none px-3 text-sm',
                 )}
                 {...register('description')}
+              />
+            </FormField>
+
+            <FormField
+              label="배포 URL"
+              htmlFor="deploymentUrl"
+              error={errors.deploymentUrl}
+              className={cn('col-span-2')}
+            >
+              <Input
+                id="deploymentUrl"
+                inputMode="url"
+                maxLength={PROJECT_DEPLOYMENT_URL_MAX_LENGTH}
+                placeholder="https://example.com"
+                className={cn(FORM_FIELD_STYLE)}
+                {...register('deploymentUrl')}
               />
             </FormField>
 

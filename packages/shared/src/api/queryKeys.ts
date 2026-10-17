@@ -41,6 +41,7 @@ export const studentQueryKeys = {
   postStudentDataEditRequests: () => ['students', 'data-edit-requests'] as const,
   patchMySpecialty: () => ['students', 'me', 'specialty', 'update'] as const,
   patchMyGithubId: () => ['students', 'me', 'github-id', 'update'] as const,
+  getParticipantCandidates: () => ['students', 'participant-candidates'] as const,
 } as const;
 
 export const authQueryKeys = {
@@ -76,8 +77,39 @@ export const projectQueryKeys = {
     projectName?: string;
     clubId?: number;
     status?: string;
+    category?: string;
   }) => ['projects', 'list', params] as const,
   postProject: () => ['projects', 'create'] as const,
+} as const;
+
+export const publicProjectQueryKeys = {
+  getPublicProjects: (params: {
+    projectName?: string;
+    clubId?: number;
+    status?: string;
+    category?: string;
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDirection?: string;
+  }) => ['public-projects', 'list', params] as const,
+  getPublicProjectById: (projectId: number) => ['public-projects', 'detail', projectId] as const,
+} as const;
+
+export const meProjectQueryKeys = {
+  getMyProjects: (requestStatus?: string) => ['me-projects', 'list', { requestStatus }] as const,
+  postMyProject: () => ['me-projects', 'create'] as const,
+  putMyProject: () => ['me-projects', 'update'] as const,
+  postIconUploadUrl: () => ['me-projects', 'icons', 'upload-url'] as const,
+} as const;
+
+export const projectRequestQueryKeys = {
+  getProjectRequests: (params: { requestStatus?: string; page?: number; size?: number }) =>
+    ['project-requests', 'list', params] as const,
+  getProjectRequestById: (requestId: number) =>
+    ['project-requests', 'detail', requestId] as const,
+  postAcceptProjectRequest: () => ['project-requests', 'accept'] as const,
+  postRejectProjectRequest: () => ['project-requests', 'reject'] as const,
 } as const;
 
 export const clubQueryKeys = {
@@ -85,6 +117,8 @@ export const clubQueryKeys = {
   deleteClubById: () => ['clubs', 'delete'] as const,
   getClubs: (page?: number, size?: number, type?: string, clubName?: string, status?: string) =>
     ['clubs', 'list', { page, size, type, clubName, status }] as const,
+  getPublicClubs: (type?: string, status?: string) =>
+    ['clubs', 'public', { type, status }] as const,
   postClub: () => ['clubs', 'create'] as const,
   postClubImport: () => ['clubs', 'imports'] as const,
   getClubExport: () => ['clubs', 'exports', 'excel'] as const,
@@ -142,11 +176,12 @@ export const accountQueryKeys = {
   }) => ['accounts', 'list', params] as const,
   patchAccountRole: () => ['accounts', 'role', 'update'] as const,
   patchAccountApproval: () => ['accounts', 'approval', 'update'] as const,
+  deleteAccountApproval: () => ['accounts', 'approval', 'delete'] as const,
 } as const;
 
 export const oauthQueryKeys = {
   getOAuthSession: (token: string) => ['oauth', 'session', token] as const,
-  postOAuthTokenRefresh: () => ['oauth', 'token', 'refresh'] as const,
-  postOAuthToken: () => ['oauth', 'token'] as const,
   postOAuthCode: () => ['oauth', 'code'] as const,
+  getIdpSessions: () => ['oauth', 'idp-sessions', 'list'] as const,
+  deleteIdpSession: () => ['oauth', 'idp-sessions', 'delete'] as const,
 } as const;

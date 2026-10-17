@@ -183,11 +183,14 @@ const EventFormDialog = ({
       }}
     >
       {!isControlled && <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>}
-      <DialogContent className={cn('max-h-[90vh] max-w-lg p-0')}>
-        <DialogHeader className={cn('border-foreground border-b-2 px-6 py-5')}>
+      <DialogContent className={cn('flex max-h-[90vh] flex-col p-0 sm:max-w-lg')}>
+        <DialogHeader className={cn('border-foreground shrink-0 border-b-2 px-6 py-5')}>
           <DialogTitle className={cn('font-pixel text-[14px] leading-none')}>{title}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className={cn('space-y-6 px-6 py-6')}>
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className={cn('min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-6')}
+        >
           <div className={cn('space-y-2')}>
             <Label
               htmlFor="targetUrl"
@@ -248,7 +251,7 @@ const EventFormDialog = ({
                       htmlFor={`${mode}-${eventType.value}`}
                       className={cn('block cursor-pointer')}
                     >
-                      <p className={cn('text-sm font-mono leading-none')}>{eventType.label}</p>
+                      <p className={cn('font-mono text-sm leading-none')}>{eventType.label}</p>
                       <p className={cn('text-muted-foreground mt-0.5 text-xs')}>
                         {eventType.description}
                       </p>

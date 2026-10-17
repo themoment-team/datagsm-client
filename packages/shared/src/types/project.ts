@@ -1,7 +1,13 @@
-import { ApiResponse, Club, ClubMember } from '@repo/shared/types';
+import { ApiResponse, Club, ClubMember, StudentMajor } from '@repo/shared/types';
 
 export type ProjectStatus = 'ACTIVE' | 'ENDED';
+export type ProjectCategory = 'TOY_PROJECT' | 'TEAM' | 'CLUB' | 'IDEA_FESTIVAL' | 'NOT_DEPLOYED';
+export type ProjectRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+export type ProjectParticipantRole = 'OWNER' | 'PARTICIPANT';
+export type ProjectSortBy = 'ID' | 'NAME';
+export type ProjectSortDirection = 'ASC' | 'DESC';
 
+/** 어드민이 직접 관리하는 공식 승인본 프로젝트 */
 export interface Project {
   id: number;
   name: string;
@@ -9,6 +15,11 @@ export interface Project {
   startYear: number;
   endYear: number | null;
   status: ProjectStatus;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
+  iconUrl?: string | null;
+  iconKey?: string | null;
+  deploymentUrl?: string | null;
   club: Club | null;
   participants: ClubMember[];
   repositories: string[];
@@ -28,6 +39,174 @@ export interface ProjectQueryParams {
   projectName?: string;
   clubId?: number;
   status?: ProjectStatus;
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
+  category?: ProjectCategory;
   page: number;
   size: number;
 }
+
+/* -------------------------------------------------------------------------- */
+/* 공개 조회 (인증 불필요) — 참여자는 이름·학과만 노출                         */
+/* -------------------------------------------------------------------------- */
+
+export interface PublicParticipant {
+  name: string;
+  major: StudentMajor;
+}
+
+export interface PublicProject {
+  id: number;
+  name: string;
+  description: string;
+  startYear: number;
+  endYear: number | null;
+  status: ProjectStatus;
+  /** 서버가 선언 순서로 정렬해 내려준다. 카테고리가 없으면 빈 배열(미분류) */
+  categories: ProjectCategory[];
+  iconUrl: string | null;
+  deploymentUrl: string | null;
+  club: Club | null;
+  participants: PublicParticipant[];
+  repositories: string[];
+  techStacks: string[];
+}
+
+export interface PublicProjectListData {
+  totalPages: number;
+  totalElements: number;
+  projects: PublicProject[];
+}
+
+export type PublicProjectListResponse = ApiResponse<PublicProjectListData>;
+export type PublicProjectResponse = ApiResponse<PublicProject>;
+
+export interface PublicProjectQueryParams {
+  projectName?: string;
+  clubId?: number;
+  status?: ProjectStatus;
+  /** 이 카테고리를 포함하는 프로젝트만 조회한다. 미분류 프로젝트는 빠진다 */
+  category?: ProjectCategory;
+  page?: number;
+  size?: number;
+  sortBy?: ProjectSortBy;
+  sortDirection?: ProjectSortDirection;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 학생 — 내 프로젝트 목록 (신청했거나 참여자로 등록된 프로젝트)               */
+/* -------------------------------------------------------------------------- */
+
+export interface MyProject {
+  projectId: number | null;
+  requestId: number | null;
+  requestStatus: ProjectRequestStatus;
+  rejectReason: string | null;
+  role: ProjectParticipantRole;
+  name: string;
+  description: string;
+  startYear: number;
+  endYear: number | null;
+  status: ProjectStatus | null;
+  categories: ProjectCategory[];
+  iconUrl: string | null;
+  /** 대기 중인 수정안이 있으면 수정안의 키. 수정 시 아이콘을 유지하려면 그대로 보낸다 */
+  iconKey: string | null;
+  deploymentUrl: string | null;
+  club: Club | null;
+  participants: ClubMember[];
+  repositories: string[];
+  techStacks: string[];
+}
+
+export interface MyProjectListData {
+  totalElements: number;
+  projects: MyProject[];
+}
+
+export type MyProjectListResponse = ApiResponse<MyProjectListData>;
+
+/* -------------------------------------------------------------------------- */
+/* 신청 / 수정 요청                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** 신규 신청(POST)·수정 신청(PUT) 공통 요청 바디 */
+export interface ProjectRequestBody {
+  name: string;
+  description: string;
+  startYear: number;
+  /** 생략하면 현재 값을 유지하고, 빈 배열이면 모두 해제한다 */
+  categories?: ProjectCategory[];
+  /** 무소속은 0 또는 생략 */
+  clubId?: number;
+  participantIds?: number[];
+  repositories?: string[];
+  techStacks?: string[];
+  /** 생략하면 현재 값을 유지하고, 빈 문자열이면 삭제한다 */
+  iconKey?: string;
+  /** http(s)://로 시작하는 300자 이하 URL. 생략하면 현재 값을 유지하고, 빈 문자열이면 삭제한다 */
+  deploymentUrl?: string;
+}
+
+/** 신청/수정 제안 스냅샷 (ProjectEditRequestResDto) */
+export interface ProjectEditRequest {
+  id: number;
+  /** null이면 신규 생성 신청, 값이 있으면 해당 프로젝트 수정 신청 */
+  originalProjectId: number | null;
+  requestedBy: ClubMember;
+  name: string;
+  description: string;
+  startYear: number;
+  categories: ProjectCategory[];
+  iconUrl: string | null;
+  iconKey: string | null;
+  deploymentUrl: string | null;
+  club: Club | null;
+  participants: ClubMember[];
+  repositories: string[];
+  techStacks: string[];
+  requestStatus: ProjectRequestStatus;
+  rejectReason: string | null;
+  requestedAt: string;
+  processedAt: string | null;
+}
+
+export type ProjectEditRequestResponse = ApiResponse<ProjectEditRequest>;
+
+export interface ProjectRequestListData {
+  totalPages: number;
+  totalElements: number;
+  requests: ProjectEditRequest[];
+}
+
+export type ProjectRequestListResponse = ApiResponse<ProjectRequestListData>;
+
+export interface ProjectRequestListQueryParams {
+  requestStatus?: ProjectRequestStatus;
+  page?: number;
+  size?: number;
+}
+
+/** 어드민 거절 사유 바디 */
+export interface ProjectRejectBody {
+  reason: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 아이콘 업로드 (presigned URL)                                              */
+/* -------------------------------------------------------------------------- */
+
+export type ProjectIconContentType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+
+export interface IconUploadUrlBody {
+  contentType: ProjectIconContentType;
+  /** 최대 5,242,880 (5MB) */
+  contentLength: number;
+}
+
+export interface IconUploadUrlData {
+  uploadUrl: string;
+  iconKey: string;
+  expiresInSeconds: number;
+}
+
+export type IconUploadUrlResponse = ApiResponse<IconUploadUrlData>;

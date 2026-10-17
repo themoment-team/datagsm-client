@@ -47,6 +47,9 @@ const DataEditForm = ({ fields, isPending = false, onSubmit }: DataEditFormProps
     formState: { errors },
   } = useForm<DataEditFormType>({
     resolver: zodResolver(buildDataEditSchema(fieldNames)),
+    // 요청된 항목을 빈 문자열로 초기화한다. 기본값이 없으면 Select 값이 undefined로 검증돼
+    // zod의 타입 에러(영문)가 먼저 걸리고, min(1)의 한국어 메시지에 닿지 못한다. (#219)
+    defaultValues: Object.fromEntries(fieldNames.map((name) => [name, ''] as const)),
   });
 
   const handleFormSubmit = handleSubmit((values) => {

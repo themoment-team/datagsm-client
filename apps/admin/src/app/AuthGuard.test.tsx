@@ -1,0 +1,128 @@
+import { COOKIE_KEYS } from '@repo/shared/constants';
+import { deleteCookie, getCookie, setCookie } from '@repo/shared/utils';
+import {
+  HttpResponse,
+  apiError,
+  apiPath,
+  apiSuccess,
+  createMyAccount,
+  http,
+  renderWithProviders,
+  screen,
+  server,
+  waitFor,
+} from '@repo/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import AuthGuard from './AuthGuard';
+
+const CURRENT_URL = 'http://localhost:3000/students';
+
+const mockMyAccount = (resolver: () => Response) => {
+  server.use(http.get(apiPath('/v1/accounts/my'), resolver));
+};
+
+/** oauthAxiosInstance의 baseURL은 모듈을 불러올 때 정해지므로 호스트와 무관하게 매칭한다. */
+const mockLogout = (resolver: () => Response = () => new HttpResponse(null, { status: 204 })) => {
+  const requests: Request[] = [];
+  server.use(
+    http.post('*/v1/oauth/logout', ({ request }) => {
+      requests.push(request);
+      return resolver();
+    }),
+  );
+  return requests;
+};
+
+const renderGuard = () =>
+  renderWithProviders(
+    <AuthGuard>
+      <p>관리자 화면</p>
+    </AuthGuard>,
+  );
+
+describe('AuthGuard', () => {
+  beforeEach(() => {
+    vi.stubGlobal('location', { href: CURRENT_URL });
+    setCookie(COOKIE_KEYS.ACCESS_TOKEN, 'access-token');
+    setCookie(COOKIE_KEYS.REFRESH_TOKEN, 'refresh-token');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
+    deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+  });
+
+  it('관리자 계정이면 화면을 보여 준다', async () => {
+    mockMyAccount(() => apiSuccess(createMyAccount({ role: 'ADMIN' })));
+
+    renderGuard();
+
+    expect(await screen.findByText('관리자 화면')).toBeInTheDocument();
+  });
+
+  it('관리자가 아니면 안내 화면을 보여 주고, 저절로 로그아웃하거나 이동하지 않는다', async () => {
+    // 예전에는 3초 뒤 로컬 쿠키만 지우고 이동해서, 남은 IdP 세션으로 같은 계정에 다시 로그인되는 일이 반복됐다(#249).
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockMyAccount(() => apiSuccess(createMyAccount({ role: 'USER' })));
+    const logoutRequests = mockLogout();
+
+    renderGuard();
+
+    expect(await screen.findByRole('heading', { name: '접근 권한 없음' })).toBeInTheDocument();
+    expect(screen.queryByText('관리자 화면')).not.toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(logoutRequests).toHaveLength(0);
+    expect(getCookie(COOKIE_KEYS.ACCESS_TOKEN)).toBe('access-token');
+    expect(window.location.href).toBe(CURRENT_URL);
+  });
+
+  it('관리자가 아닐 때 다른 계정으로 로그인하면 IdP 세션까지 로그아웃하고 /로 보낸다', async () => {
+    mockMyAccount(() => apiSuccess(createMyAccount({ role: 'USER' })));
+    const logoutRequests = mockLogout();
+    const { user } = renderGuard();
+
+    await user.click(await screen.findByRole('button', { name: '다른 계정으로 로그인' }));
+
+    await waitFor(() => expect(window.location.href).toBe('/'));
+    expect(logoutRequests).toHaveLength(1);
+    expect(logoutRequests[0]?.credentials).toBe('include');
+    expect(getCookie(COOKIE_KEYS.ACCESS_TOKEN)).toBeNull();
+    expect(getCookie(COOKIE_KEYS.REFRESH_TOKEN)).toBeNull();
+  });
+
+  it('IdP 로그아웃이 실패해도 로컬 로그아웃은 진행한다', async () => {
+    mockMyAccount(() => apiSuccess(createMyAccount({ role: 'USER' })));
+    mockLogout(() => HttpResponse.error());
+    const { user } = renderGuard();
+
+    await user.click(await screen.findByRole('button', { name: '다른 계정으로 로그인' }));
+
+    await waitFor(() => expect(window.location.href).toBe('/'));
+    expect(getCookie(COOKIE_KEYS.ACCESS_TOKEN)).toBeNull();
+    expect(getCookie(COOKIE_KEYS.REFRESH_TOKEN)).toBeNull();
+  });
+
+  it('계정 조회가 실패하면 쿠키를 지우지 않고 다시 시도할 수 있게 한다', async () => {
+    let isServerDown = true;
+    mockMyAccount(() =>
+      isServerDown
+        ? apiError(500, '서버 오류가 발생했습니다.')
+        : apiSuccess(createMyAccount({ role: 'ADMIN' })),
+    );
+    const { user } = renderGuard();
+
+    const retryButton = await screen.findByRole('button', { name: '다시 시도' });
+
+    expect(getCookie(COOKIE_KEYS.ACCESS_TOKEN)).toBe('access-token');
+    expect(window.location.href).toBe(CURRENT_URL);
+
+    isServerDown = false;
+    await user.click(retryButton);
+
+    expect(await screen.findByText('관리자 화면')).toBeInTheDocument();
+  });
+});

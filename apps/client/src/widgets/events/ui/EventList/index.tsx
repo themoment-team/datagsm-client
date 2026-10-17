@@ -45,10 +45,7 @@ const formatDate = (value: string) => {
   return date.toLocaleString('ko-KR');
 };
 
-const VERIFICATION_STATUS_META: Record<
-  VerificationStatus,
-  { label: string; className: string }
-> = {
+const VERIFICATION_STATUS_META: Record<VerificationStatus, { label: string; className: string }> = {
   VERIFIED: { label: 'verified', className: 'border-foreground text-foreground' },
   PENDING: { label: 'pending', className: 'border-muted-foreground/40 text-muted-foreground' },
   FAILED: { label: 'failed', className: 'border-destructive text-destructive' },
@@ -107,13 +104,16 @@ const EventListItem = ({ event, onEdit, onDelete }: EventListItemProps) => {
       </TableCell>
       <TableCell>
         <div className={cn('flex items-center gap-1')}>
-          <PixelIconButton onClick={() => onEdit(event)}>
+          <PixelIconButton
+            onClick={() => onEdit(event)}
+            aria-label={`${event.target_url} 이벤트 수정`}
+          >
             <Pencil className={cn('h-3.5 w-3.5')} />
           </PixelIconButton>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <PixelIconButton variant="destructive">
+              <PixelIconButton variant="destructive" aria-label={`${event.target_url} 이벤트 삭제`}>
                 <Trash2 className={cn('h-3.5 w-3.5')} />
               </PixelIconButton>
             </AlertDialogTrigger>
@@ -206,7 +206,10 @@ const EventList = ({ events, isLoading, onEdit }: EventListProps) => {
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={6} className={cn('text-muted-foreground h-24 text-center font-mono')}>
+            <TableCell
+              colSpan={6}
+              className={cn('text-muted-foreground h-24 text-center font-mono')}
+            >
               {'>'} 등록된 이벤트가 없습니다.
             </TableCell>
           </TableRow>

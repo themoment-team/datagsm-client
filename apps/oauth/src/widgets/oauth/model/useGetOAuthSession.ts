@@ -1,11 +1,12 @@
 import { oauthGet, oauthQueryKeys, oauthUrl } from '@repo/shared/api';
 import { OAuthSessionResponse } from '@repo/shared/types';
 import { useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 
 const STORAGE_KEY = 'oauth_session_timestamp';
 
 export const useGetOAuthSession = (token: string | null) => {
-  return useQuery({
+  return useQuery<OAuthSessionResponse, AxiosError>({
     queryKey: oauthQueryKeys.getOAuthSession(token || ''),
     queryFn: async () => {
       if (!token) throw new Error('Token is required');
@@ -15,8 +16,14 @@ export const useGetOAuthSession = (token: string | null) => {
       if (storedData) {
         try {
           const parsed = JSON.parse(storedData);
-          // 토큰이 일치하고 필요한 정보가 다 있다면 즉시 반환
-          if (parsed.token === token && parsed.serviceName && parsed.expiresAt && parsed.requestedScopes) {
+          // 토큰이 일치하고 필요한 정보가 다 있으며, 서버가 내려준 만료 시각이 아직 지나지 않았다면 즉시 반환
+          if (
+            parsed.token === token &&
+            parsed.serviceName &&
+            parsed.expiresAt &&
+            parsed.expiresAt > Date.now() &&
+            parsed.requestedScopes
+          ) {
             return {
               data: {
                 serviceName: parsed.serviceName,

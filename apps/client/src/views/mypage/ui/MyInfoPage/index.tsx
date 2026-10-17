@@ -5,7 +5,7 @@ import { PageHeader, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
 import { useGetMy } from '@/shared/hooks';
-import { ProfileInfo, WithdrawalSection } from '@/widgets/myinfo';
+import { ProfileInfo, SessionManagement, WithdrawalSection } from '@/widgets/myinfo';
 
 interface MyInfoPageProps {
   initialData: MyAccountResponse | undefined;
@@ -54,6 +54,7 @@ const MyInfoPage = ({ initialData }: MyInfoPageProps) => {
         <PageHeader breadcrumb="DATAGSM / My Account" title="내 정보" />
         <div className={cn('mx-auto max-w-2xl space-y-4 pb-16')}>
           <ProfileInfo data={myData.data} />
+          <SessionManagement />
           <WithdrawalSection />
         </div>
       </main>
