@@ -17,7 +17,8 @@ type User = ReturnType<typeof renderWithProviders>['user'];
 const createIdpSession = (overrides: Partial<IdpSession> = {}): IdpSession => ({
   sessionId: 'session-1',
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0',
-  createdAt: null,
+  // 서버는 epoch milliseconds로 준다. 시간대에 따라 표시가 바뀌지 않도록 로컬 시각으로 만든다.
+  createdAt: new Date(2026, 2, 2, 9, 0).getTime(),
   current: false,
   ...overrides,
 });
@@ -38,6 +39,27 @@ const openConfirmDialog = async (user: User) => {
 
 describe('SessionManagement', () => {
   describe('목록 조회', () => {
+    it('같은 날 만든 세션도 구분되도록 생성 시각을 시각까지 보여 준다', async () => {
+      mockSessions(() =>
+        apiSuccess({
+          sessions: [
+            createIdpSession({
+              sessionId: 'session-1',
+              createdAt: new Date(2026, 2, 2, 14, 5).getTime(),
+            }),
+            createIdpSession({
+              sessionId: 'session-2',
+              createdAt: new Date(2026, 2, 2, 9, 30).getTime(),
+            }),
+          ],
+        }),
+      );
+      renderWithProviders(<SessionManagement />);
+
+      expect(await screen.findByText('2026년 3월 2일 오후 2:05')).toBeInTheDocument();
+      expect(screen.getByText('2026년 3월 2일 오전 9:30')).toBeInTheDocument();
+    });
+
     // IdP 세션이 만료돼도 이 서비스는 refresh token으로 로그인이 유지되므로, 401은 오류가 아니다(#253).
     it('401이면 오류 대신 이 브라우저에 SSO 세션이 없다고 안내하고 다시 보는 방법을 알려 준다', async () => {
       mockSessions(() => apiError(401, '로그인이 필요합니다.'));

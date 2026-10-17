@@ -128,7 +128,8 @@ export interface OAuthConsentSuccessResponse {
 export interface IdpSession {
   sessionId: string;
   userAgent: string | null;
-  createdAt: string | null;
+  /** 로그인 시각(epoch milliseconds). 기록되지 않은 세션은 null이다. */
+  createdAt: number | null;
   current: boolean;
 }
 

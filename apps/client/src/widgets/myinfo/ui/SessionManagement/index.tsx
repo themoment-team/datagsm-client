@@ -3,7 +3,7 @@
 import { oauthQueryKeys } from '@repo/shared/api';
 import { COOKIE_KEYS } from '@repo/shared/constants';
 import { ConfirmDialog, SectionCard, Skeleton } from '@repo/shared/ui';
-import { cn, deleteCookie, formatDate } from '@repo/shared/utils';
+import { cn, deleteCookie, formatDateTime } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Monitor } from 'lucide-react';
 import { toast } from 'sonner';
@@ -96,7 +96,7 @@ export const SessionManagement = () => {
                     )}
                   </div>
                   <p className={cn('text-muted-foreground mt-1 font-mono text-xs')}>
-                    {session.createdAt ? formatDate(session.createdAt) : '생성일 알 수 없음'}
+                    {session.createdAt ? formatDateTime(session.createdAt) : '생성일 알 수 없음'}
                   </p>
                 </div>
 
