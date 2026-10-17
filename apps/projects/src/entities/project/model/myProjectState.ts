@@ -16,6 +16,13 @@ export type MyProjectDisplayKind =
   /** 신규 신청 거절 — 등록 자체가 무산 */
   | 'REQUEST_REJECTED';
 
+/** 카드에서 내용을 고쳐 다시 내는 방법 */
+export type MyProjectAction =
+  /** 등록된 프로젝트의 수정 신청 (PUT) — 서버가 프로젝트당 1건을 최신 내용으로 덮어쓴다 */
+  | 'edit'
+  /** 거절된 신규 신청을 고쳐 새로 신청 (POST) — 신규 신청은 낼 때마다 새로 생긴다 */
+  | 'reapply';
+
 export interface MyProjectDisplay {
   kind: MyProjectDisplayKind;
   /** 이미 등록되어 공개 목록에 노출되는 프로젝트인지 */
@@ -26,6 +33,11 @@ export interface MyProjectDisplay {
   notice: string | null;
   /** 거절 사유를 노출해야 하는 상태인지 */
   showRejectReason: boolean;
+  /**
+   * 카드에서 할 수 있는 동작 (없으면 null).
+   * 신규 신청은 고치거나 취소하는 API가 없어, 심사 중에 다시 내면 신청이 하나 더 생기므로 막는다.
+   */
+  action: MyProjectAction | null;
 }
 
 const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
@@ -35,6 +47,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'default',
     notice: null,
     showRejectReason: false,
+    action: 'edit',
   },
   EDIT_PENDING: {
     isRegistered: true,
@@ -42,6 +55,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'secondary',
     notice: '수정 심사 중 · 아래 내용은 수정안 기준입니다.',
     showRejectReason: false,
+    action: 'edit',
   },
   EDIT_REJECTED: {
     isRegistered: true,
@@ -49,13 +63,15 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'default',
     notice: '최근 수정 신청이 거절되었습니다 · 아래 내용은 기존 등록본 기준입니다.',
     showRejectReason: true,
+    action: 'edit',
   },
   REQUEST_PENDING: {
     isRegistered: false,
     badgeLabel: '신청 대기 중',
     badgeVariant: 'secondary',
-    notice: null,
+    notice: '신청 심사 중 · 심사가 끝나기 전에는 수정할 수 없습니다.',
     showRejectReason: false,
+    action: null,
   },
   REQUEST_REJECTED: {
     isRegistered: false,
@@ -63,6 +79,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'destructive',
     notice: null,
     showRejectReason: true,
+    action: 'reapply',
   },
 };
 
