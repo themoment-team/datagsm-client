@@ -2,7 +2,7 @@
 import { AxiosError, AxiosHeaders } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { getApiErrorCode } from './error';
+import { getApiErrorCode, getApiErrorMessage } from './error';
 
 const axiosErrorWith = (data: unknown) =>
   new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
@@ -26,5 +26,26 @@ describe('getApiErrorCode', () => {
   it('AxiosError가 아니면 undefined를 돌려준다', () => {
     expect(getApiErrorCode(new Error('boom'))).toBeUndefined();
     expect(getApiErrorCode({ response: { data: { code: 400 } } })).toBeUndefined();
+  });
+});
+
+describe('getApiErrorMessage', () => {
+  it('서버 응답 본문의 message를 돌려준다', () => {
+    expect(getApiErrorMessage(axiosErrorWith({ code: 409, message: '중복' }))).toBe('중복');
+  });
+
+  it('응답이 없거나 본문에 message가 없으면 undefined를 돌려준다', () => {
+    expect(getApiErrorMessage(new AxiosError('Network Error'))).toBeUndefined();
+    expect(getApiErrorMessage(axiosErrorWith(''))).toBeUndefined();
+    expect(getApiErrorMessage(axiosErrorWith({ code: 500 }))).toBeUndefined();
+  });
+
+  it('message가 빈 문자열이면 undefined를 돌려준다', () => {
+    expect(getApiErrorMessage(axiosErrorWith({ code: 500, message: '' }))).toBeUndefined();
+  });
+
+  it('AxiosError가 아니면 undefined를 돌려준다', () => {
+    expect(getApiErrorMessage(new Error('boom'))).toBeUndefined();
+    expect(getApiErrorMessage({ response: { data: { message: '중복' } } })).toBeUndefined();
   });
 });
