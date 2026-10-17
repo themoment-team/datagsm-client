@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { COOKIE_KEYS } from '@repo/shared/constants';
+import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
 import { generateCodeChallenge, generateCodeVerifier } from '@repo/shared/utils';
 
 export async function middleware(request: NextRequest) {
@@ -9,6 +9,11 @@ export async function middleware(request: NextRequest) {
 
   // OAuth 플로우는 미들웨어 적용 안 함
   if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  // 로그인 취소 안내는 로그인하지 않은 채로 보는 화면이다. 인가로 보내면 거부한 동의 화면이 다시 뜬다.
+  if (pathname === LOGIN_CANCELED_PATH) {
     return NextResponse.next();
   }
 

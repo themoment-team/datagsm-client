@@ -6,10 +6,12 @@ import {
   apiPath,
   apiSuccess,
   createMyAccount,
+  expectNoRequest,
   http,
   renderWithProviders,
   screen,
   server,
+  setMockPathname,
   waitFor,
 } from '@repo/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -104,6 +106,24 @@ describe('AuthGuard', () => {
     await waitFor(() => expect(window.location.href).toBe('/'));
     expect(getCookie(COOKIE_KEYS.ACCESS_TOKEN)).toBeNull();
     expect(getCookie(COOKIE_KEYS.REFRESH_TOKEN)).toBeNull();
+  });
+
+  it('로그인 취소 화면은 로그인하지 않았어도 계정을 조회하지 않고 그대로 보여 준다', async () => {
+    // 조회하면 401로 재로그인이 시작돼 /로 이동하고, 미들웨어가 다시 동의 화면으로 보낸다.
+    deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
+    deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+    setMockPathname('/login/canceled');
+    let requestCount = 0;
+    mockMyAccount(() => {
+      requestCount += 1;
+      return apiError(401, '인증이 필요합니다.');
+    });
+
+    renderGuard();
+
+    expect(screen.getByText('관리자 화면')).toBeInTheDocument();
+    await expectNoRequest(() => requestCount);
+    expect(window.location.href).toBe(CURRENT_URL);
   });
 
   it('계정 조회가 실패하면 쿠키를 지우지 않고 다시 시도할 수 있게 한다', async () => {

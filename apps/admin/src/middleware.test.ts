@@ -89,6 +89,16 @@ describe('admin middleware', () => {
     expect(response.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it('로그인 취소 화면은 토큰이 없어도 인가로 보내지 않는다', async () => {
+    // 인가로 보내면 IdP 세션은 있고 동의 기록은 없어서, 방금 거부한 동의 화면이 다시 뜬다.
+    const response = await middleware(
+      requestTo('/login/canceled?error=access_denied&returnTo=%2Fstudents'),
+    );
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
+  });
+
   describe('matcher', () => {
     const matcher = new RegExp(`^${config.matcher[0]}$`);
 
