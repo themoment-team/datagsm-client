@@ -16,6 +16,13 @@ export type MyProjectDisplayKind =
   /** 신규 신청 거절 — 등록 자체가 무산 */
   | 'REQUEST_REJECTED';
 
+/** 카드에서 내용을 고쳐 다시 내는 방법 */
+export type MyProjectAction =
+  /** 등록된 프로젝트의 수정 신청 (PUT) — 서버가 프로젝트당 1건을 최신 내용으로 덮어쓴다 */
+  | 'edit'
+  /** 거절된 신규 신청을 고쳐 새로 신청 (POST) — 신규 신청은 낼 때마다 새로 생긴다 */
+  | 'reapply';
+
 export interface MyProjectDisplay {
   kind: MyProjectDisplayKind;
   /** 이미 등록되어 공개 목록에 노출되는 프로젝트인지 */
@@ -30,7 +37,7 @@ export interface MyProjectDisplay {
    * 카드에서 할 수 있는 동작 (없으면 null).
    * 신규 신청은 고치거나 취소하는 API가 없어, 심사 중에 다시 내면 신청이 하나 더 생기므로 막는다.
    */
-  action: 'edit' | null;
+  action: MyProjectAction | null;
 }
 
 const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
@@ -72,7 +79,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'destructive',
     notice: null,
     showRejectReason: true,
-    action: 'edit',
+    action: 'reapply',
   },
 };
 

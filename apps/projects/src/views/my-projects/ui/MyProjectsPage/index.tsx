@@ -12,6 +12,7 @@ import { cn } from '@repo/shared/utils';
 import { LayoutGrid, Plus } from 'lucide-react';
 
 import {
+  type MyProjectAction,
   PROJECT_REQUEST_STATUS_FILTER_OPTIONS,
   getMyProjectDisplay,
   getMyProjectKey,
@@ -53,7 +54,10 @@ const MyProjectsPage = () => {
     '프로젝트를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.';
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<MyProject | null>(null);
+  // 카드에서 누른 동작(수정 신청·재신청)을 함께 둬서 폼의 문구와 요청 방식을 그 동작으로 정한다.
+  const [editing, setEditing] = useState<{ project: MyProject; action: MyProjectAction } | null>(
+    null,
+  );
 
   const handleCreate = () => {
     setEditing(null);
@@ -61,10 +65,11 @@ const MyProjectsPage = () => {
   };
 
   const handleEdit = (project: MyProject) => {
+    const { action } = getMyProjectDisplay(project);
     // 신규 신청은 고치거나 취소하는 API가 없어, 심사 중에 폼으로 다시 내면 신청이 하나 더 생긴다.
-    if (!getMyProjectDisplay(project).action) return;
+    if (!action) return;
 
-    setEditing(project);
+    setEditing({ project, action });
     setFormOpen(true);
   };
 
@@ -143,9 +148,9 @@ const MyProjectsPage = () => {
       </main>
 
       <ProjectFormDialog
-        mode={editing ? 'edit' : 'create'}
-        initial={editing ?? undefined}
-        projectId={editing?.projectId ?? undefined}
+        mode={editing?.action ?? 'create'}
+        initial={editing?.project}
+        projectId={editing?.project.projectId}
         open={formOpen}
         onOpenChange={setFormOpen}
       />

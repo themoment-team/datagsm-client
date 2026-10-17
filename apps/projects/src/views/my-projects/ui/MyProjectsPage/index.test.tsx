@@ -4,11 +4,16 @@ import {
   apiError,
   apiPath,
   apiSuccess,
+  createMyAccount,
+  createParticipantCandidateListData,
+  createPublicClubListData,
   http,
   renderWithProviders,
   screen,
   server,
   setMockSearchParams,
+  waitFor,
+  within,
 } from '@repo/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -55,6 +60,25 @@ const mockMyProjects = (respond: () => Response) => {
     }),
   );
   return requestStatuses;
+};
+
+/** 수정·재신청 폼이 여는 조회를 비워 두고, 제출된 신청의 메서드와 경로를 기록한다 */
+const mockProjectForm = () => {
+  const submits: string[] = [];
+  const record = (method: string, request: Request) => {
+    submits.push(`${method} ${new URL(request.url).pathname.replace('/api', '')}`);
+    return apiSuccess(null);
+  };
+  server.use(
+    http.get(apiPath('/v1/public/clubs'), () => apiSuccess(createPublicClubListData([]))),
+    http.get(apiPath('/v1/accounts/my'), () => apiSuccess(createMyAccount())),
+    http.get(apiPath('/v1/students/participant-candidates'), () =>
+      apiSuccess(createParticipantCandidateListData([])),
+    ),
+    http.post(apiPath('/v1/students/me/projects'), ({ request }) => record('POST', request)),
+    http.put(apiPath('/v1/students/me/projects/:id'), ({ request }) => record('PUT', request)),
+  );
+  return submits;
 };
 
 describe('MyProjectsPage', () => {
@@ -155,5 +179,47 @@ describe('MyProjectsPage 수정·재신청', () => {
       await screen.findByText('신청 심사 중 · 심사가 끝나기 전에는 수정할 수 없습니다.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '수정' })).not.toBeInTheDocument();
+  });
+
+  it('거절된 신규 신청은 재신청 버튼으로 연 폼에서 새로 신청한다', async () => {
+    const rejectedRequest: MyProject = {
+      ...myProject,
+      projectId: null,
+      requestId: 3,
+      requestStatus: 'REJECTED',
+      rejectReason: '설명이 부족합니다',
+      status: null,
+      categories: ['TEAM'],
+    };
+    mockMyProjects(() => apiSuccess({ totalElements: 1, projects: [rejectedRequest] }));
+    const submits = mockProjectForm();
+    const { user } = renderWithProviders(<MyProjectsPage />);
+
+    await user.click(await screen.findByRole('button', { name: '재신청' }));
+    const dialog = await screen.findByRole('dialog', { name: '프로젝트 재신청' });
+    // 내 정보를 불러오기 전에는 제출 버튼이 잠겨 있다.
+    const submitButton = within(dialog).getByRole('button', { name: '재신청' });
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+
+    await screen.findByText('재신청이 접수되었습니다.');
+    expect(submits).toEqual(['POST /v1/students/me/projects']);
+  });
+
+  it('등록된 프로젝트는 수정 버튼으로 연 폼에서 그 프로젝트에 수정 신청한다', async () => {
+    mockMyProjects(() =>
+      apiSuccess({ totalElements: 1, projects: [{ ...myProject, categories: ['TEAM'] }] }),
+    );
+    const submits = mockProjectForm();
+    const { user } = renderWithProviders(<MyProjectsPage />);
+
+    await user.click(await screen.findByRole('button', { name: '수정' }));
+    const dialog = await screen.findByRole('dialog', { name: '프로젝트 수정 신청' });
+    const submitButton = within(dialog).getByRole('button', { name: '수정 신청' });
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+
+    await screen.findByText('수정 신청이 접수되었습니다.');
+    expect(submits).toEqual(['PUT /v1/students/me/projects/10']);
   });
 });

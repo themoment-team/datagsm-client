@@ -110,6 +110,14 @@ describe('getMyProjectDisplay', () => {
     expect(display.action).toBeNull();
     expect(display.notice).toContain('수정할 수 없습니다');
   });
+
+  it('거절된 신규 신청은 수정 신청이 아니라 재신청으로 다시 낸다', () => {
+    const display = getMyProjectDisplay(
+      buildProject({ projectId: null, requestId: 20, requestStatus: 'REJECTED' }),
+    );
+
+    expect(display.action).toBe('reapply');
+  });
 });
 
 describe('getMyProjectKey', () => {

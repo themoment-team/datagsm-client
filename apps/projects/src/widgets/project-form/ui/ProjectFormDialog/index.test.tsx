@@ -65,6 +65,15 @@ const editingProject: MyProject = {
   techStacks: [],
 };
 
+/** 거절된 신규 신청. 등록 전이라 projectId와 운영 상태가 없다. */
+const rejectedRequest: MyProject = {
+  ...editingProject,
+  projectId: null,
+  requestStatus: 'REJECTED',
+  rejectReason: '설명이 부족합니다',
+  status: null,
+};
+
 const hong: ParticipantCandidate = {
   id: 101,
   name: '홍길동',
@@ -149,6 +158,11 @@ const renderEditDialog = (initial: MyProject, open = true) => (
 );
 
 const openEditDialog = (initial: MyProject) => renderWithProviders(renderEditDialog(initial));
+
+const openReapplyDialog = (initial: MyProject) =>
+  renderWithProviders(
+    <ProjectFormDialog mode="reapply" initial={initial} open onOpenChange={() => {}} />,
+  );
 
 const openCreateDialog = () =>
   renderWithProviders(<ProjectFormDialog mode="create" open onOpenChange={() => {}} />);
@@ -235,14 +249,16 @@ describe('ProjectFormDialog 수정 신청', () => {
       },
     ]);
   });
+});
 
-  it('등록 전 신청을 다시 내도 기존 참여자 ID를 유지한다', async () => {
+describe('ProjectFormDialog 재신청', () => {
+  it('거절된 신규 신청을 재신청하면 기존 참여자 ID를 유지해 새로 신청한다', async () => {
     const requests = mockProjectApi();
-    const { user } = openEditDialog({ ...editingProject, projectId: null, status: null });
+    const { user } = openReapplyDialog(rejectedRequest);
 
-    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+    await user.click(within(dialog()).getByRole('button', { name: '재신청' }));
 
-    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    await screen.findByText('재신청이 접수되었습니다.');
     expect(requests).toEqual([
       {
         method: 'POST',
@@ -252,13 +268,13 @@ describe('ProjectFormDialog 수정 신청', () => {
     ]);
   });
 
-  it('등록 전 신청을 다시 내면 기존 아이콘 키를 함께 보낸다', async () => {
+  it('거절된 신규 신청을 재신청하면 기존 아이콘 키를 함께 보낸다', async () => {
     const requests = mockProjectApi();
-    const { user } = openEditDialog({ ...editingProject, projectId: null, status: null });
+    const { user } = openReapplyDialog(rejectedRequest);
 
-    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+    await user.click(within(dialog()).getByRole('button', { name: '재신청' }));
 
-    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    await screen.findByText('재신청이 접수되었습니다.');
     expect(requests).toEqual([
       {
         method: 'POST',
@@ -266,6 +282,16 @@ describe('ProjectFormDialog 수정 신청', () => {
         body: expect.objectContaining({ iconKey: ICON_KEY }),
       },
     ]);
+  });
+
+  it('재신청 폼은 함께 보낼 기존 아이콘을 미리보기로 보여 준다', () => {
+    mockProjectApi();
+    openReapplyDialog(rejectedRequest);
+
+    expect(within(dialog()).getByRole('img', { name: '아이콘 미리보기' })).toHaveAttribute(
+      'src',
+      rejectedRequest.iconUrl,
+    );
   });
 });
 
@@ -527,21 +553,19 @@ describe('ProjectFormDialog 동아리 선택', () => {
 });
 
 describe('ProjectFormDialog 재신청 동아리', () => {
-  it('반려된 신규 신청의 동아리가 폐지됐으면 무소속으로 돌려 다시 신청한다', async () => {
+  it('거절된 신규 신청의 동아리가 폐지됐으면 무소속으로 돌려 재신청한다', async () => {
     const requests = mockProjectApi({ clubs: [{ id: 1, name: '운영동아리', type: 'MAJOR_CLUB' }] });
-    const { user } = openEditDialog({
-      ...editingProject,
-      projectId: null,
-      status: null,
+    const { user } = openReapplyDialog({
+      ...rejectedRequest,
       club: createClub({ id: 7, name: '폐지된동아리', status: 'ABOLISHED' }),
     });
 
     await waitFor(() =>
       expect(within(dialog()).getByLabelText('동아리')).toHaveTextContent('무소속'),
     );
-    await user.click(within(dialog()).getByRole('button', { name: '수정 신청' }));
+    await user.click(within(dialog()).getByRole('button', { name: '재신청' }));
 
-    await screen.findByText('프로젝트 신청이 접수되었습니다.');
+    await screen.findByText('재신청이 접수되었습니다.');
     expect(requests[0]?.body).toMatchObject({ clubId: 0 });
   });
 });
