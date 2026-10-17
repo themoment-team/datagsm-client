@@ -5,22 +5,23 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-import { LayoutGrid, Plus } from 'lucide-react';
-
 import { useURLFilters } from '@repo/shared/hooks';
 import type { BaseApiResponse, MyProject } from '@repo/shared/types';
 import { Button, PageHeader, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
+import { LayoutGrid, Plus } from 'lucide-react';
 
 import {
   PROJECT_REQUEST_STATUS_FILTER_OPTIONS,
+  getMyProjectDisplay,
   getMyProjectKey,
   parseProjectRequestStatus,
 } from '@/entities/project';
 import { getIsAuthenticated, startLogin } from '@/shared/lib';
-import { useGetMyProjects } from '../../model/useGetMyProjects';
 import { MyProjectCard } from '@/widgets/my-project';
 import { ProjectFormDialog } from '@/widgets/project-form';
+
+import { useGetMyProjects } from '../../model/useGetMyProjects';
 
 const GRID_CLASS = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
@@ -60,6 +61,9 @@ const MyProjectsPage = () => {
   };
 
   const handleEdit = (project: MyProject) => {
+    // 신규 신청은 고치거나 취소하는 API가 없어, 심사 중에 폼으로 다시 내면 신청이 하나 더 생긴다.
+    if (!getMyProjectDisplay(project).action) return;
+
     setEditing(project);
     setFormOpen(true);
   };

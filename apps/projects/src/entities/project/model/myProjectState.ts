@@ -26,6 +26,11 @@ export interface MyProjectDisplay {
   notice: string | null;
   /** 거절 사유를 노출해야 하는 상태인지 */
   showRejectReason: boolean;
+  /**
+   * 카드에서 할 수 있는 동작 (없으면 null).
+   * 신규 신청은 고치거나 취소하는 API가 없어, 심사 중에 다시 내면 신청이 하나 더 생기므로 막는다.
+   */
+  action: 'edit' | null;
 }
 
 const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
@@ -35,6 +40,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'default',
     notice: null,
     showRejectReason: false,
+    action: 'edit',
   },
   EDIT_PENDING: {
     isRegistered: true,
@@ -42,6 +48,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'secondary',
     notice: '수정 심사 중 · 아래 내용은 수정안 기준입니다.',
     showRejectReason: false,
+    action: 'edit',
   },
   EDIT_REJECTED: {
     isRegistered: true,
@@ -49,13 +56,15 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'default',
     notice: '최근 수정 신청이 거절되었습니다 · 아래 내용은 기존 등록본 기준입니다.',
     showRejectReason: true,
+    action: 'edit',
   },
   REQUEST_PENDING: {
     isRegistered: false,
     badgeLabel: '신청 대기 중',
     badgeVariant: 'secondary',
-    notice: null,
+    notice: '신청 심사 중 · 심사가 끝나기 전에는 수정할 수 없습니다.',
     showRejectReason: false,
+    action: null,
   },
   REQUEST_REJECTED: {
     isRegistered: false,
@@ -63,6 +72,7 @@ const DISPLAY: Record<MyProjectDisplayKind, Omit<MyProjectDisplay, 'kind'>> = {
     badgeVariant: 'destructive',
     notice: null,
     showRejectReason: true,
+    action: 'edit',
   },
 };
 

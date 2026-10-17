@@ -137,3 +137,23 @@ describe('MyProjectsPage', () => {
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('same key');
   });
 });
+
+describe('MyProjectsPage 수정·재신청', () => {
+  it('심사 중인 신규 신청은 수정 버튼 없이 심사가 끝나기 전에는 수정할 수 없다고 안내한다', async () => {
+    const pendingRequest: MyProject = {
+      ...myProject,
+      projectId: null,
+      requestId: 3,
+      requestStatus: 'PENDING',
+      status: null,
+    };
+    mockMyProjects(() => apiSuccess({ totalElements: 1, projects: [pendingRequest] }));
+
+    renderWithProviders(<MyProjectsPage />);
+
+    expect(
+      await screen.findByText('신청 심사 중 · 심사가 끝나기 전에는 수정할 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '수정' })).not.toBeInTheDocument();
+  });
+});

@@ -72,17 +72,19 @@ const MyProjectCard = ({ project, onEdit }: MyProjectCardProps) => {
         </div>
       )}
 
-      <div className={cn('mt-auto flex justify-end')}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit(project)}
-          className={cn('gap-1.5')}
-        >
-          <Pencil className={cn('h-3 w-3')} />
-          수정
-        </Button>
-      </div>
+      {display.action && (
+        <div className={cn('mt-auto flex justify-end')}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(project)}
+            className={cn('gap-1.5')}
+          >
+            <Pencil className={cn('h-3 w-3')} />
+            수정
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
