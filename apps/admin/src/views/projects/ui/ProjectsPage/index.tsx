@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { parseProjectCategory } from '@repo/shared/constants';
 import { useDebounce, useURLFilters } from '@repo/shared/hooks';
-import { Project } from '@repo/shared/types';
+import { BaseApiResponse, Project } from '@repo/shared/types';
 import { CommonPagination, PageTitleBar, PageWindow } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -147,7 +147,12 @@ const ProjectsPage = () => {
     category: filters.category,
   };
 
-  const { data: projectsData, isLoading: isLoadingProjects } = useGetProjects(queryParams);
+  const {
+    data: projectsData,
+    isLoading: isLoadingProjects,
+    isError: isProjectsError,
+    error: projectsError,
+  } = useGetProjects(queryParams);
   const { data: clubsData } = useGetClubs({ size: 100, clubType: 'MAJOR_CLUB' });
   const { data: studentsData, isLoading: isLoadingStudents } = useGetStudents(
     {},
@@ -157,9 +162,15 @@ const ProjectsPage = () => {
     },
   );
 
-  const projectList = projectsData?.data.projects || [];
-  const totalPages = projectsData?.data.totalPages || 0;
+  // 다시 불러오다 실패해도 이전 응답은 남는다. 바뀌기 전 목록일 수 있어 쓰지 않고 오류를 보여 준다.
+  const projectListData = isProjectsError ? undefined : projectsData?.data;
+  const projectList = projectListData?.projects || [];
+  const totalPages = projectListData?.totalPages || 0;
   const clubs = clubsData?.data.clubs || [];
+  // 서버가 실패 이유를 내려 주면 그 문구를 그대로 보여 준다.
+  const projectsErrorMessage =
+    (projectsError as { response?: { data?: BaseApiResponse } } | null)?.response?.data?.message ||
+    '프로젝트 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
 
   const projectForm = useForm<AddProjectType>({
     resolver: zodResolver(AddProjectSchema),
@@ -207,6 +218,7 @@ const ProjectsPage = () => {
             <ProjectList
               projects={projectList}
               isLoading={isLoadingProjects}
+              errorMessage={isProjectsError ? projectsErrorMessage : undefined}
               onEdit={handleEditProject}
               onDelete={(projectId) => deleteProject(projectId)}
             />
