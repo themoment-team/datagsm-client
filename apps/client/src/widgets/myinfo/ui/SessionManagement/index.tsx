@@ -12,8 +12,11 @@ import { useDeleteIdpSession, useGetIdpSessions } from '@/widgets/myinfo';
 
 export const SessionManagement = () => {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useGetIdpSessions();
+  const { data, isLoading, isError, error: sessionsError } = useGetIdpSessions();
   const sessions = data?.data?.sessions;
+  // 목록은 IdP 세션 쿠키로 조회한다. 이 서비스는 refresh token으로 로그인이 유지돼도 IdP 세션은
+  // 먼저 만료될 수 있어서, 401은 오류가 아니라 이 브라우저에 SSO 세션이 없다는 뜻이다.
+  const isSsoSessionMissing = sessionsError?.response?.status === 401;
 
   const {
     mutate: deleteSession,
@@ -33,7 +36,14 @@ export const SessionManagement = () => {
       toast.success('세션을 종료했습니다.');
       queryClient.invalidateQueries({ queryKey: oauthQueryKeys.getIdpSessions() });
     },
-    onError: () => {
+    onError: (error) => {
+      if (error.response?.status === 401) {
+        toast.error('이 브라우저에 SSO 세션이 없어 세션을 종료할 수 없습니다.');
+        // 목록도 다시 불러와 SSO 세션이 없다는 안내로 바꾼다.
+        queryClient.invalidateQueries({ queryKey: oauthQueryKeys.getIdpSessions() });
+        return;
+      }
+
       toast.error('세션 종료에 실패했습니다.');
     },
   });
@@ -44,6 +54,11 @@ export const SessionManagement = () => {
         <div className={cn('flex flex-col gap-2 p-5')}>
           <Skeleton className={cn('h-14 w-full')} />
           <Skeleton className={cn('h-14 w-full')} />
+        </div>
+      ) : isSsoSessionMissing ? (
+        <div className={cn('text-muted-foreground px-5 py-6 text-center font-mono text-sm')}>
+          <p>이 브라우저에 SSO 세션이 없어 세션 목록을 볼 수 없습니다.</p>
+          <p className={cn('mt-1 text-xs')}>로그아웃한 뒤 다시 로그인하면 확인할 수 있습니다.</p>
         </div>
       ) : isError || !sessions ? (
         <p className={cn('text-muted-foreground px-5 py-6 text-center font-mono text-sm')}>
