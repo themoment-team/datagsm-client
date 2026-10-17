@@ -9,6 +9,7 @@ import {
   renderWithProviders,
   screen,
   server,
+  setMockSearchParams,
   within,
 } from '@repo/test-utils';
 import { describe, expect, it } from 'vitest';
@@ -55,6 +56,19 @@ const requestCard = () => screen.queryByRole('button', { name: /DataGSM/ });
 const pagination = () => screen.queryByRole('navigation', { name: 'pagination' });
 
 describe('ProjectRequestsPage', () => {
+  it('탭에 없는 status는 심사 중으로 조회하고 심사 중 탭을 선택한다', async () => {
+    setMockSearchParams({ status: 'foo' });
+    const requestStatuses = mockProjectRequests(() =>
+      apiSuccess({ totalPages: 1, totalElements: 1, requests: [pendingRequest] }),
+    );
+
+    renderWithProviders(<ProjectRequestsPage />);
+
+    expect(await screen.findByRole('button', { name: /DataGSM/ })).toBeInTheDocument();
+    expect(requestStatuses).toEqual(['PENDING']);
+    expect(screen.getByRole('button', { name: '심사 중' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('서버 메시지와 함께 500이 나면 그 메시지를 보여 주고 빈 목록 문구는 띄우지 않는다', async () => {
     mockProjectRequests(() => apiError(500, '서버 오류가 발생했습니다.'));
 

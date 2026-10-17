@@ -9,7 +9,7 @@ import type { BaseApiResponse, ProjectEditRequest, ProjectRequestStatus } from '
 import { CommonPagination, PageTitleBar, PageWindow, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
-import { PROJECT_REQUEST_STATUS_TABS } from '@/entities/project';
+import { PROJECT_REQUEST_STATUS_TABS, parseProjectRequestStatus } from '@/entities/project';
 import { RequestCard, RequestReviewDialog } from '@/widgets/project-requests';
 
 import { useGetProjectRequests } from '../../model';
@@ -23,7 +23,7 @@ const ProjectRequestsPage = () => {
   const searchParams = useSearchParams();
   const { updateURL } = useURLFilters<{ status: string }>();
 
-  const status = (searchParams.get('status') as ProjectRequestStatus | null) ?? DEFAULT_STATUS;
+  const status = parseProjectRequestStatus(searchParams.get('status')) ?? DEFAULT_STATUS;
   const page = Number(searchParams.get('page')) || 0;
 
   const { data, isLoading, isError, error } = useGetProjectRequests({
@@ -67,6 +67,7 @@ const ProjectRequestsPage = () => {
               <button
                 key={tab.value}
                 type="button"
+                aria-pressed={status === tab.value}
                 onClick={() => updateURL({ status: tab.value }, 0)}
                 className={cn(
                   'border-foreground border px-3 py-1 font-mono text-xs uppercase tracking-widest transition-colors',
