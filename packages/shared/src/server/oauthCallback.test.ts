@@ -137,6 +137,76 @@ describe('createOAuthCallbackHandler', () => {
         expect(response.cookies.get('accessToken')).toBeUndefined();
       });
     });
+
+    describe('인가 서버가 error를 돌려준 경우', () => {
+      const parseLocation = (response: Response) => {
+        const location = new URL(response.headers.get('location')!);
+        return {
+          path: location.origin + location.pathname,
+          params: Object.fromEntries(location.searchParams),
+        };
+      };
+
+      it('동의를 거부했으면 교환하지 않고 원래 경로를 담아 로그인 취소 화면으로 보낸다', async () => {
+        const bodies = mockToken();
+
+        const response = await callback(
+          GET,
+          `error=access_denied&error_description=${encodeURIComponent('사용자가 접근 권한 요청을 거부했습니다.')}&state=${encodeURIComponent('/students')}`,
+        );
+
+        // /로 보내면 미들웨어가 곧바로 인가를 다시 시작해, 방금 거부한 동의 화면이 다시 뜬다.
+        expect(parseLocation(response)).toEqual({
+          path: `${ORIGIN}/login/canceled`,
+          params: { error: 'access_denied', returnTo: '/students' },
+        });
+        expect(bodies).toEqual([]);
+        expect(response.cookies.get('accessToken')).toBeUndefined();
+        expect(response.cookies.get('refreshToken')).toBeUndefined();
+      });
+
+      it('그 외 error도 교환하지 않고, 안내 화면이 문구를 고를 수 있게 그 값을 넘긴다', async () => {
+        const bodies = mockToken();
+
+        const response = await callback(GET, 'error=server_error&state=/students');
+
+        expect(parseLocation(response)).toEqual({
+          path: `${ORIGIN}/login/canceled`,
+          params: { error: 'server_error', returnTo: '/students' },
+        });
+        expect(bodies).toEqual([]);
+      });
+
+      it('code가 함께 와도 error가 있으면 교환하지 않는다', async () => {
+        const bodies = mockToken();
+
+        const response = await callback(GET, 'code=code-1&error=access_denied&state=/students');
+
+        expect(parseLocation(response).path).toBe(`${ORIGIN}/login/canceled`);
+        expect(bodies).toEqual([]);
+        expect(response.cookies.get('accessToken')).toBeUndefined();
+      });
+
+      it.each([
+        ['state가 없으면', 'error=access_denied'],
+        ['state가 다른 호스트면', `error=access_denied&state=${encodeURIComponent('//evil.com')}`],
+        [
+          'state가 절대 URL이면',
+          `error=access_denied&state=${encodeURIComponent('https://evil.com')}`,
+        ],
+        [
+          'state가 /\\evil.com이면',
+          `error=access_denied&state=${encodeURIComponent('/\\evil.com')}`,
+        ],
+      ])('%s 돌아갈 경로를 /로 넘긴다', async (_, query) => {
+        const response = await callback(GET, query);
+
+        expect(parseLocation(response)).toEqual({
+          path: `${ORIGIN}/login/canceled`,
+          params: { error: 'access_denied', returnTo: '/' },
+        });
+      });
+    });
   });
 
   describe('시크릿을 함께 보내는 클라이언트', () => {

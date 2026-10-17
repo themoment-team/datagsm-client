@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { oauthPost, oauthUrl } from '@repo/shared/api';
-import { COOKIE_KEYS, STATUS_URL } from '@repo/shared/constants';
+import { COOKIE_KEYS, LOGIN_CANCELED_PATH, STATUS_URL } from '@repo/shared/constants';
 import { AuthWindow, Button } from '@repo/shared/ui';
 import { cn, deleteCookie, getCookie } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,7 +32,8 @@ const GuardWindow = ({ title, description, isPending, children }: GuardWindowPro
   </div>
 );
 
-const AuthGuard = ({ children }: AuthGuardProps) => {
+/** 로그인한 계정이 관리자인지 확인하고, 아니면 안내 화면을 보여 준다. */
+const RoleGuard = ({ children }: AuthGuardProps) => {
   const [isMounted, setIsMounted] = useState(false);
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const pathname = usePathname();
@@ -132,6 +133,18 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
   }
 
   return <>{children}</>;
+};
+
+const AuthGuard = ({ children }: AuthGuardProps) => {
+  const pathname = usePathname();
+
+  // 로그인 취소 화면은 로그인하지 않은 채로 본다. 계정을 조회하면 401로 재로그인이 시작돼
+  // 거부했던 동의 화면으로 되돌아가므로, 조회하는 RoleGuard를 아예 거치지 않는다.
+  if (pathname === LOGIN_CANCELED_PATH) {
+    return <>{children}</>;
+  }
+
+  return <RoleGuard>{children}</RoleGuard>;
 };
 
 export default AuthGuard;
