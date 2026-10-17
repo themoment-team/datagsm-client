@@ -85,15 +85,16 @@ export const SessionManagement = () => {
                   </p>
                 </div>
 
+                {/* 서버는 IdP 세션만 지우고 그 기기가 이미 받은 토큰은 폐기하지 않는다.
+                    기기가 로그아웃된다고 오해하지 않도록 남는 로그인 범위를 경고로 보여 준다. */}
                 <ConfirmDialog
                   windowTitle="Session"
                   title="세션을 종료하시겠습니까?"
                   warning={
                     session.current
-                      ? '현재 사용 중인 세션입니다. 종료하면 본인이 로그아웃됩니다.'
-                      : undefined
+                      ? '현재 사용 중인 세션입니다. 종료하면 이 서비스에서 로그아웃되고, 새 서비스에 로그인할 때 비밀번호를 다시 입력해야 합니다. 이미 로그인된 다른 서비스는 로그인 상태가 유지될 수 있습니다.'
+                      : '해당 기기는 새 서비스에 로그인할 때 비밀번호를 다시 입력해야 합니다. 이미 로그인된 서비스는 로그인 상태가 유지될 수 있습니다.'
                   }
-                  description="해당 기기에서 다시 로그인해야 이용할 수 있습니다."
                   confirmLabel="종료"
                   onConfirm={() =>
                     deleteSession({ sessionId: session.sessionId, isCurrent: session.current })
