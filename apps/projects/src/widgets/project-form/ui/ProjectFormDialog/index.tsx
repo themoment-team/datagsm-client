@@ -49,10 +49,16 @@ import { useUpdateProject } from '../../model/useUpdateProject';
 import ParticipantField from '../ParticipantField';
 import ProjectIconField from '../ProjectIconField';
 
+/**
+ * create: 새 신청(POST), edit: 등록된 프로젝트의 수정 신청(PUT),
+ * reapply: 거절된 신규 신청을 고쳐 새로 신청(POST)
+ */
+type ProjectFormMode = 'create' | 'edit' | 'reapply';
+
 interface ProjectFormDialogProps {
-  mode: 'create' | 'edit';
+  mode: ProjectFormMode;
   initial?: MyProject;
-  /** 값이 있으면 수정(PUT), 없으면 신규·재신청(POST) */
+  /** 수정 신청(PUT)할 프로젝트. edit 모드에서만 쓴다. */
   projectId?: number | null;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -60,6 +66,28 @@ interface ProjectFormDialogProps {
 }
 
 const LABEL_STYLE = 'text-muted-foreground font-mono text-xs uppercase tracking-widest';
+
+/** 재신청은 새 신청(POST)이라 등록된 프로젝트의 수정 신청과 문구를 나눈다. */
+const MODE_TEXT: Record<
+  ProjectFormMode,
+  { title: string; submitText: string; successMessage: string }
+> = {
+  create: {
+    title: '프로젝트 신청',
+    submitText: '신청',
+    successMessage: '프로젝트 신청이 접수되었습니다.',
+  },
+  edit: {
+    title: '프로젝트 수정 신청',
+    submitText: '수정 신청',
+    successMessage: '수정 신청이 접수되었습니다.',
+  },
+  reapply: {
+    title: '프로젝트 재신청',
+    submitText: '재신청',
+    successMessage: '재신청이 접수되었습니다.',
+  },
+};
 
 const currentYear = new Date().getFullYear();
 
@@ -110,10 +138,10 @@ const ProjectFormDialog = ({
     const activeClubs = clubsData?.data.clubs ?? [];
     const currentClub = initial?.club;
 
-    if (projectId == null || !currentClub) return activeClubs;
+    if (mode !== 'edit' || !currentClub) return activeClubs;
     if (activeClubs.some((club) => club.id === currentClub.id)) return activeClubs;
     return [...activeClubs, currentClub];
-  }, [clubsData, initial, projectId]);
+  }, [clubsData, initial, mode]);
 
   // 후보에는 재학생만 내려온다. 졸업·자퇴한 기존 참여자가 명단에서 빠지지 않도록 합친다.
   // 후보 조회가 실패해도 본인은 명단에 보이도록 내 정보도 합친다.
@@ -161,12 +189,12 @@ const ProjectFormDialog = ({
 
   // 반려된 신규 신청을 다시 낼 때 동아리가 그사이 폐지됐으면 선택지에 없으므로 무소속으로 돌린다.
   useEffect(() => {
-    if (!open || projectId != null || !clubsData) return;
+    if (!open || mode === 'edit' || !clubsData) return;
 
     const clubId = getValues('clubId');
     if (clubId === null || clubsData.data.clubs.some((club) => club.id === clubId)) return;
     setValue('clubId', null);
-  }, [open, initial, projectId, clubsData, getValues, setValue]);
+  }, [open, initial, mode, clubsData, getValues, setValue]);
 
   const handleSuccess = (message: string) => {
     queryClient.invalidateQueries({ queryKey: ['me-projects'] });
@@ -180,12 +208,12 @@ const ProjectFormDialog = ({
   };
 
   const { mutate: createProject, isPending: isCreating } = useCreateProject({
-    onSuccess: () => handleSuccess('프로젝트 신청이 접수되었습니다.'),
+    onSuccess: () => handleSuccess(MODE_TEXT[mode].successMessage),
     onError: handleError,
   });
 
   const { mutate: updateProject, isPending: isUpdating } = useUpdateProject({
-    onSuccess: () => handleSuccess('수정 신청이 접수되었습니다.'),
+    onSuccess: () => handleSuccess(MODE_TEXT[mode].successMessage),
     onError: handleError,
   });
 
@@ -218,15 +246,15 @@ const ProjectFormDialog = ({
       deploymentUrl: form.deploymentUrl,
     };
 
-    if (projectId != null) {
-      updateProject({ projectId, data: body });
+    // POST·PUT은 mode로만 정한다. 수정 신청을 projectId가 없다고 POST로 보내면 신청이 하나 더 생긴다.
+    if (mode === 'edit') {
+      if (projectId != null) updateProject({ projectId, data: body });
     } else {
       createProject(body);
     }
   };
 
-  const title = mode === 'create' ? '프로젝트 신청' : '프로젝트 수정 신청';
-  const submitText = mode === 'create' ? '신청' : '수정 신청';
+  const { title, submitText } = MODE_TEXT[mode];
   const submitLabel = isPending
     ? '처리 중...'
     : isUploadingIcon
@@ -256,12 +284,13 @@ const ProjectFormDialog = ({
         >
           <div className={cn('space-y-2')}>
             <Label className={cn(LABEL_STYLE)}>아이콘</Label>
+            {/* 수정·재신청은 기존 iconKey를 그대로 보내므로 그 아이콘을 미리보기로 보여 준다. */}
             <Controller
               control={control}
               name="iconKey"
               render={({ field }) => (
                 <ProjectIconField
-                  initialUrl={mode === 'edit' ? initial?.iconUrl : null}
+                  initialUrl={initial?.iconUrl}
                   onChange={field.onChange}
                   onUploadingChange={setIsUploadingIcon}
                   disabled={isPending}

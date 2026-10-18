@@ -6,12 +6,18 @@ import { Badge, Button } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { Pencil } from 'lucide-react';
 
-import { getMyProjectDisplay } from '@/entities/project';
+import { type MyProjectAction, getMyProjectDisplay } from '@/entities/project';
 
 interface MyProjectCardProps {
   project: MyProject;
   onEdit: (project: MyProject) => void;
 }
+
+/** 거절된 신규 신청은 고쳐서 새로 신청하므로 등록된 프로젝트의 수정과 구분해 표기한다. */
+const ACTION_LABEL: Record<MyProjectAction, string> = {
+  edit: '수정',
+  reapply: '재신청',
+};
 
 const MyProjectCard = ({ project, onEdit }: MyProjectCardProps) => {
   const { name, description, categories, iconUrl, club, startYear, endYear, rejectReason } =
@@ -72,17 +78,19 @@ const MyProjectCard = ({ project, onEdit }: MyProjectCardProps) => {
         </div>
       )}
 
-      <div className={cn('mt-auto flex justify-end')}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onEdit(project)}
-          className={cn('gap-1.5')}
-        >
-          <Pencil className={cn('h-3 w-3')} />
-          수정
-        </Button>
-      </div>
+      {display.action && (
+        <div className={cn('mt-auto flex justify-end')}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(project)}
+            className={cn('gap-1.5')}
+          >
+            <Pencil className={cn('h-3 w-3')} />
+            {ACTION_LABEL[display.action]}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
