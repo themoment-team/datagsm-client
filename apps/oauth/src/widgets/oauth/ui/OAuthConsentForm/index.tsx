@@ -10,7 +10,12 @@ import { AuthWindow, Button, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
-import { OAuthSessionErrorFallback, useGetOAuthSession } from '@/widgets/oauth';
+import {
+  OAuthSessionErrorFallback,
+  OAuthSessionExpiredDialog,
+  useGetOAuthSession,
+  useOAuthSessionExpiry,
+} from '@/widgets/oauth';
 
 const OAuthConsentForm = () => {
   const [isPending, setIsPending] = useState(false);
@@ -28,6 +33,8 @@ const OAuthConsentForm = () => {
   const sessionData = sessionResponse?.data;
   const serviceName = sessionData?.serviceName;
   const serviceScope = sessionData?.requestedScopes;
+  // 동의 요청 토큰은 만료되면 다시 눌러도 같은 오류만 난다. 로그인 화면처럼 만료 시각이 지나면 막는다.
+  const { isExpired, expire } = useOAuthSessionExpiry(sessionData?.expiresAt);
 
   const submitConsent = async (approved: boolean) => {
     if (!token) {
@@ -85,8 +92,17 @@ const OAuthConsentForm = () => {
 
       setIsPending(false);
 
+      // 400은 동의 요청 토큰이 만료됐거나 이미 처리된 경우, 401은 로그인 세션이 만료됐거나 쓸 수 없게 된 경우다.
+      // 어느 쪽이든 이 화면에서는 다시 눌러도 같은 오류만 나므로 만료 안내로 바꾼다.
+      if (response.status === 400) {
+        toast.error('인증 요청이 만료되었습니다. 서비스에서 다시 로그인을 시도해주세요.');
+        expire();
+        return;
+      }
+
       if (response.status === 401) {
         toast.error('인증 세션이 만료되었습니다. 서비스에서 다시 로그인을 시도해주세요.');
+        expire();
         return;
       }
 
@@ -107,6 +123,11 @@ const OAuthConsentForm = () => {
 
   if (isSessionError) {
     return <OAuthSessionErrorFallback windowLabel="Consent" variant="unavailable" />;
+  }
+
+  // 만료된 뒤에는 승인·거부를 다시 받을 수 없으니 버튼 대신 만료 안내만 보여준다.
+  if (isExpired) {
+    return <OAuthSessionExpiredDialog />;
   }
 
   return (

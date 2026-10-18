@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { COOKIE_KEYS } from '@repo/shared/constants';
+import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
 import { isValidRelativePath } from '@repo/shared/utils';
 
 interface OAuthCallbackHandlerOptions {
@@ -14,6 +14,7 @@ interface OAuthCallbackHandlerOptions {
 /**
  * OAuth 로그인 콜백(`/api/callback`) GET 핸들러를 만든다.
  * code를 토큰으로 교환해 쿠키에 심고 state 경로로 보내며, 어느 단계든 실패하면 /로 돌려보낸다.
+ * 인가 서버가 error를 돌려주면(동의 거부 등) 로그인 취소 안내 화면으로 보낸다.
  */
 export const createOAuthCallbackHandler =
   ({ getClientSecret }: OAuthCallbackHandlerOptions = {}) =>
@@ -22,6 +23,17 @@ export const createOAuthCallbackHandler =
       const searchParams = request.nextUrl.searchParams;
       const code = searchParams.get('code');
       const state = searchParams.get('state');
+      const error = searchParams.get('error');
+      const targetPath = state && isValidRelativePath(state) ? state : '/';
+
+      // 동의를 거부하거나(access_denied) 요청을 처리하지 못하면 인가 서버는 code 대신 error를 붙여 돌려보낸다.
+      // /로 보내면 미들웨어가 곧바로 인가를 다시 시작해 같은 동의 화면이 다시 뜨므로 안내 화면으로 보낸다.
+      if (error) {
+        const canceledUrl = new URL(LOGIN_CANCELED_PATH, request.url);
+        canceledUrl.searchParams.set('error', error);
+        canceledUrl.searchParams.set('returnTo', targetPath);
+        return NextResponse.redirect(canceledUrl);
+      }
 
       if (!code) {
         return NextResponse.redirect(new URL('/', request.url));
@@ -65,7 +77,6 @@ export const createOAuthCallbackHandler =
         return NextResponse.redirect(new URL('/', request.url));
       }
 
-      const targetPath = state && isValidRelativePath(state) ? state : '/';
       const redirectUrl = new URL(targetPath, request.url);
       const response = NextResponse.redirect(redirectUrl);
 
