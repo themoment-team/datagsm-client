@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
 
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
 
+  poweredByHeader: false,
   async headers() {
     return SECURITY_HEADER_ROUTES;
   },
