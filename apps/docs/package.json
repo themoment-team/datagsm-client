@@ -12,7 +12,7 @@
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "^15.5.28",
+    "@next/mdx": "15.5.28",
     "@repo/shared": "workspace:*",
     "@types/mdx": "^2.0.13",
     "galmuri": "^2.40.3",
