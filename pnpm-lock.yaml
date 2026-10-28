@@ -4,6 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@next/eslint-plugin-next':
+      specifier: 15.5.28
+      version: 15.5.28
+    '@next/mdx':
+      specifier: 15.5.28
+      version: 15.5.28
+    next:
+      specifier: 15.5.28
+      version: 15.5.28
+
 importers:
 
   .:
@@ -55,7 +67,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -71,7 +83,7 @@ importers:
         version: 4.3.6
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -134,7 +146,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -150,7 +162,7 @@ importers:
         version: 4.3.6
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -207,7 +219,7 @@ importers:
         specifier: ^3.1.1
         version: 3.1.1(@types/react@19.2.7)(react@19.2.1)
       '@next/mdx':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@mdx-js/loader@3.1.1)(@mdx-js/react@3.1.1(@types/react@19.2.7)(react@19.2.1))
       '@repo/shared':
         specifier: workspace:*
@@ -225,7 +237,7 @@ importers:
         specifier: ^11.12.2
         version: 11.12.3
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -241,7 +253,7 @@ importers:
         version: 4.0.1
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -295,7 +307,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -311,7 +323,7 @@ importers:
         version: 4.3.6
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -374,7 +386,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -390,7 +402,7 @@ importers:
         version: 4.3.6
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -447,7 +459,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -457,7 +469,7 @@ importers:
         version: 19.2.1(react@19.2.1)
     devDependencies:
       '@next/eslint-plugin-next':
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       '@repo/eslint-config':
         specifier: workspace:*
@@ -511,7 +523,7 @@ importers:
         specifier: ^9.33.0
         version: 9.39.3
       '@next/eslint-plugin-next':
-        specifier: ^15.5.28
+        specifier: 'catalog:'
         version: 15.5.28
       eslint:
         specifier: ^9.33.0
@@ -580,7 +592,7 @@ importers:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1
@@ -662,7 +674,7 @@ importers:
         specifier: ^2.15.0
         version: 2.15.0(@types/node@22.19.13)(typescript@5.9.2)
       next:
-        specifier: 15.5.28
+        specifier: 'catalog:'
         version: 15.5.28(@babel/core@7.29.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       react:
         specifier: 19.2.1

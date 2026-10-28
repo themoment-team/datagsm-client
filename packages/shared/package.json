@@ -32,7 +32,7 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "next": "15.5.28",
+    "next": "catalog:",
     "react": "19.2.1",
     "react-hook-form": "^7.67.0"
   },

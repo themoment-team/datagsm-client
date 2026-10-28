@@ -15,12 +15,12 @@
   "dependencies": {
     "@repo/shared": "workspace:*",
     "lucide-react": "^0.546.0",
-    "next": "15.5.28",
+    "next": "catalog:",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "15.5.28",
+    "@next/eslint-plugin-next": "catalog:",
     "@repo/eslint-config": "workspace:*",
     "@repo/tailwind-config": "workspace:*",
     "@repo/test-utils": "workspace:*",

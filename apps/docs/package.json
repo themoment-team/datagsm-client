@@ -12,20 +12,20 @@
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
-    "@next/mdx": "15.5.28",
+    "@next/mdx": "catalog:",
     "@repo/shared": "workspace:*",
     "@types/mdx": "^2.0.13",
     "galmuri": "^2.40.3",
     "lucide-react": "^0.546.0",
     "mermaid": "^11.12.2",
-    "next": "15.5.28",
+    "next": "catalog:",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "15.5.28",
+    "@next/eslint-plugin-next": "catalog:",
     "@repo/eslint-config": "workspace:*",
     "@repo/tailwind-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
