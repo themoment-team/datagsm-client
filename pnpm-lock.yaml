@@ -12,6 +12,9 @@ catalogs:
     '@next/mdx':
       specifier: 15.5.28
       version: 15.5.28
+    axios:
+      specifier: ^1.20.0
+      version: 1.20.0
     next:
       specifier: 15.5.28
       version: 15.5.28
@@ -26,9 +29,6 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.90.2
         version: 5.91.3(@tanstack/react-query@5.90.21(react@19.2.1))(react@19.2.1)
-      axios:
-        specifier: ^1.20.0
-        version: 1.20.0
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -60,6 +60,9 @@ importers:
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       galmuri:
         specifier: ^2.40.3
         version: 2.40.3
@@ -139,6 +142,9 @@ importers:
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       galmuri:
         specifier: ^2.40.3
         version: 2.40.3
@@ -227,6 +233,9 @@ importers:
       '@types/mdx':
         specifier: ^2.0.13
         version: 2.0.13
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       galmuri:
         specifier: ^2.40.3
         version: 2.40.3
@@ -303,6 +312,9 @@ importers:
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       lucide-react:
         specifier: ^0.546.0
         version: 0.546.0(react@19.2.1)
@@ -379,6 +391,9 @@ importers:
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       galmuri:
         specifier: ^2.40.3
         version: 2.40.3
@@ -579,6 +594,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.7)(react@19.2.1)
+      axios:
+        specifier: 'catalog:'
+        version: 1.20.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

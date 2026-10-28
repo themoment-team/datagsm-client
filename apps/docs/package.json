@@ -15,6 +15,7 @@
     "@next/mdx": "catalog:",
     "@repo/shared": "workspace:*",
     "@types/mdx": "^2.0.13",
+    "axios": "catalog:",
     "galmuri": "^2.40.3",
     "lucide-react": "^0.546.0",
     "mermaid": "^11.12.2",
