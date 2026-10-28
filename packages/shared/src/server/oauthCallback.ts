@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
+import { LOGIN_CANCELED_PATH } from '@repo/shared/constants';
 import { isValidRelativePath } from '@repo/shared/utils';
+
+import { setAuthCookies } from './authCookies';
 
 export interface OAuthCallbackHandlerOptions {
   /**
@@ -80,23 +82,7 @@ export const createOAuthCallbackHandler =
       const redirectUrl = new URL(targetPath, request.url);
       const response = NextResponse.redirect(redirectUrl);
 
-      // 쿠키 설정
-      response.cookies.set(COOKIE_KEYS.ACCESS_TOKEN, accessToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60, // 1시간
-      });
-
-      response.cookies.set(COOKIE_KEYS.REFRESH_TOKEN, refreshToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30일
-      });
-
+      setAuthCookies(response, { accessToken, refreshToken });
       response.cookies.delete('code_verifier');
 
       return response;

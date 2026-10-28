@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { oauthPost, oauthUrl } from '@repo/shared/api';
-import { COOKIE_KEYS, LOGIN_CANCELED_PATH, STATUS_URL } from '@repo/shared/constants';
+import { LOGIN_CANCELED_PATH, STATUS_URL } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
 import { AuthWindow, Button } from '@repo/shared/ui';
-import { cn, deleteCookie, getCookie } from '@repo/shared/utils';
+import { cn, getIsAuthenticated } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useGetRole } from '@/entities/signin';
@@ -38,7 +39,7 @@ const RoleGuard = ({ children }: AuthGuardProps) => {
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const accessToken = getCookie(COOKIE_KEYS.ACCESS_TOKEN);
+  const isAuthenticated = getIsAuthenticated();
   const { data: role, isLoading, isError, isFetching, refetch } = useGetRole();
 
   useEffect(() => {
@@ -46,10 +47,10 @@ const RoleGuard = ({ children }: AuthGuardProps) => {
   }, []);
 
   useEffect(() => {
-    if (accessToken) {
+    if (isAuthenticated) {
       refetch();
     }
-  }, [pathname, accessToken, refetch]);
+  }, [pathname, isAuthenticated, refetch]);
 
   const handleSwitchAccount = async () => {
     setIsSwitchingAccount(true);
@@ -62,8 +63,7 @@ const RoleGuard = ({ children }: AuthGuardProps) => {
     }
 
     queryClient.clear();
-    deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-    deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+    await logoutLocally();
     window.location.href = '/';
   };
 
@@ -92,7 +92,7 @@ const RoleGuard = ({ children }: AuthGuardProps) => {
   }
 
   // 서버 사이드 렌더링 결과와 클라이언트의 첫 렌더링 결과를 일치킨다.
-  if (!isMounted || !accessToken) {
+  if (!isMounted || !isAuthenticated) {
     return <>{children}</>;
   }
 

@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { oauthPost, oauthUrl } from '@repo/shared/api';
-import { CLIENT_URL, COOKIE_KEYS, NAV_LINKS } from '@repo/shared/constants';
-import { cn, deleteCookie, getCookie } from '@repo/shared/utils';
+import { CLIENT_URL, NAV_LINKS } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
+import { cn, getIsAuthenticated } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { LogOut, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -33,8 +34,7 @@ const Header = ({ role = 'client' }: HeaderProps) => {
       // no-op
     }
 
-    deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-    deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+    await logoutLocally();
 
     toast.success('로그아웃 되었습니다.');
 
@@ -56,11 +56,8 @@ const Header = ({ role = 'client' }: HeaderProps) => {
   }, []);
 
   // 쿠키는 서버 렌더 결과와 어긋나지 않도록 마운트 후에 읽는다.
-  // 액세스 토큰(1시간)이 만료돼도 리프레시 토큰(30일)이 남으므로 둘 중 하나만 있어도 로그인으로 본다.
   useEffect(() => {
-    setHasToken(
-      Boolean(getCookie(COOKIE_KEYS.ACCESS_TOKEN) || getCookie(COOKIE_KEYS.REFRESH_TOKEN)),
-    );
+    setHasToken(getIsAuthenticated());
   }, []);
 
   const links = NAV_LINKS[role];

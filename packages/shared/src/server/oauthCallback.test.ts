@@ -59,15 +59,23 @@ describe('createOAuthCallbackHandler', () => {
         },
       ]);
       expect(response.headers.get('location')).toBe(`${ORIGIN}/students`);
+      // XSS가 나도 document.cookie로 토큰을 빼가지 못하도록 토큰 쿠키는 httpOnly로 심는다.
       expect(response.cookies.get('accessToken')).toMatchObject({
         value: 'access-1',
         maxAge: 3600,
-        httpOnly: false,
+        httpOnly: true,
         sameSite: 'lax',
         path: '/',
       });
       expect(response.cookies.get('refreshToken')).toMatchObject({
         value: 'refresh-1',
+        maxAge: 60 * 60 * 24 * 30,
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+      expect(response.cookies.get('loggedIn')).toMatchObject({
+        value: '1',
         maxAge: 60 * 60 * 24 * 30,
         httpOnly: false,
         sameSite: 'lax',

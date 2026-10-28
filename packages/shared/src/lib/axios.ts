@@ -1,8 +1,4 @@
-import { COOKIE_KEYS } from '@repo/shared/constants';
-import { deleteCookie, getCookie, setCookie } from '@repo/shared/utils';
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-
-import { oauthUrl } from '../api';
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -11,22 +7,10 @@ declare module 'axios' {
   }
 }
 
-/**
- * OAuth 토큰 엔드포인트(/v1/oauth/token)는 공통 래핑({ status, code, message, data })에서
- * 의도적으로 제외돼 토큰 필드가 최상위로 온다. oauthAxiosInstance 인터셉터가 본문을 그대로
- * 반환하므로 이 타입이 곧 await 결과의 형태다. grant_type에 따라 refresh_token은 없을 수 있다.
- */
-interface OAuthTokenRefreshResponse {
-  access_token?: string;
-  token_type?: string;
-  expires_in?: number;
-  refresh_token?: string | null;
-  scope?: string;
-}
-
 let isRefreshing = false;
-let refreshQueue: ((token: string) => void)[] = [];
+let refreshQueue: (() => void)[] = [];
 
+// 토큰은 httpOnly 쿠키라 여기서 읽지 않는다. `/api/*` 미들웨어가 쿠키를 Authorization 헤더로 옮겨 붙인다.
 export const axiosInstance = axios.create({
   baseURL: '/api',
   timeout: 10000,
@@ -37,17 +21,17 @@ export const oauthAxiosInstance = axios.create({
   timeout: 10000,
 });
 
-axiosInstance.interceptors.request.use(
-  async (config) => {
-    const token = getCookie(COOKIE_KEYS.ACCESS_TOKEN);
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error),
-);
+/**
+ * 이 앱의 토큰 쿠키를 지운다. httpOnly 쿠키는 브라우저에서 지울 수 없어 서버 라우트(`/api/logout`)에 맡긴다.
+ * 실패해도 화면 이동은 막지 않도록 오류를 던지지 않는다.
+ */
+export const logoutLocally = async (): Promise<void> => {
+  try {
+    await axiosInstance.post('/logout', undefined, { skipAuthRefresh: true });
+  } catch {
+    // no-op
+  }
+};
 
 axiosInstance.interceptors.response.use(
   (response) => {
@@ -73,54 +57,21 @@ axiosInstance.interceptors.response.use(
 
       if (isRefreshing) {
         return new Promise((resolve) => {
-          refreshQueue.push((newToken: string) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            }
-
-            resolve(axiosInstance(originalRequest));
-          });
+          refreshQueue.push(() => resolve(axiosInstance(originalRequest)));
         });
       }
 
       isRefreshing = true;
       try {
-        const refreshToken = getCookie(COOKIE_KEYS.REFRESH_TOKEN);
+        // 서버 라우트가 httpOnly refresh token으로 갱신하고 새 토큰 쿠키를 심는다.
+        // 실패하면 그 응답이 쿠키를 모두 지우므로 여기서는 이동만 한다.
+        await axiosInstance.post('/refresh', undefined, { skipAuthRefresh: true });
 
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const response = await oauthAxiosInstance.post<
-          OAuthTokenRefreshResponse,
-          OAuthTokenRefreshResponse
-        >(oauthUrl.postOAuthTokenRefresh(), {
-          grant_type: 'refresh_token',
-          refresh_token: refreshToken,
-          client_id: process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID,
-        });
-
-        // 인터셉터가 이미 본문을 반환하므로 response가 곧 토큰 객체다 (`.data`를 또 읽지 않는다).
-        const { access_token: newAccessToken, refresh_token: newRefreshToken } = response;
-
-        if (!newAccessToken) throw new Error('No new token returned');
-
-        setCookie(COOKIE_KEYS.ACCESS_TOKEN, newAccessToken);
-        // refresh_token은 grant_type에 따라 null일 수 있으므로, 새 값이 있을 때만 교체한다.
-        if (newRefreshToken) {
-          setCookie(COOKIE_KEYS.REFRESH_TOKEN, newRefreshToken);
-        }
-
-        refreshQueue.forEach((cb) => cb(newAccessToken));
+        refreshQueue.forEach((cb) => cb());
         refreshQueue = [];
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
 
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-        deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
-
         if (typeof window !== 'undefined') {
           window.location.href = '/';
         }

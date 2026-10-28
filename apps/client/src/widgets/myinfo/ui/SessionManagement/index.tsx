@@ -1,9 +1,9 @@
 'use client';
 
 import { oauthQueryKeys } from '@repo/shared/api';
-import { COOKIE_KEYS } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
 import { ConfirmDialog, SectionCard, Skeleton } from '@repo/shared/ui';
-import { cn, deleteCookie, formatDateTime } from '@repo/shared/utils';
+import { cn, formatDateTime } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Monitor } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,11 +23,10 @@ export const SessionManagement = () => {
     isPending,
     variables,
   } = useDeleteIdpSession({
-    onSuccess: (_data, { isCurrent }) => {
+    onSuccess: async (_data, { isCurrent }) => {
       if (isCurrent) {
         queryClient.clear();
-        deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-        deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+        await logoutLocally();
         toast.success('로그아웃 되었습니다.');
         window.location.href = '/';
         return;
