@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
 import { isValidRelativePath } from '@repo/shared/utils';
 
-interface OAuthCallbackHandlerOptions {
+export interface OAuthCallbackHandlerOptions {
   /**
    * 토큰 교환에 함께 보낼 client_secret. 시크릿을 쓰는 클라이언트(어드민)만 넘긴다.
    * 넘겼는데 값이 비어 있으면 설정 누락으로 보고 교환하지 않는다.
