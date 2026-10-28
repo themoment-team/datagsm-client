@@ -87,6 +87,14 @@ describe('admin middleware', () => {
     const response = await middleware(requestTo('/api/callback?code=abc'));
 
     expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  it('/api 요청에는 httpOnly accessToken 쿠키를 Authorization 헤더로 옮겨 붙인다', async () => {
+    const response = await middleware(requestTo('/api/v1/students', { accessToken: 'token' }));
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('x-middleware-request-authorization')).toBe('Bearer token');
   });
 
   it('로그인 취소 화면은 토큰이 없어도 인가로 보내지 않는다', async () => {
@@ -114,6 +122,10 @@ describe('admin middleware', () => {
       '/logo.svg',
     ])('%s에는 적용하지 않는다', (path) => {
       expect(matcher.test(path)).toBe(false);
+    });
+
+    it('/api 요청은 별도 matcher로 받아 Authorization 헤더를 붙인다', () => {
+      expect(config.matcher).toContain('/api/:path*');
     });
   });
 });
