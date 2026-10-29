@@ -330,4 +330,63 @@ describe('SignUpForm', () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe('요청 횟수 초과', () => {
+    // 서버는 코드 전송·확인·가입에 이메일별 한도를 두고, 확인과 가입은 같은 한도를 나눠 쓴다.
+    const RATE_LIMIT_MESSAGE = '요청 횟수를 초과했습니다. 120초 후에 다시 시도해주세요.';
+
+    const submitAfterVerified = async (user: ReturnType<typeof userEvent.setup>) => {
+      await sendCode(user);
+      await verifyCode(user);
+      await screen.findByText('인증 완료');
+      await user.type(screen.getByLabelText('비밀번호'), 'password1');
+      await user.type(screen.getByLabelText('비밀번호 확인'), 'password1');
+      await agreePrivacy(user);
+      await user.click(screen.getByRole('button', { name: 'SIGN UP' }));
+    };
+
+    it('코드 전송이 429로 막히면 서버가 알려 준 대기 시간을 안내한다', async () => {
+      mockAccountApi({ sendCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+
+      await user.type(screen.getByLabelText('이메일'), 's25001');
+      await user.click(screen.getByRole('button', { name: '코드전송' }));
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByLabelText('이메일')).toBeEnabled();
+    });
+
+    it('코드 확인이 429로 막히면 대기 시간을 안내하고 비밀번호 입력을 닫아 둔다', async () => {
+      mockAccountApi({ verifyCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+      await sendCode(user);
+
+      await verifyCode(user);
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByLabelText('비밀번호')).toBeDisabled();
+    });
+
+    it('가입이 429로 막히면 대기 시간을 안내하고 다시 누를 수 있게 남겨 둔다', async () => {
+      mockAccountApi({ signUp: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+
+      await submitAfterVerified(user);
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(mockRouter.push).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'SIGN UP' })).toBeEnabled();
+    });
+
+    it('서버 안내 문구가 비어 있으면 기본 문구로 안내한다', async () => {
+      mockAccountApi({ signUp: () => apiError(429, '') });
+      const { user } = setup();
+
+      await submitAfterVerified(user);
+
+      expect(
+        await screen.findByText('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'),
+      ).toBeInTheDocument();
+    });
+  });
 });

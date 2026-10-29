@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiErrorCode, minutesToMs } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
+import { getRateLimitMessage } from './rateLimit';
 import { useCheckEmailCode } from './useCheckEmailCode';
 import { useSendEmailCode } from './useSendEmailCode';
 
@@ -84,6 +85,9 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
         case 409:
           toast.error('이미 해당 이메일을 가진 계정이 존재합니다.');
           break;
+        case 429:
+          toast.error(getRateLimitMessage(error));
+          break;
         default:
           toast.error('인증 코드 전송에 실패했습니다.');
       }
@@ -103,6 +107,9 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
           break;
         case 404:
           toast.error('인증 코드가 만료되었거나 존재하지 않습니다.');
+          break;
+        case 429:
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           toast.error('인증 코드 확인에 실패했습니다.');

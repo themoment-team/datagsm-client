@@ -41,6 +41,7 @@ import {
 import { useEmailVerification, useSignUp } from '@/widgets/signup';
 
 import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
+import { getRateLimitMessage } from '../../model/rateLimit';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
 const FIELD_CLASS =
@@ -161,6 +162,10 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
               ? '이미 해당 이메일로 가입되었거나 신청된 계정이 있습니다.'
               : '이미 존재하는 계정입니다.',
           );
+          break;
+        case 429:
+          // 코드 확인 API와 한도를 나눠 쓰므로 코드를 여러 번 틀린 직후에도 걸릴 수 있다.
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           toast.error(isTeacher ? '회원가입 신청에 실패했습니다.' : '회원가입에 실패했습니다.');
