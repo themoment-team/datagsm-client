@@ -367,6 +367,45 @@ describe('SignUpForm', () => {
       expect(screen.getByLabelText('비밀번호')).toBeDisabled();
     });
 
+    it.each([
+      [429, RATE_LIMIT_MESSAGE],
+      [500, '인증 코드 확인에 실패했습니다.'],
+    ])(
+      '코드 확인이 %s로 실패하면 같은 코드를 다시 입력해 확인할 수 있다',
+      async (status, message) => {
+        let isFailing = true;
+        const requests = mockAccountApi({
+          verifyCode: () => (isFailing ? apiError(status, message) : apiSuccess(null)),
+        });
+        const { user } = setup();
+        await sendCode(user);
+        await verifyCode(user);
+        await screen.findByText(message);
+
+        isFailing = false;
+        await user.type(screen.getByLabelText('인증 코드'), '{Backspace}');
+        act(() => vi.advanceTimersByTime(1000));
+        await verifyCode(user, '4');
+
+        expect(await screen.findByText('인증 완료')).toBeInTheDocument();
+        expect(requests.verifyCode).toHaveLength(2);
+      },
+    );
+
+    it('코드가 틀렸으면(400) 같은 코드를 다시 입력해도 확인 요청을 보내지 않는다', async () => {
+      const requests = mockAccountApi({ verifyCode: () => apiError(400, 'error') });
+      const { user } = setup();
+      await sendCode(user);
+      await verifyCode(user);
+      await screen.findByText('인증 코드가 일치하지 않습니다.');
+
+      await user.type(screen.getByLabelText('인증 코드'), '{Backspace}');
+      act(() => vi.advanceTimersByTime(1000));
+      await verifyCode(user, '4');
+
+      expect(requests.verifyCode).toHaveLength(1);
+    });
+
     it('가입이 429로 막히면 대기 시간을 안내하고 다시 누를 수 있게 남겨 둔다', async () => {
       mockAccountApi({ signUp: () => apiError(429, RATE_LIMIT_MESSAGE) });
       const { user } = setup();

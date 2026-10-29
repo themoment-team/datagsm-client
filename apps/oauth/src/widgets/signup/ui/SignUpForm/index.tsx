@@ -99,6 +99,9 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
       lastCheckedCode.current = '';
       setValue('code', '');
     },
+    onVerifyRetryable: () => {
+      lastCheckedCode.current = '';
+    },
   });
 
   const handlePrivacyCheckboxClick = () => {
