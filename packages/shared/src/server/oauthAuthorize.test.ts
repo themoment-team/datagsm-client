@@ -35,20 +35,20 @@ describe('createOAuthAuthorizeRedirect', () => {
     });
   });
 
-  it('콜백이 대조할 state nonce를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+  it('콜백이 대조할 state nonce를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
     const response = await startLogin();
 
     const cookie = response.cookies.get('oauth_state');
-    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
+    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
     const state = new URL(response.headers.get('location')!).searchParams.get('state');
     expect(parseOAuthState(state, cookie!.value)).toBe('/students');
   });
 
-  it('challenge를 만든 verifier를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+  it('challenge를 만든 verifier를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
     const response = await startLogin();
 
     const cookie = response.cookies.get('code_verifier');
-    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
+    expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
     const challenge = new URL(response.headers.get('location')!).searchParams.get('code_challenge');
     await expect(generateCodeChallenge(cookie!.value)).resolves.toBe(challenge);
   });

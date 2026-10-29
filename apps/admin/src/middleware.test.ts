@@ -45,23 +45,23 @@ describe('admin middleware', () => {
       expect(parseOAuthState(state, response.cookies.get('oauth_state')?.value)).toBe('/students');
     });
 
-    it('콜백이 같은 브라우저인지 대조할 state nonce를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+    it('콜백이 같은 브라우저인지 대조할 state nonce를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
       const response = await middleware(requestTo('/students'));
 
       const cookie = response.cookies.get('oauth_state');
-      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
       expect(new URL(response.headers.get('location')!).searchParams.get('state')).toBe(
         `${cookie!.value}./students`,
       );
     });
 
-    it('challenge를 만든 verifier를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+    it('challenge를 만든 verifier를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
       const { generateCodeChallenge } = await import('@repo/shared/utils');
 
       const response = await middleware(requestTo('/'));
 
       const cookie = response.cookies.get('code_verifier');
-      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
       const challenge = new URL(response.headers.get('location')!).searchParams.get(
         'code_challenge',
       );

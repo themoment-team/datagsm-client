@@ -34,8 +34,8 @@ describe('GET /api/login (projects)', () => {
     expect(location.origin + location.pathname).toBe(`${OAUTH_BASE_URL}/v1/oauth/authorize`);
     expect(location.searchParams.get('client_id')).toBe('projects-app');
     expect(location.searchParams.get('code_challenge_method')).toBe('S256');
-    expect(response.cookies.get('code_verifier')).toMatchObject({ httpOnly: true, maxAge: 600 });
-    expect(response.cookies.get('oauth_state')).toMatchObject({ httpOnly: true, maxAge: 600 });
+    expect(response.cookies.get('code_verifier')).toMatchObject({ httpOnly: true, maxAge: 900 });
+    expect(response.cookies.get('oauth_state')).toMatchObject({ httpOnly: true, maxAge: 900 });
     expect(returnPathOf(response)).toBe('/me?status=pending');
   });
 

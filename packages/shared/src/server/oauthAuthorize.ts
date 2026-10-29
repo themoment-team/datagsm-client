@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 import { COOKIE_KEYS } from '@repo/shared/constants';
 import { createOAuthState, generateCodeChallenge, generateCodeVerifier } from '@repo/shared/utils';
 
+/**
+ * verifier·nonce 쿠키 수명(15분).
+ * 인가 서버의 인증 상태 토큰(10분)보다 길게 둬서, 로그인 화면에서 오래 머문 사용자도 콜백에서 쿠키를 잃지 않게 한다.
+ */
+const OAUTH_LOGIN_COOKIE_MAX_AGE = 60 * 15;
+
 interface OAuthAuthorizeRedirectOptions {
   oauthBaseUrl: string;
   clientId: string;
@@ -13,7 +19,7 @@ interface OAuthAuthorizeRedirectOptions {
 
 /**
  * PKCE와 state nonce를 만들어 OAuth 인가 페이지로 보내는 응답을 만든다.
- * verifier와 nonce는 10분짜리 httpOnly 쿠키로 남겨, 콜백이 이 브라우저에서 시작한 로그인인지 확인하게 한다.
+ * verifier와 nonce는 httpOnly 쿠키로 남겨, 콜백이 이 브라우저에서 시작한 로그인인지 확인하게 한다.
  */
 export const createOAuthAuthorizeRedirect = async ({
   oauthBaseUrl,
@@ -39,7 +45,7 @@ export const createOAuthAuthorizeRedirect = async ({
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 600,
+    maxAge: OAUTH_LOGIN_COOKIE_MAX_AGE,
   } as const;
   response.cookies.set(COOKIE_KEYS.CODE_VERIFIER, codeVerifier, cookieOptions);
   response.cookies.set(COOKIE_KEYS.OAUTH_STATE, nonce, cookieOptions);
