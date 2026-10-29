@@ -30,33 +30,19 @@ describe('axiosInstance 요청·응답 인터셉터', () => {
 
   afterEach(clearCookies);
 
-  it('accessToken 쿠키가 있으면 Bearer 헤더를 붙인다', async () => {
+  it('토큰 쿠키를 직접 읽어 Authorization 헤더를 붙이지 않는다', async () => {
+    // 토큰은 httpOnly 쿠키이고, /api/* 미들웨어가 서버에서 Authorization 헤더로 옮겨 붙인다.
     const { axiosInstance } = await loadAxios();
-    let authorization: string | null = null;
+    let hasAuthorization = true;
     server.use(
       http.get(apiPath('/v1/accounts/my'), ({ request }) => {
-        authorization = request.headers.get('Authorization');
+        hasAuthorization = request.headers.has('Authorization');
         return apiSuccess(null);
       }),
     );
     setTokenCookies({ accessToken: 'access-1' });
 
     await axiosInstance.get('/v1/accounts/my');
-
-    expect(authorization).toBe('Bearer access-1');
-  });
-
-  it('accessToken 쿠키가 없으면 Authorization 헤더를 붙이지 않는다', async () => {
-    const { axiosInstance } = await loadAxios();
-    let hasAuthorization = true;
-    server.use(
-      http.get(apiPath('/v1/health'), ({ request }) => {
-        hasAuthorization = request.headers.has('Authorization');
-        return apiSuccess('UP');
-      }),
-    );
-
-    await axiosInstance.get('/v1/health');
 
     expect(hasAuthorization).toBe(false);
   });
@@ -78,9 +64,9 @@ describe('axiosInstance 요청·응답 인터셉터', () => {
     const refresh = vi.fn();
     server.use(
       http.get(apiPath('/v1/clubs'), () => apiError(403, '권한이 없습니다.')),
-      http.post(`${OAUTH_BASE_URL}/v1/oauth/token`, () => {
+      http.post(apiPath('/refresh'), () => {
         refresh();
-        return HttpResponse.json({});
+        return new HttpResponse(null, { status: 204 });
       }),
     );
     setTokenCookies({ accessToken: 'access-1', refreshToken: 'refresh-1' });
@@ -90,6 +76,30 @@ describe('axiosInstance 요청·응답 인터셉터', () => {
     expect(error).toBeInstanceOf(AxiosError);
     expect((error as AxiosError).response?.status).toBe(403);
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('logoutLocally', () => {
+  it('서버 라우트(/api/logout)에 토큰 쿠키 삭제를 요청한다', async () => {
+    const { logoutLocally } = await loadAxios();
+    const logout = vi.fn();
+    server.use(
+      http.post(apiPath('/logout'), () => {
+        logout();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await logoutLocally();
+
+    expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('요청이 실패하면 토큰 쿠키가 남아 있으므로 오류를 던진다', async () => {
+    const { logoutLocally } = await loadAxios();
+    server.use(http.post(apiPath('/logout'), () => HttpResponse.error()));
+
+    await expect(logoutLocally()).rejects.toBeInstanceOf(AxiosError);
   });
 });
 

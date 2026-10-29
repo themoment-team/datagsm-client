@@ -254,7 +254,6 @@ export const accountUrl = {
 export const oauthUrl = {
   getOAuthSession: (token: string) => `/v1/oauth/sessions/${token}`,
   postOAuthCode: () => '/v1/oauth/code',
-  postOAuthTokenRefresh: () => '/v1/oauth/token', // 토큰 갱신 (통합 엔드포인트)
   postAuthorizeConsent: () => '/v1/oauth/authorize/consent',
   postLogout: () => '/v1/oauth/logout',
   getIdpSessions: () => '/v1/oauth/idp-sessions',

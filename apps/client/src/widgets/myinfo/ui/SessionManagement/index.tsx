@@ -1,9 +1,9 @@
 'use client';
 
 import { oauthQueryKeys } from '@repo/shared/api';
-import { COOKIE_KEYS } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
 import { ConfirmDialog, SectionCard, Skeleton } from '@repo/shared/ui';
-import { cn, deleteCookie, formatDateTime } from '@repo/shared/utils';
+import { cn, formatDateTime } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { Monitor } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,11 +23,18 @@ export const SessionManagement = () => {
     isPending,
     variables,
   } = useDeleteIdpSession({
-    onSuccess: (_data, { isCurrent }) => {
+    onSuccess: async (_data, { isCurrent }) => {
       if (isCurrent) {
+        try {
+          await logoutLocally();
+        } catch {
+          // IdP 세션은 끊겼지만 이 서비스의 토큰 쿠키는 남아 있으므로 이동하지 않는다.
+          toast.error('로그아웃에 실패했습니다. 다시 시도해 주세요.');
+          queryClient.invalidateQueries({ queryKey: oauthQueryKeys.getIdpSessions() });
+          return;
+        }
+
         queryClient.clear();
-        deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-        deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
         toast.success('로그아웃 되었습니다.');
         window.location.href = '/';
         return;
