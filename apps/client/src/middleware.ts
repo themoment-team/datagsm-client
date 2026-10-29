@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
-import { backfillLoggedInCookie, forwardAccessToken } from '@repo/shared/server';
-import { generateCodeChallenge, generateCodeVerifier } from '@repo/shared/utils';
+import {
+  backfillLoggedInCookie,
+  createOAuthAuthorizeRedirect,
+  forwardAccessToken,
+} from '@repo/shared/server';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -34,27 +37,12 @@ export async function middleware(request: NextRequest) {
       throw new Error('NEXT_PUBLIC_DATAGSM_REDIRECT_URI 환경 변수가 설정되지 않았습니다.');
     }
 
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
-
-    const oauthUrl = new URL(`${oauthBaseUrl}/v1/oauth/authorize`);
-    oauthUrl.searchParams.set('client_id', clientId);
-    oauthUrl.searchParams.set('redirect_uri', redirectUri);
-    oauthUrl.searchParams.set('response_type', 'code');
-    oauthUrl.searchParams.set('state', request.nextUrl.pathname);
-    oauthUrl.searchParams.set('code_challenge', codeChallenge);
-    oauthUrl.searchParams.set('code_challenge_method', 'S256');
-
-    const response = NextResponse.redirect(oauthUrl);
-    response.cookies.set('code_verifier', codeVerifier, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 600,
+    return createOAuthAuthorizeRedirect({
+      oauthBaseUrl,
+      clientId,
+      redirectUri,
+      returnPath: request.nextUrl.pathname,
     });
-
-    return response;
   }
 
   return backfillLoggedInCookie(request, NextResponse.next());
