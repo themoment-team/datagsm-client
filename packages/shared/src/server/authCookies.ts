@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_KEYS } from '@repo/shared/constants';
 
@@ -45,6 +45,26 @@ export const setAuthCookies = (
       maxAge: REFRESH_TOKEN_MAX_AGE,
     });
   }
+};
+
+/**
+ * 표시 쿠키를 도입하기 전에 로그인한 사용자는 토큰 쿠키만 있어 화면이 로그인하지 않은 것으로 판단한다.
+ * 페이지 요청에서 토큰 쿠키가 있는데 표시 쿠키가 없으면 채워 넣는다.
+ * 기존 refresh token(30일)이 모두 만료된 뒤에는 지워도 된다.
+ */
+export const backfillLoggedInCookie = (request: NextRequest, response: NextResponse) => {
+  const hasToken =
+    request.cookies.has(COOKIE_KEYS.ACCESS_TOKEN) || request.cookies.has(COOKIE_KEYS.REFRESH_TOKEN);
+
+  if (hasToken && !request.cookies.has(COOKIE_KEYS.LOGGED_IN)) {
+    response.cookies.set(COOKIE_KEYS.LOGGED_IN, '1', {
+      ...baseCookieOptions(),
+      httpOnly: false,
+      maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
+  }
+
+  return response;
 };
 
 /** httpOnly 쿠키는 브라우저에서 지울 수 없으므로 서버 응답으로 지운다. */

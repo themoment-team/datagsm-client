@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
-import { forwardAccessToken } from '@repo/shared/server';
+import { backfillLoggedInCookie, forwardAccessToken } from '@repo/shared/server';
 import { generateCodeChallenge, generateCodeVerifier } from '@repo/shared/utils';
 
 export async function middleware(request: NextRequest) {
@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next();
+  return backfillLoggedInCookie(request, NextResponse.next());
 }
 
 export const config = {

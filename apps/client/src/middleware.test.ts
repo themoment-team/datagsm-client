@@ -83,6 +83,13 @@ describe('client middleware', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
+  it('표시 쿠키 도입 전에 로그인해 토큰 쿠키만 있으면 로그인 표시 쿠키를 채운다', async () => {
+    const response = await middleware(requestTo('/students', { accessToken: 'token' }));
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.cookies.get('loggedIn')?.value).toBe('1');
+  });
+
   it('/api 경로는 토큰이 없어도 통과시킨다', async () => {
     const response = await middleware(requestTo('/api/callback?code=abc'));
 
