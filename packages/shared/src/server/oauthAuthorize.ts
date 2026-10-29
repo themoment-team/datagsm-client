@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 
 import { COOKIE_KEYS } from '@repo/shared/constants';
-import { createOAuthState, generateCodeChallenge, generateCodeVerifier } from '@repo/shared/utils';
+import {
+  createOAuthState,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  isValidRelativePath,
+} from '@repo/shared/utils';
 
 /**
  * verifier·nonce 쿠키 수명(15분).
@@ -13,7 +18,10 @@ interface OAuthAuthorizeRedirectOptions {
   oauthBaseUrl: string;
   clientId: string;
   redirectUri: string;
-  /** 로그인을 마친 뒤 돌아갈 경로. state에 nonce와 함께 담긴다. */
+  /**
+   * 로그인을 마친 뒤 돌아갈 경로. state에 nonce와 함께 담겨 콜백이 그대로 리다이렉트에 쓴다.
+   * 이 앱 안의 상대 경로가 아니면 /로 바꾼다.
+   */
   returnPath: string;
 }
 
@@ -29,7 +37,7 @@ export const createOAuthAuthorizeRedirect = async ({
 }: OAuthAuthorizeRedirectOptions) => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
-  const { nonce, state } = createOAuthState(returnPath);
+  const { nonce, state } = createOAuthState(isValidRelativePath(returnPath) ? returnPath : '/');
 
   const authorizeUrl = new URL(`${oauthBaseUrl}/v1/oauth/authorize`);
   authorizeUrl.searchParams.set('client_id', clientId);

@@ -53,6 +53,23 @@ describe('createOAuthAuthorizeRedirect', () => {
     await expect(generateCodeChallenge(cookie!.value)).resolves.toBe(challenge);
   });
 
+  it.each([
+    ['다른 호스트면', '//evil.com'],
+    ['절대 URL이면', 'https://evil.com'],
+    ['/\\evil.com이면', '/\\evil.com'],
+    ['상대 경로가 아니면', 'students'],
+  ])('돌아갈 경로가 %s state에 /를 담는다', async (_, returnPath) => {
+    const response = await createOAuthAuthorizeRedirect({
+      oauthBaseUrl: OAUTH_BASE_URL,
+      clientId: 'client-app',
+      redirectUri: 'http://localhost:3000/api/callback',
+      returnPath,
+    });
+
+    const state = new URL(response.headers.get('location')!).searchParams.get('state');
+    expect(parseOAuthState(state, response.cookies.get('oauth_state')?.value)).toBe('/');
+  });
+
   it('production에서만 쿠키에 secure를 켠다', async () => {
     const response = await startLogin();
     expect(response.cookies.get('code_verifier')?.secure).toBe(false);

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { createOAuthAuthorizeRedirect } from '@repo/shared/server';
-import { isValidRelativePath } from '@repo/shared/utils';
 
 /**
  * 로그인 시작 엔드포인트.
@@ -20,8 +19,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  const returnTo = request.nextUrl.searchParams.get('returnTo');
-  const returnPath = returnTo && isValidRelativePath(returnTo) ? returnTo : '/';
+  // 안전한 경로인지는 헬퍼가 검증해, 아니면 /로 돌아가게 한다.
+  const returnPath = request.nextUrl.searchParams.get('returnTo') ?? '/';
 
   return createOAuthAuthorizeRedirect({ oauthBaseUrl, clientId, redirectUri, returnPath });
 }
