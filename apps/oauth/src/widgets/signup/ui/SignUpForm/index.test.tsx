@@ -371,11 +371,11 @@ describe('SignUpForm', () => {
       [429, RATE_LIMIT_MESSAGE],
       [500, '인증 코드 확인에 실패했습니다.'],
     ])(
-      '코드 확인이 %s로 실패하면 같은 코드를 다시 입력해 확인할 수 있다',
+      '코드 확인이 %s로 실패하면 다시 확인 버튼으로 같은 코드를 바로 다시 확인한다',
       async (status, message) => {
         let isFailing = true;
         const requests = mockAccountApi({
-          verifyCode: () => (isFailing ? apiError(status, message) : apiSuccess(null)),
+          verifyCode: () => (isFailing ? apiError(status, RATE_LIMIT_MESSAGE) : apiSuccess(null)),
         });
         const { user } = setup();
         await sendCode(user);
@@ -383,26 +383,43 @@ describe('SignUpForm', () => {
         await screen.findByText(message);
 
         isFailing = false;
-        await user.type(screen.getByLabelText('인증 코드'), '{Backspace}');
-        act(() => vi.advanceTimersByTime(1000));
-        await verifyCode(user, '4');
+        await user.click(screen.getByRole('button', { name: '다시 확인' }));
 
         expect(await screen.findByText('인증 완료')).toBeInTheDocument();
-        expect(requests.verifyCode).toHaveLength(2);
+        expect(requests.verifyCode).toEqual([
+          { email: 's25001@gsm.hs.kr', code: 'ABCD1234' },
+          { email: 's25001@gsm.hs.kr', code: 'ABCD1234' },
+        ]);
+        expect(screen.queryByRole('button', { name: '다시 확인' })).not.toBeInTheDocument();
       },
     );
 
-    it('코드가 틀렸으면(400) 같은 코드를 다시 입력해도 확인 요청을 보내지 않는다', async () => {
-      const requests = mockAccountApi({ verifyCode: () => apiError(400, 'error') });
+    it('코드 확인이 500으로 실패하면 서버 문구 대신 고정 문구로 안내한다', async () => {
+      mockAccountApi({ verifyCode: () => apiError(500, 'Internal Server Error') });
+      const { user } = setup();
+      await sendCode(user);
+
+      await verifyCode(user);
+
+      expect(await screen.findByText('인증 코드 확인에 실패했습니다.')).toBeInTheDocument();
+      expect(screen.queryByText('Internal Server Error')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      [400, '인증 코드가 일치하지 않습니다.'],
+      [404, '인증 코드가 만료되었거나 존재하지 않습니다.'],
+    ])('코드 확인이 %s로 실패하면 같은 코드로 다시 확인할 수 없다', async (status, message) => {
+      const requests = mockAccountApi({ verifyCode: () => apiError(status, 'error') });
       const { user } = setup();
       await sendCode(user);
       await verifyCode(user);
-      await screen.findByText('인증 코드가 일치하지 않습니다.');
+      await screen.findByText(message);
 
       await user.type(screen.getByLabelText('인증 코드'), '{Backspace}');
       act(() => vi.advanceTimersByTime(1000));
       await verifyCode(user, '4');
 
+      expect(screen.queryByRole('button', { name: '다시 확인' })).not.toBeInTheDocument();
       expect(requests.verifyCode).toHaveLength(1);
     });
 

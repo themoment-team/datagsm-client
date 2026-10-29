@@ -44,6 +44,7 @@ import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
 import { getRateLimitMessage } from '../../model/rateLimit';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
+const VERIFICATION_CODE_LENGTH = 8;
 const FIELD_CLASS =
   'border-foreground focus-visible:border-foreground aria-invalid:border-destructive aria-invalid:text-destructive rounded-none focus-visible:ring-0';
 
@@ -91,6 +92,8 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
     isCodeVerified,
     remainingTime,
     isSendingCode,
+    isVerifyingCode,
+    canRetryVerify,
     canResend,
     sendCode,
     verifyCode,
@@ -99,10 +102,16 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
       lastCheckedCode.current = '';
       setValue('code', '');
     },
-    onVerifyRetryable: () => {
-      lastCheckedCode.current = '';
-    },
   });
+
+  // 입력이 바뀌어야만 자동 확인이 다시 돌기 때문에, 요청 한도·서버 오류로 실패한 같은 코드는 버튼으로 다시 확인한다.
+  const isRetryVerifyVisible =
+    canRetryVerify && !isCodeVerified && codeValue.length === VERIFICATION_CODE_LENGTH;
+
+  const handleRetryVerify = () => {
+    lastCheckedCode.current = codeValue;
+    verifyCode(formatEmailWithDomain(emailValue), codeValue);
+  };
 
   const handlePrivacyCheckboxClick = () => {
     const isAgreed = getValues('privacyAgreed');
@@ -139,7 +148,7 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
     if (
       codeSent &&
       debouncedCode &&
-      debouncedCode.length === 8 &&
+      debouncedCode.length === VERIFICATION_CODE_LENGTH &&
       lastCheckedCode.current !== debouncedCode
     ) {
       lastCheckedCode.current = debouncedCode;
@@ -296,6 +305,18 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                   </p>
                 ) : (
                   <FormErrorMessage error={errors.code} className={cn(ERROR_MESSAGE_CLASS)} />
+                )}
+                {isRetryVerifyVisible && (
+                  <button
+                    type="button"
+                    onClick={handleRetryVerify}
+                    disabled={isVerifyingCode}
+                    className={cn(
+                      'text-foreground self-start text-xs leading-4 underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                    )}
+                  >
+                    다시 확인
+                  </button>
                 )}
               </div>
             </div>

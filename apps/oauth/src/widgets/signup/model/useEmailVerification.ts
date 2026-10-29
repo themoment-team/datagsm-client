@@ -15,24 +15,18 @@ const STORAGE_KEY = 'email_verification_timestamp';
 interface UseEmailVerificationParams {
   /** 인증 시간이 만료돼 코드가 무효해졌을 때 호출됩니다. (입력값 초기화용) */
   onCodeExpired?: () => void;
-  /**
-   * 코드가 틀리거나 만료된 게 아니라 요청 한도·서버 오류로 확인에 실패했을 때 호출됩니다.
-   * 같은 코드로 다시 확인할 수 있게 하는 용도입니다.
-   */
-  onVerifyRetryable?: () => void;
 }
 
 /**
  * 회원가입 이메일 인증 상태를 관리합니다.
  * 코드 전송 후 5분 재전송 쿨다운을 localStorage에 남겨 새로고침에도 유지합니다.
  */
-export const useEmailVerification = ({
-  onCodeExpired,
-  onVerifyRetryable,
-}: UseEmailVerificationParams = {}) => {
+export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationParams = {}) => {
   const [codeSent, setCodeSent] = useState(false);
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
+  // 코드가 틀리거나 만료된 게 아니라 요청 한도·서버 오류로 확인에 실패해, 같은 코드로 다시 확인해 볼 수 있는 상태
+  const [canRetryVerify, setCanRetryVerify] = useState(false);
 
   const hasShownExpiredToast = useRef(false);
   const onCodeExpiredRef = useRef(onCodeExpired);
@@ -60,6 +54,7 @@ export const useEmailVerification = ({
 
         localStorage.removeItem(STORAGE_KEY);
         setCodeSent(false);
+        setCanRetryVerify(false);
         setIsCodeVerified((verified) => {
           if (verified) return verified;
 
@@ -102,26 +97,29 @@ export const useEmailVerification = ({
     },
   });
 
-  const { mutate: checkEmailCode } = useCheckEmailCode({
+  const { mutate: checkEmailCode, isPending: isVerifyingCode } = useCheckEmailCode({
     onSuccess: () => {
       setIsCodeVerified(true);
+      setCanRetryVerify(false);
       toast.success('인증 코드가 확인되었습니다.');
     },
     onError: (error: unknown) => {
       setIsCodeVerified(false);
       switch (getApiErrorCode(error)) {
         case 400:
+          setCanRetryVerify(false);
           toast.error('인증 코드가 일치하지 않습니다.');
           break;
         case 404:
+          setCanRetryVerify(false);
           toast.error('인증 코드가 만료되었거나 존재하지 않습니다.');
           break;
         case 429:
-          onVerifyRetryable?.();
+          setCanRetryVerify(true);
           toast.error(getRateLimitMessage(error));
           break;
         default:
-          onVerifyRetryable?.();
+          setCanRetryVerify(true);
           toast.error('인증 코드 확인에 실패했습니다.');
       }
     },
@@ -146,6 +144,8 @@ export const useEmailVerification = ({
     isCodeVerified,
     remainingTime,
     isSendingCode,
+    isVerifyingCode,
+    canRetryVerify,
     canResend: remainingTime === 0,
     sendCode,
     verifyCode,
