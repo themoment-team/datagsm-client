@@ -25,8 +25,6 @@ const Header = ({ role = 'client' }: HeaderProps) => {
   const canLogout = role === 'client' || role === 'admin' || (role === 'projects' && hasToken);
 
   const handleLogout = async () => {
-    queryClient.clear();
-
     try {
       // SSO 세션도 함께 종료한다. 실패해도 이 서비스의 로컬 로그아웃은 막지 않는다.
       await oauthPost(oauthUrl.postLogout(), undefined, { withCredentials: true });
@@ -34,8 +32,15 @@ const Header = ({ role = 'client' }: HeaderProps) => {
       // no-op
     }
 
-    await logoutLocally();
+    try {
+      await logoutLocally();
+    } catch {
+      // 토큰 쿠키가 남아 있으므로 로그아웃된 것처럼 이동하지 않는다. 버튼을 다시 누르면 재시도한다.
+      toast.error('로그아웃에 실패했습니다. 다시 시도해 주세요.');
+      return;
+    }
 
+    queryClient.clear();
     toast.success('로그아웃 되었습니다.');
 
     window.location.href = '/';

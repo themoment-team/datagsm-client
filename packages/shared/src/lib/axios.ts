@@ -23,14 +23,10 @@ export const oauthAxiosInstance = axios.create({
 
 /**
  * 이 앱의 토큰 쿠키를 지운다. httpOnly 쿠키는 브라우저에서 지울 수 없어 서버 라우트(`/api/logout`)에 맡긴다.
- * 실패해도 화면 이동은 막지 않도록 오류를 던지지 않는다.
+ * 실패하면 토큰이 그대로 남으므로 오류를 던진다. 호출하는 쪽은 로그아웃을 마친 것처럼 이동하지 않아야 한다.
  */
 export const logoutLocally = async (): Promise<void> => {
-  try {
-    await axiosInstance.post('/logout', undefined, { skipAuthRefresh: true });
-  } catch {
-    // no-op
-  }
+  await axiosInstance.post('/logout', undefined, { skipAuthRefresh: true });
 };
 
 axiosInstance.interceptors.response.use(

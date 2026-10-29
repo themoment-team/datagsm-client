@@ -25,8 +25,16 @@ export const SessionManagement = () => {
   } = useDeleteIdpSession({
     onSuccess: async (_data, { isCurrent }) => {
       if (isCurrent) {
+        try {
+          await logoutLocally();
+        } catch {
+          // IdP 세션은 끊겼지만 이 서비스의 토큰 쿠키는 남아 있으므로 이동하지 않는다.
+          toast.error('로그아웃에 실패했습니다. 다시 시도해 주세요.');
+          queryClient.invalidateQueries({ queryKey: oauthQueryKeys.getIdpSessions() });
+          return;
+        }
+
         queryClient.clear();
-        await logoutLocally();
         toast.success('로그아웃 되었습니다.');
         window.location.href = '/';
         return;

@@ -95,11 +95,11 @@ describe('logoutLocally', () => {
     expect(logout).toHaveBeenCalledTimes(1);
   });
 
-  it('요청이 실패해도 오류를 던지지 않는다', async () => {
+  it('요청이 실패하면 토큰 쿠키가 남아 있으므로 오류를 던진다', async () => {
     const { logoutLocally } = await loadAxios();
     server.use(http.post(apiPath('/logout'), () => HttpResponse.error()));
 
-    await expect(logoutLocally()).resolves.toBeUndefined();
+    await expect(logoutLocally()).rejects.toBeInstanceOf(AxiosError);
   });
 });
 

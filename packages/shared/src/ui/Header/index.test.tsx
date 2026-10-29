@@ -60,4 +60,21 @@ describe('Header', () => {
     await waitFor(() => expect(window.location.href).toBe('/'));
     expect(requests).toEqual(['idp', 'local']);
   });
+
+  it('토큰 쿠키를 지우지 못하면 로그아웃된 것처럼 이동하지 않고 실패를 알린다', async () => {
+    vi.stubGlobal('location', { href: 'http://localhost:3000/mypage' });
+    server.use(
+      http.post('*/v1/oauth/logout', () => new HttpResponse(null, { status: 204 })),
+      http.post(apiPath('/logout'), () => HttpResponse.error()),
+    );
+    const { user } = renderWithProviders(<Header role="client" />);
+
+    await user.click(queryLogoutButtons()[0]!);
+
+    expect(
+      await screen.findByText('로그아웃에 실패했습니다. 다시 시도해 주세요.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('로그아웃 되었습니다.')).not.toBeInTheDocument();
+    expect(window.location.href).toBe('http://localhost:3000/mypage');
+  });
 });

@@ -11,6 +11,7 @@ import { logoutLocally } from '@repo/shared/lib';
 import { AuthWindow, Button } from '@repo/shared/ui';
 import { cn, getIsAuthenticated } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { useGetRole } from '@/entities/signin';
 
@@ -62,8 +63,16 @@ const RoleGuard = ({ children }: AuthGuardProps) => {
       // 실패해도 이 서비스의 로컬 로그아웃은 막지 않는다.
     }
 
+    try {
+      await logoutLocally();
+    } catch {
+      // 토큰 쿠키가 남아 있으므로 이동하지 않고, 버튼을 다시 눌러 재시도할 수 있게 한다.
+      toast.error('로그아웃에 실패했습니다. 다시 시도해 주세요.');
+      setIsSwitchingAccount(false);
+      return;
+    }
+
     queryClient.clear();
-    await logoutLocally();
     window.location.href = '/';
   };
 

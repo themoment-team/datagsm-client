@@ -119,6 +119,21 @@ describe('AuthGuard', () => {
     expect(localLogoutRequests).toHaveLength(1);
   });
 
+  it('토큰 쿠키를 지우지 못하면 이동하지 않고 실패를 알려 다시 시도할 수 있게 한다', async () => {
+    mockMyAccount(() => apiSuccess(createMyAccount({ role: 'USER' })));
+    mockLogout();
+    server.use(http.post(apiPath('/logout'), () => HttpResponse.error()));
+    const { user } = renderGuard();
+
+    await user.click(await screen.findByRole('button', { name: '다른 계정으로 로그인' }));
+
+    expect(
+      await screen.findByText('로그아웃에 실패했습니다. 다시 시도해 주세요.'),
+    ).toBeInTheDocument();
+    expect(window.location.href).toBe(CURRENT_URL);
+    expect(screen.getByRole('button', { name: '다른 계정으로 로그인' })).toBeEnabled();
+  });
+
   it('로그인 취소 화면은 로그인하지 않았어도 계정을 조회하지 않고 그대로 보여 준다', async () => {
     // 조회하면 401로 재로그인이 시작돼 /로 이동하고, 미들웨어가 다시 동의 화면으로 보낸다.
     deleteCookie(COOKIE_KEYS.LOGGED_IN);

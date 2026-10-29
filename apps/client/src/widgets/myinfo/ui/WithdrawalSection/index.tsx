@@ -31,7 +31,11 @@ export const WithdrawalSection = () => {
   const { mutate: withdraw, isPending } = useWithdrawal({
     onSuccess: async () => {
       toast.success('회원 탈퇴가 완료되었습니다.');
-      await logoutLocally();
+      try {
+        await logoutLocally();
+      } catch {
+        // 계정은 이미 삭제됐으므로 쿠키를 지우지 못해도 새로고침한다.
+      }
       window.location.reload();
     },
     onError: (error) => {
