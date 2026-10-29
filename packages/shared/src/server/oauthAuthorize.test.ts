@@ -70,14 +70,24 @@ describe('createOAuthAuthorizeRedirect', () => {
     expect(parseOAuthState(state, response.cookies.get('oauth_state')?.value)).toBe('/');
   });
 
-  it('production에서만 쿠키에 secure를 켠다', async () => {
+  it('개발 환경에서는 접두사 없이 secure를 끈 쿠키로 남긴다', async () => {
     const response = await startLogin();
+
     expect(response.cookies.get('code_verifier')?.secure).toBe(false);
     expect(response.cookies.get('oauth_state')?.secure).toBe(false);
+  });
 
+  it('production에서는 다른 서브도메인이 심을 수 없도록 __Host- 접두사를 붙인 secure 쿠키로 남긴다', async () => {
     vi.stubEnv('NODE_ENV', 'production');
-    const productionResponse = await startLogin();
-    expect(productionResponse.cookies.get('code_verifier')?.secure).toBe(true);
-    expect(productionResponse.cookies.get('oauth_state')?.secure).toBe(true);
+
+    const response = await startLogin();
+
+    ['__Host-code_verifier', '__Host-oauth_state'].forEach((name) => {
+      // __Host- 쿠키는 Secure·Path=/·Domain 없음이어야 브라우저가 받는다.
+      expect(response.cookies.get(name)).toMatchObject({ secure: true, path: '/', maxAge: 900 });
+      expect(response.cookies.get(name)?.domain).toBeUndefined();
+    });
+    expect(response.cookies.get('code_verifier')).toBeUndefined();
+    expect(response.cookies.get('oauth_state')).toBeUndefined();
   });
 });

@@ -14,6 +14,34 @@ import {
  */
 const OAUTH_LOGIN_COOKIE_MAX_AGE = 60 * 15;
 
+type OAuthLoginCookieKey = 'CODE_VERIFIER' | 'OAUTH_STATE';
+
+/**
+ * production에서는 이름에 `__Host-` 접두사를 붙인다. 브라우저는 이 접두사가 붙은 쿠키를 Secure·Path=/·Domain 없이
+ * 심을 때만 받으므로, 같은 상위 도메인의 다른 서브도메인이 nonce와 verifier를 미리 심어 state 검증을 우회할 수 없다.
+ * 개발 환경(http://localhost)에서는 Secure 쿠키를 쓰지 않으므로 접두사를 붙이지 않는다.
+ */
+export const getOAuthLoginCookieName = (key: OAuthLoginCookieKey) =>
+  process.env.NODE_ENV === 'production' ? `__Host-${COOKIE_KEYS[key]}` : COOKIE_KEYS[key];
+
+const oauthLoginCookieOptions = () =>
+  ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  }) as const;
+
+/** `__Host-` 쿠키는 Secure가 붙은 Set-Cookie로만 지울 수 있어, 심을 때와 같은 속성으로 만료시킨다. */
+export const clearOAuthLoginCookies = (response: NextResponse) => {
+  (['CODE_VERIFIER', 'OAUTH_STATE'] as const).forEach((key) => {
+    response.cookies.set(getOAuthLoginCookieName(key), '', {
+      ...oauthLoginCookieOptions(),
+      maxAge: 0,
+    });
+  });
+};
+
 interface OAuthAuthorizeRedirectOptions {
   oauthBaseUrl: string;
   clientId: string;
@@ -48,15 +76,9 @@ export const createOAuthAuthorizeRedirect = async ({
   authorizeUrl.searchParams.set('code_challenge_method', 'S256');
 
   const response = NextResponse.redirect(authorizeUrl);
-  const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: OAUTH_LOGIN_COOKIE_MAX_AGE,
-  } as const;
-  response.cookies.set(COOKIE_KEYS.CODE_VERIFIER, codeVerifier, cookieOptions);
-  response.cookies.set(COOKIE_KEYS.OAUTH_STATE, nonce, cookieOptions);
+  const cookieOptions = { ...oauthLoginCookieOptions(), maxAge: OAUTH_LOGIN_COOKIE_MAX_AGE };
+  response.cookies.set(getOAuthLoginCookieName('CODE_VERIFIER'), codeVerifier, cookieOptions);
+  response.cookies.set(getOAuthLoginCookieName('OAUTH_STATE'), nonce, cookieOptions);
 
   return response;
 };

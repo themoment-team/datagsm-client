@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
 import { isValidRelativePath, parseOAuthState } from '@repo/shared/utils';
 
+import { clearOAuthLoginCookies, getOAuthLoginCookieName } from './oauthAuthorize';
+
 interface OAuthCallbackHandlerOptions {
   /**
    * 토큰 교환에 함께 보낼 client_secret. 시크릿을 쓰는 클라이언트(어드민)만 넘긴다.
@@ -29,7 +31,7 @@ export const createOAuthCallbackHandler =
       const error = searchParams.get('error');
       const returnPath = parseOAuthState(
         searchParams.get('state'),
-        request.cookies.get(COOKIE_KEYS.OAUTH_STATE)?.value,
+        request.cookies.get(getOAuthLoginCookieName('OAUTH_STATE'))?.value,
       );
       const targetPath = returnPath && isValidRelativePath(returnPath) ? returnPath : '/';
 
@@ -42,7 +44,7 @@ export const createOAuthCallbackHandler =
         return NextResponse.redirect(canceledUrl);
       }
 
-      const codeVerifier = request.cookies.get(COOKIE_KEYS.CODE_VERIFIER)?.value;
+      const codeVerifier = request.cookies.get(getOAuthLoginCookieName('CODE_VERIFIER'))?.value;
 
       if (!code || returnPath === null || !codeVerifier) {
         return NextResponse.redirect(new URL('/', request.url));
@@ -105,8 +107,7 @@ export const createOAuthCallbackHandler =
         maxAge: 60 * 60 * 24 * 30, // 30일
       });
 
-      response.cookies.delete(COOKIE_KEYS.CODE_VERIFIER);
-      response.cookies.delete(COOKIE_KEYS.OAUTH_STATE);
+      clearOAuthLoginCookies(response);
 
       return response;
     } catch {

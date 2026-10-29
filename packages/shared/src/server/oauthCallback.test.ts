@@ -294,4 +294,51 @@ describe('createOAuthCallbackHandler', () => {
       expect(bodies).toEqual([]);
     });
   });
+
+  describe('production', () => {
+    const GET = createOAuthCallbackHandler();
+
+    const callbackWithCookies = (query: string, cookies: Record<string, string>) => {
+      const request = new NextRequest(`${ORIGIN}/api/callback?${query}`);
+      Object.entries(cookies).forEach(([name, value]) => request.cookies.set(name, value));
+      return GET(request);
+    };
+
+    beforeEach(() => {
+      vi.stubEnv('NODE_ENV', 'production');
+    });
+
+    it('__Host- 접두사 쿠키로 대조해 교환하고, Secure를 붙여 지운다', async () => {
+      const bodies = mockToken();
+
+      const response = await callbackWithCookies(`code=code-1&state=${stateFor('/students')}`, {
+        '__Host-code_verifier': 'verifier-1',
+        '__Host-oauth_state': NONCE,
+      });
+
+      expect(response.headers.get('location')).toBe(`${ORIGIN}/students`);
+      expect(bodies).toHaveLength(1);
+      // __Host- 쿠키는 Secure가 없는 Set-Cookie로는 지워지지 않는다.
+      ['__Host-code_verifier', '__Host-oauth_state'].forEach((name) => {
+        expect(response.cookies.get(name)).toMatchObject({
+          value: '',
+          maxAge: 0,
+          secure: true,
+          path: '/',
+        });
+      });
+    });
+
+    it('다른 서브도메인이 심을 수 있는 접두사 없는 쿠키는 대조에 쓰지 않는다', async () => {
+      const bodies = mockToken();
+
+      const response = await callbackWithCookies(`code=attacker-code&state=${stateFor('/')}`, {
+        code_verifier: 'planted-verifier',
+        oauth_state: NONCE,
+      });
+
+      expect(response.headers.get('location')).toBe(`${ORIGIN}/`);
+      expect(bodies).toEqual([]);
+    });
+  });
 });

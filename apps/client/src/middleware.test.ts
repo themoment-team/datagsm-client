@@ -72,7 +72,9 @@ describe('client middleware', () => {
       expect((await middleware(requestTo('/'))).cookies.get('code_verifier')?.secure).toBe(false);
 
       vi.stubEnv('NODE_ENV', 'production');
-      expect((await middleware(requestTo('/'))).cookies.get('code_verifier')?.secure).toBe(true);
+      expect((await middleware(requestTo('/'))).cookies.get('__Host-code_verifier')?.secure).toBe(
+        true,
+      );
     });
 
     it.each([
