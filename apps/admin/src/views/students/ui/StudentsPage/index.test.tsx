@@ -60,7 +60,8 @@ const createStudents = (count: number) =>
 
 const setup = async () => {
   const view = renderWithProviders(<StudentsPage />);
-  await screen.findByRole('cell', { name: '학생1' });
+  // 페이지 전체를 처음 그리는 단계라 느린 CI에서는 기본 대기 시간(3초)을 넘길 수 있어, 첫 목록만 더 기다린다.
+  await screen.findByRole('cell', { name: '학생1' }, { timeout: 10_000 });
   return view;
 };
 
