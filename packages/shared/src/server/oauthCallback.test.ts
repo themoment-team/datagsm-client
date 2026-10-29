@@ -118,6 +118,40 @@ describe('createOAuthCallbackHandler', () => {
       });
     });
 
+    describe('verifier와 nonce를 한 번만 쓰도록 회수', () => {
+      const expectCleared = (response: Awaited<ReturnType<typeof callback>>) => {
+        expect(response.cookies.get('code_verifier')).toMatchObject({ value: '', maxAge: 0 });
+        expect(response.cookies.get('oauth_state')).toMatchObject({ value: '', maxAge: 0 });
+      };
+
+      it('nonce가 맞았으면 교환이 실패해도 지워, 같은 state로 다시 콜백을 통과하지 못하게 한다', async () => {
+        mockToken(() => HttpResponse.json({ error: 'invalid_grant' }, { status: 400 }));
+
+        const response = await callback(GET, `code=code-1&state=${stateFor('/students')}`);
+
+        expect(response.headers.get('location')).toBe(`${ORIGIN}/`);
+        expectCleared(response);
+      });
+
+      it('nonce가 맞았으면 동의를 거부해 끝난 경우에도 지운다', async () => {
+        const response = await callback(GET, `error=access_denied&state=${stateFor('/students')}`);
+
+        expectCleared(response);
+      });
+
+      it('nonce가 다르면 이 브라우저에서 진행 중인 로그인이 끊기지 않도록 지우지 않는다', async () => {
+        mockToken();
+
+        const response = await callback(
+          GET,
+          `code=attacker-code&state=${stateFor('/students', 'attacker-nonce')}`,
+        );
+
+        expect(response.cookies.get('code_verifier')).toBeUndefined();
+        expect(response.cookies.get('oauth_state')).toBeUndefined();
+      });
+    });
+
     it.each([
       ['state가 없으면', 'code=code-1'],
       ['state가 다른 호스트면', `code=code-1&state=${stateFor('//evil.com')}`],
