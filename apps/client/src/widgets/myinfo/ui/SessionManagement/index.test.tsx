@@ -1,14 +1,17 @@
 import type { IdpSession } from '@repo/shared/types';
 import {
+  HttpResponse,
   apiError,
+  apiPath,
   apiSuccess,
   http,
   renderWithProviders,
   screen,
   server,
+  waitFor,
   within,
 } from '@repo/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { SessionManagement } from '.';
 
@@ -111,6 +114,42 @@ describe('SessionManagement', () => {
   });
 
   describe('세션 종료', () => {
+    it('현재 세션을 종료하면 서버 라우트로 토큰 쿠키를 지우고 /로 보낸다', async () => {
+      vi.stubGlobal('location', { href: 'http://localhost:3000/mypage' });
+      mockSessions(() => apiSuccess({ sessions: [createIdpSession({ current: true })] }));
+      mockDeleteSession(() => apiSuccess(null));
+      const localLogout = vi.fn();
+      server.use(
+        http.post(apiPath('/logout'), () => {
+          localLogout();
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const { user } = renderWithProviders(<SessionManagement />);
+      const dialog = await openConfirmDialog(user);
+
+      await user.click(within(dialog).getByRole('button', { name: '종료' }));
+
+      await waitFor(() => expect(window.location.href).toBe('/'));
+      expect(localLogout).toHaveBeenCalledTimes(1);
+    });
+
+    it('현재 세션을 종료했지만 토큰 쿠키를 지우지 못하면 이동하지 않고 실패를 알린다', async () => {
+      vi.stubGlobal('location', { href: 'http://localhost:3000/mypage' });
+      mockSessions(() => apiSuccess({ sessions: [createIdpSession({ current: true })] }));
+      mockDeleteSession(() => apiSuccess(null));
+      server.use(http.post(apiPath('/logout'), () => HttpResponse.error()));
+      const { user } = renderWithProviders(<SessionManagement />);
+      const dialog = await openConfirmDialog(user);
+
+      await user.click(within(dialog).getByRole('button', { name: '종료' }));
+
+      expect(
+        await screen.findByText('로그아웃에 실패했습니다. 다시 시도해 주세요.'),
+      ).toBeInTheDocument();
+      expect(window.location.href).toBe('http://localhost:3000/mypage');
+    });
+
     it('목록을 연 뒤 SSO 세션이 사라져 종료가 401이면 그 이유를 알리고 목록을 안내로 바꾼다', async () => {
       let hasSsoSession = true;
       mockSessions(() =>

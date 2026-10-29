@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import { oauthPost, oauthUrl } from '@repo/shared/api';
-import { CLIENT_URL, COOKIE_KEYS, NAV_LINKS } from '@repo/shared/constants';
-import { cn, deleteCookie, getCookie } from '@repo/shared/utils';
+import { CLIENT_URL, NAV_LINKS } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
+import { cn, getIsAuthenticated } from '@repo/shared/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { LogOut, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,8 +25,6 @@ const Header = ({ role = 'client' }: HeaderProps) => {
   const canLogout = role === 'client' || role === 'admin' || (role === 'projects' && hasToken);
 
   const handleLogout = async () => {
-    queryClient.clear();
-
     try {
       // SSO 세션도 함께 종료한다. 실패해도 이 서비스의 로컬 로그아웃은 막지 않는다.
       await oauthPost(oauthUrl.postLogout(), undefined, { withCredentials: true });
@@ -33,9 +32,15 @@ const Header = ({ role = 'client' }: HeaderProps) => {
       // no-op
     }
 
-    deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-    deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+    try {
+      await logoutLocally();
+    } catch {
+      // 토큰 쿠키가 남아 있으므로 로그아웃된 것처럼 이동하지 않는다. 버튼을 다시 누르면 재시도한다.
+      toast.error('로그아웃에 실패했습니다. 다시 시도해 주세요.');
+      return;
+    }
 
+    queryClient.clear();
     toast.success('로그아웃 되었습니다.');
 
     window.location.href = '/';
@@ -56,11 +61,8 @@ const Header = ({ role = 'client' }: HeaderProps) => {
   }, []);
 
   // 쿠키는 서버 렌더 결과와 어긋나지 않도록 마운트 후에 읽는다.
-  // 액세스 토큰(1시간)이 만료돼도 리프레시 토큰(30일)이 남으므로 둘 중 하나만 있어도 로그인으로 본다.
   useEffect(() => {
-    setHasToken(
-      Boolean(getCookie(COOKIE_KEYS.ACCESS_TOKEN) || getCookie(COOKIE_KEYS.REFRESH_TOKEN)),
-    );
+    setHasToken(getIsAuthenticated());
   }, []);
 
   const links = NAV_LINKS[role];

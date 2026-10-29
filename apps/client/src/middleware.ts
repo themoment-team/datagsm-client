@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
-import { createOAuthAuthorizeRedirect } from '@repo/shared/server';
+import {
+  backfillLoggedInCookie,
+  createOAuthAuthorizeRedirect,
+  forwardAccessToken,
+} from '@repo/shared/server';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get(COOKIE_KEYS.ACCESS_TOKEN)?.value;
 
-  // API 경로는 미들웨어 적용 안 함
+  // API 경로는 로그인으로 보내지 않고, 토큰 쿠키를 백엔드로 넘길 Authorization 헤더로 옮겨 붙이기만 한다.
   if (pathname.startsWith('/api/')) {
-    return NextResponse.next();
+    return forwardAccessToken(request);
   }
 
   // 로그인 취소 안내는 로그인하지 않은 채로 보는 화면이다. 인가로 보내면 거부한 동의 화면이 다시 뜬다.
@@ -41,11 +45,12 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  return NextResponse.next();
+  return backfillLoggedInCookie(request, NextResponse.next());
 }
 
 export const config = {
   matcher: [
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/api/:path*',
   ],
 };
