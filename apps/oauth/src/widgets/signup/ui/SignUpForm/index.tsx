@@ -26,7 +26,12 @@ import {
   SelectValue,
   Textarea,
 } from '@repo/shared/ui';
-import { cn, formatEmailWithDomain, getApiErrorCode } from '@repo/shared/utils';
+import {
+  cn,
+  formatEmailWithDomain,
+  getApiErrorCode,
+  getRateLimitMessage,
+} from '@repo/shared/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -41,7 +46,6 @@ import {
 import { useEmailVerification, useSignUp } from '@/widgets/signup';
 
 import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
-import { getRateLimitMessage } from '../../model/rateLimit';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
 const VERIFICATION_CODE_LENGTH = 8;

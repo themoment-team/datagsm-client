@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getApiErrorCode, minutesToMs } from '@repo/shared/utils';
+import { getApiErrorCode, getRateLimitMessage, minutesToMs } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
-import { getRateLimitMessage } from './rateLimit';
 import { useCheckEmailCode } from './useCheckEmailCode';
 import { useSendEmailCode } from './useSendEmailCode';
 

@@ -8,7 +8,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { EMAIL_DOMAIN } from '@repo/shared/constants';
 import { useDebounce } from '@repo/shared/hooks';
 import { AuthWindow, Button, FormErrorMessage, Input } from '@repo/shared/ui';
-import { cn, formatEmailWithDomain, getApiErrorCode, minutesToMs } from '@repo/shared/utils';
+import {
+  cn,
+  formatEmailWithDomain,
+  getApiErrorCode,
+  getRateLimitMessage,
+  minutesToMs,
+} from '@repo/shared/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -116,7 +122,7 @@ const ResetPasswordForm = () => {
           toast.error('존재하지 않는 이메일입니다.');
           break;
         case 429:
-          toast.error('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.');
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           toast.error('인증 코드 전송에 실패했습니다.');
@@ -142,7 +148,7 @@ const ResetPasswordForm = () => {
           break;
         case 429:
           setIsCodeVerified(false);
-          toast.error('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.');
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           setIsCodeVerified(false);
@@ -177,7 +183,7 @@ const ResetPasswordForm = () => {
           toast.error('계정이 존재하지 않습니다.');
           break;
         case 429:
-          toast.error('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.');
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           toast.error('비밀번호 변경에 실패했습니다.');
