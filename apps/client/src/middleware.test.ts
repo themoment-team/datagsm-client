@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { NextRequest } from 'next/server';
 
+import { parseOAuthState } from '@repo/shared/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { config, middleware } from './middleware';
@@ -31,7 +32,7 @@ describe('client middleware', () => {
         client_id: 'client-app',
         redirect_uri: 'http://localhost:3000/api/callback',
         response_type: 'code',
-        state: '/students',
+        state: expect.stringMatching(/^[A-Za-z0-9_-]{43}\.\/students$/),
         code_challenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         code_challenge_method: 'S256',
       });
@@ -40,8 +41,17 @@ describe('client middleware', () => {
     it('state에는 쿼리를 빼고 경로만 담는다', async () => {
       const response = await middleware(requestTo('/students?grade=2'));
 
+      const state = new URL(response.headers.get('location')!).searchParams.get('state');
+      expect(parseOAuthState(state, response.cookies.get('oauth_state')?.value)).toBe('/students');
+    });
+
+    it('콜백이 같은 브라우저인지 대조할 state nonce를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+      const response = await middleware(requestTo('/students'));
+
+      const cookie = response.cookies.get('oauth_state');
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
       expect(new URL(response.headers.get('location')!).searchParams.get('state')).toBe(
-        '/students',
+        `${cookie!.value}./students`,
       );
     });
 

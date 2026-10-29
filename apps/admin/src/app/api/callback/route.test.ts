@@ -15,8 +15,12 @@ const ORIGIN = 'http://localhost:3001';
 const callback = (query: string) => {
   const request = new NextRequest(`${ORIGIN}/api/callback?${query}`);
   request.cookies.set('code_verifier', 'verifier-1');
+  request.cookies.set('oauth_state', 'nonce-1');
   return GET(request);
 };
+
+/** 인가를 시작할 때 쿠키에 남긴 nonce와 짝이 맞는 state */
+const STATE = encodeURIComponent('nonce-1./students');
 
 const mockToken = () => {
   const bodies: unknown[] = [];
@@ -40,7 +44,7 @@ describe('GET /api/callback (admin)', () => {
   it('client_secret을 함께 보내 토큰을 교환하고 쿠키를 심은 뒤 state 경로로 보낸다', async () => {
     const bodies = mockToken();
 
-    const response = await callback('code=code-1&state=/students');
+    const response = await callback(`code=code-1&state=${STATE}`);
 
     expect(bodies).toEqual([
       {
@@ -61,7 +65,7 @@ describe('GET /api/callback (admin)', () => {
     vi.stubEnv('DATAGSM_CLIENT_SECRET', '');
     const bodies = mockToken();
 
-    const response = await callback('code=code-1');
+    const response = await callback(`code=code-1&state=${STATE}`);
 
     expect(response.headers.get('location')).toBe(`${ORIGIN}/`);
     expect(bodies).toEqual([]);

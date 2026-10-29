@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { COOKIE_KEYS, LOGIN_CANCELED_PATH } from '@repo/shared/constants';
-import { isValidRelativePath } from '@repo/shared/utils';
+import { isValidRelativePath, parseOAuthState } from '@repo/shared/utils';
 
 interface OAuthCallbackHandlerOptions {
   /**
@@ -15,6 +15,10 @@ interface OAuthCallbackHandlerOptions {
  * OAuth 로그인 콜백(`/api/callback`) GET 핸들러를 만든다.
  * code를 토큰으로 교환해 쿠키에 심고 state 경로로 보내며, 어느 단계든 실패하면 /로 돌려보낸다.
  * 인가 서버가 error를 돌려주면(동의 거부 등) 로그인 취소 안내 화면으로 보낸다.
+ *
+ * state의 nonce가 쿠키와 다르거나 code_verifier 쿠키가 없으면 이 브라우저가 시작한 로그인이 아니므로 교환하지 않는다.
+ * 남이 발급받은 code로 피해자를 공격자 계정에 로그인시키는 로그인 CSRF를 막기 위해서다.
+ * 시크릿 클라이언트는 서버가 PKCE를 강제하지 않을 수 있어 code_verifier 확인만으로는 부족하다.
  */
 export const createOAuthCallbackHandler =
   ({ getClientSecret }: OAuthCallbackHandlerOptions = {}) =>
@@ -22,9 +26,12 @@ export const createOAuthCallbackHandler =
     try {
       const searchParams = request.nextUrl.searchParams;
       const code = searchParams.get('code');
-      const state = searchParams.get('state');
       const error = searchParams.get('error');
-      const targetPath = state && isValidRelativePath(state) ? state : '/';
+      const returnPath = parseOAuthState(
+        searchParams.get('state'),
+        request.cookies.get(COOKIE_KEYS.OAUTH_STATE)?.value,
+      );
+      const targetPath = returnPath && isValidRelativePath(returnPath) ? returnPath : '/';
 
       // 동의를 거부하거나(access_denied) 요청을 처리하지 못하면 인가 서버는 code 대신 error를 붙여 돌려보낸다.
       // /로 보내면 미들웨어가 곧바로 인가를 다시 시작해 같은 동의 화면이 다시 뜨므로 안내 화면으로 보낸다.
@@ -35,7 +42,9 @@ export const createOAuthCallbackHandler =
         return NextResponse.redirect(canceledUrl);
       }
 
-      if (!code) {
+      const codeVerifier = request.cookies.get(COOKIE_KEYS.CODE_VERIFIER)?.value;
+
+      if (!code || returnPath === null || !codeVerifier) {
         return NextResponse.redirect(new URL('/', request.url));
       }
 
@@ -43,7 +52,6 @@ export const createOAuthCallbackHandler =
       const clientId = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID;
       const clientSecret = getClientSecret?.();
       const redirectUri = process.env.NEXT_PUBLIC_DATAGSM_REDIRECT_URI;
-      const codeVerifier = request.cookies.get('code_verifier')?.value;
 
       if (!oauthBaseUrl || !clientId || (getClientSecret && !clientSecret) || !redirectUri) {
         return NextResponse.redirect(new URL('/', request.url));
@@ -97,7 +105,8 @@ export const createOAuthCallbackHandler =
         maxAge: 60 * 60 * 24 * 30, // 30일
       });
 
-      response.cookies.delete('code_verifier');
+      response.cookies.delete(COOKIE_KEYS.CODE_VERIFIER);
+      response.cookies.delete(COOKIE_KEYS.OAUTH_STATE);
 
       return response;
     } catch {
