@@ -82,7 +82,7 @@ export const createOAuthCallbackHandler =
       const redirectUrl = new URL(targetPath, request.url);
       const response = NextResponse.redirect(redirectUrl);
 
-      setAuthCookies(response, { accessToken, refreshToken });
+      setAuthCookies(response, { accessToken, refreshToken, expiresIn: tokenData.expires_in });
       response.cookies.delete('code_verifier');
 
       return response;

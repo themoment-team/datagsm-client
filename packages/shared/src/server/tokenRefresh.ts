@@ -68,6 +68,7 @@ export const createTokenRefreshHandler =
       setAuthCookies(response, {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
+        expiresIn: tokenData.expires_in,
       });
 
       return response;

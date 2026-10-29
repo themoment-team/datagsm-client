@@ -84,6 +84,20 @@ describe('createOAuthCallbackHandler', () => {
       expect(response.cookies.get('code_verifier')?.value).toBe('');
     });
 
+    it('토큰 응답에 expires_in이 있으면 액세스 토큰 쿠키 수명을 그 값에 맞춘다', async () => {
+      mockToken(() =>
+        HttpResponse.json({
+          access_token: 'access-1',
+          refresh_token: 'refresh-1',
+          expires_in: 1800,
+        }),
+      );
+
+      const response = await callback(GET, 'code=code-1&state=/students');
+
+      expect(response.cookies.get('accessToken')?.maxAge).toBe(1800);
+    });
+
     it.each([
       ['state가 없으면', 'code=code-1'],
       ['state가 다른 호스트면', `code=code-1&state=${encodeURIComponent('//evil.com')}`],

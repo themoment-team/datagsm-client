@@ -79,6 +79,20 @@ describe('createTokenRefreshHandler', () => {
       });
     });
 
+    it('갱신 응답에 expires_in이 있으면 액세스 토큰 쿠키 수명을 그 값에 맞춘다', async () => {
+      mockToken(() =>
+        HttpResponse.json({
+          access_token: 'access-new',
+          refresh_token: 'refresh-new',
+          expires_in: 1800,
+        }),
+      );
+
+      const response = await refresh(POST);
+
+      expect(response.cookies.get('accessToken')?.maxAge).toBe(1800);
+    });
+
     it('production에서만 토큰 쿠키에 secure를 켠다', async () => {
       mockToken();
       expect((await refresh(POST)).cookies.get('accessToken')?.secure).toBe(false);

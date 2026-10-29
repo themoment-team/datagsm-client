@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { COOKIE_KEYS } from '@repo/shared/constants';
 
-const ACCESS_TOKEN_MAX_AGE = 60 * 60; // 1시간
+/** 토큰 응답에 expires_in이 없을 때 쓰는 액세스 토큰 수명. 인가 서버 문서상 1시간이다. */
+const DEFAULT_ACCESS_TOKEN_MAX_AGE = 60 * 60;
 const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 30; // 30일
 
 const baseCookieOptions = () => ({
@@ -16,6 +17,8 @@ interface AuthTokens {
   accessToken: string;
   /** 갱신 응답은 refresh_token을 주지 않을 수 있다. 없으면 기존 쿠키를 그대로 둔다. */
   refreshToken?: string | null;
+  /** 토큰 응답의 expires_in(초). 쿠키가 실제 토큰보다 오래 남지 않도록 액세스 토큰 쿠키 수명으로 쓴다. */
+  expiresIn?: number;
 }
 
 /**
@@ -24,11 +27,11 @@ interface AuthTokens {
  */
 export const setAuthCookies = (
   response: NextResponse,
-  { accessToken, refreshToken }: AuthTokens,
+  { accessToken, refreshToken, expiresIn }: AuthTokens,
 ) => {
   response.cookies.set(COOKIE_KEYS.ACCESS_TOKEN, accessToken, {
     ...baseCookieOptions(),
-    maxAge: ACCESS_TOKEN_MAX_AGE,
+    maxAge: expiresIn && expiresIn > 0 ? expiresIn : DEFAULT_ACCESS_TOKEN_MAX_AGE,
   });
 
   if (refreshToken) {
