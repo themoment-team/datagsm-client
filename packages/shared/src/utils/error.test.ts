@@ -2,7 +2,7 @@
 import { AxiosError, AxiosHeaders } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { getApiErrorCode, getApiErrorMessage } from './error';
+import { getApiErrorCode, getApiErrorMessage, getRateLimitMessage } from './error';
 
 const axiosErrorWith = (data: unknown) =>
   new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
@@ -47,5 +47,20 @@ describe('getApiErrorMessage', () => {
   it('AxiosError가 아니면 undefined를 돌려준다', () => {
     expect(getApiErrorMessage(new Error('boom'))).toBeUndefined();
     expect(getApiErrorMessage({ response: { data: { message: '중복' } } })).toBeUndefined();
+  });
+});
+
+describe('getRateLimitMessage', () => {
+  it('서버가 보낸 대기 시간 안내 문구를 그대로 돌려준다', () => {
+    const message = '요청 횟수를 초과했습니다. 120초 후에 다시 시도해주세요.';
+
+    expect(getRateLimitMessage(axiosErrorWith({ code: 429, message }))).toBe(message);
+  });
+
+  it('서버 문구가 비어 있거나 없으면 기본 문구를 돌려준다', () => {
+    const fallback = '요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.';
+
+    expect(getRateLimitMessage(axiosErrorWith({ code: 429, message: '' }))).toBe(fallback);
+    expect(getRateLimitMessage(new AxiosError('Network Error'))).toBe(fallback);
   });
 });

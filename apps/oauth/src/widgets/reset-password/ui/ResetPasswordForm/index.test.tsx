@@ -18,6 +18,7 @@ const SEND_CODE_URL = '*/v1/accounts/password-resets';
 const VERIFY_CODE_URL = '*/v1/accounts/password-resets/verification';
 const CHANGE_PASSWORD_URL = '*/v1/accounts/password';
 const COOLDOWN_KEY = 'password_reset_verification_timestamp';
+const RATE_LIMIT_MESSAGE = '요청 횟수를 초과했습니다. 120초 후에 다시 시도해주세요.';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -103,7 +104,6 @@ describe('ResetPasswordForm', () => {
 
     it.each([
       [404, '존재하지 않는 이메일입니다.'],
-      [429, '요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'],
       [500, '인증 코드 전송에 실패했습니다.'],
     ])('전송이 %s로 실패하면 안내 토스트를 띄운다', async (status, message) => {
       mockPasswordApi({ sendCode: () => apiError(status, 'error') });
@@ -113,6 +113,28 @@ describe('ResetPasswordForm', () => {
       await user.click(screen.getByRole('button', { name: '코드전송' }));
 
       expect(await screen.findByText(message)).toBeInTheDocument();
+    });
+
+    it('전송이 429로 막히면 서버가 알려 준 대기 시간을 안내한다', async () => {
+      mockPasswordApi({ sendCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const user = setup();
+
+      await user.type(screen.getByLabelText('이메일'), 's25001');
+      await user.click(screen.getByRole('button', { name: '코드전송' }));
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+    });
+
+    it('429 안내 문구가 비어 있으면 기본 문구로 안내한다', async () => {
+      mockPasswordApi({ sendCode: () => apiError(429, '') });
+      const user = setup();
+
+      await user.type(screen.getByLabelText('이메일'), 's25001');
+      await user.click(screen.getByRole('button', { name: '코드전송' }));
+
+      expect(
+        await screen.findByText('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'),
+      ).toBeInTheDocument();
     });
 
     it('새로고침해도 남은 쿨다운을 이어서 보여준다', () => {
@@ -168,7 +190,6 @@ describe('ResetPasswordForm', () => {
     it.each([
       [400, '인증 코드가 일치하지 않습니다.'],
       [404, '인증 코드가 만료되었거나 존재하지 않습니다.'],
-      [429, '요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'],
       [500, '인증 코드 확인에 실패했습니다.'],
     ])('확인이 %s로 실패하면 안내하고 새 비밀번호 입력을 닫아 둔다', async (status, message) => {
       mockPasswordApi({ verifyCode: () => apiError(status, 'error') });
@@ -178,6 +199,17 @@ describe('ResetPasswordForm', () => {
       await verifyCode(user);
 
       expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(screen.getByLabelText('새로운 비밀번호')).toBeDisabled();
+    });
+
+    it('확인이 429로 막히면 대기 시간을 안내하고 새 비밀번호 입력을 닫아 둔다', async () => {
+      mockPasswordApi({ verifyCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const user = setup();
+      await sendCode(user);
+
+      await verifyCode(user);
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
       expect(screen.getByLabelText('새로운 비밀번호')).toBeDisabled();
     });
   });
@@ -210,7 +242,6 @@ describe('ResetPasswordForm', () => {
     it.each([
       [400, '이전 비밀번호와 동일합니다.'],
       [404, '계정이 존재하지 않습니다.'],
-      [429, '요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'],
       [500, '비밀번호 변경에 실패했습니다.'],
     ])('변경이 %s로 실패하면 안내 토스트를 띄운다', async (status, message) => {
       mockPasswordApi({ changePassword: () => apiError(status, 'error') });
@@ -221,6 +252,18 @@ describe('ResetPasswordForm', () => {
       await user.click(screen.getByRole('button', { name: 'RESET PASSWORD' }));
 
       expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(mockRouter.push).not.toHaveBeenCalled();
+    });
+
+    it('변경이 429로 막히면 서버가 알려 준 대기 시간을 안내한다', async () => {
+      mockPasswordApi({ changePassword: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const user = setup();
+      await verify(user);
+      await fillPasswords(user);
+
+      await user.click(screen.getByRole('button', { name: 'RESET PASSWORD' }));
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
       expect(mockRouter.push).not.toHaveBeenCalled();
     });
   });
