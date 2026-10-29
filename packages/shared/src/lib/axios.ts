@@ -8,7 +8,7 @@ declare module 'axios' {
 }
 
 let isRefreshing = false;
-let refreshQueue: (() => void)[] = [];
+let refreshQueue: { retry: () => void; fail: (error: unknown) => void }[] = [];
 
 // 토큰은 httpOnly 쿠키라 여기서 읽지 않는다. `/api/*` 미들웨어가 쿠키를 Authorization 헤더로 옮겨 붙인다.
 export const axiosInstance = axios.create({
@@ -56,8 +56,11 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          refreshQueue.push(() => resolve(axiosInstance(originalRequest)));
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({
+            retry: () => resolve(axiosInstance(originalRequest)),
+            fail: reject,
+          });
         });
       }
 
@@ -67,11 +70,15 @@ axiosInstance.interceptors.response.use(
         // 실패하면 그 응답이 쿠키를 모두 지우므로 여기서는 이동만 한다.
         await axiosInstance.post('/refresh', undefined, { skipAuthRefresh: true });
 
-        refreshQueue.forEach((cb) => cb());
+        refreshQueue.forEach(({ retry }) => retry());
         refreshQueue = [];
 
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        // 대기 중이던 요청도 함께 실패시켜, 다음 갱신이 성공할 때 지난 요청이 다시 나가지 않게 한다.
+        refreshQueue.forEach(({ fail }) => fail(refreshError));
+        refreshQueue = [];
+
         if (typeof window !== 'undefined') {
           window.location.href = '/';
         }

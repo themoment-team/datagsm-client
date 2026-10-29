@@ -102,6 +102,40 @@ describe('401 응답 시 토큰 갱신', () => {
     expect(window.location.href).toBe('/');
   });
 
+  it('갱신이 실패하면 갱신을 기다리던 요청도 모두 실패하고, 다음 갱신 때 다시 나가지 않는다', async () => {
+    const { axiosInstance } = await loadAxios();
+    let studentsRequestCount = 0;
+    server.use(
+      http.get(apiPath('/v1/students'), () => {
+        studentsRequestCount += 1;
+        return isRefreshed ? apiSuccess('/v1/students') : apiError(401, '토큰이 만료되었습니다.');
+      }),
+      protectedApi('/v1/clubs'),
+      protectedApi('/v1/projects'),
+      http.post(apiPath('/refresh'), async () => {
+        refreshCount += 1;
+        await delay(50);
+        return HttpResponse.json({ error: 'invalid_grant' }, { status: 401 });
+      }),
+    );
+
+    const results = await Promise.allSettled([
+      axiosInstance.get('/v1/clubs'),
+      axiosInstance.get('/v1/students'),
+    ]);
+
+    expect(results.map(({ status }) => status)).toEqual(['rejected', 'rejected']);
+    expect(refreshCount).toBe(1);
+
+    // 갱신 실패로 바뀐 location을 되돌려야 상대 경로 요청을 보낼 수 있다.
+    vi.stubGlobal('location', { href: 'http://localhost:3000/students' });
+    server.use(refreshRoute());
+    await axiosInstance.get('/v1/projects');
+
+    // 실패한 갱신을 기다리던 /v1/students가 큐에 남아 있었다면 여기서 다시 나간다.
+    expect(studentsRequestCount).toBe(1);
+  });
+
   it('skipAuthRefresh 요청은 401이어도 갱신하지 않는다', async () => {
     const { axiosInstance } = await loadAxios();
     server.use(protectedApi('/v1/accounts'), refreshRoute());
