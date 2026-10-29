@@ -42,9 +42,9 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --animate-progress-bar-loading: progress-bar-loading 1s ease-in-out infinite;
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-  --font-pixel: 'Press Start 2P', monospace;
+  --font-sans: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Courier New', monospace;
+  --font-pixel: var(--font-press-start-2p), monospace;
 }
 
 :root {
@@ -126,7 +126,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans, 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif);
+    font-family: var(--font-sans);
     background-image: radial-gradient(oklch(0.04 0 0 / 5%) 1px, transparent 1px);
     background-size: 20px 20px;
   }
@@ -134,11 +134,11 @@
 
 @layer utilities {
   .font-pixel {
-    font-family: 'Press Start 2P', var(--font-korean-pixel, monospace), monospace;
+    font-family: var(--font-press-start-2p), var(--font-korean-pixel, monospace), monospace;
   }
 
   .font-code {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: var(--font-mono);
   }
 
   .pixel-shadow {

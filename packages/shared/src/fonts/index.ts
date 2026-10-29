@@ -9,6 +9,9 @@ import localFont from 'next/font/local';
 // next/font 호출 인자는 리터럴만 허용하므로 unicode-range 값을 상수로 빼지 않는다.
 // latin-ext 호출은 @font-face만 만들면 되지만, 앱이 참조하지 않는 const는 번들러(turbopack)가 버리므로 export해 둔다.
 //
+// font-family 이름은 webpack 빌드에서만 declarations대로 붙고 turbopack dev에서는 const 이름이 되므로,
+// 스타일은 이름 대신 아래 CSS 변수를 참조한다(globals.css의 --font-sans, --font-mono, --font-pixel).
+//
 // DM Sans와 JetBrains Mono는 Google Fonts가 주던 것과 같이 굵기 전체를 담은 가변 폰트를 쓰고,
 // 기존에 쓰던 굵기 범위로 제한한다.
 
@@ -17,7 +20,7 @@ const pressStart2P = localFont({
   weight: '400',
   style: 'normal',
   display: 'swap',
-  variable: '--font-pixel',
+  variable: '--font-press-start-2p',
   declarations: [
     { prop: 'font-family', value: "'Press Start 2P'" },
     {
@@ -50,7 +53,7 @@ const jetbrainsMono = localFont({
   weight: '400 600',
   style: 'normal',
   display: 'swap',
-  variable: '--font-mono',
+  variable: '--font-jetbrains-mono',
   declarations: [
     { prop: 'font-family', value: "'JetBrains Mono'" },
     {
@@ -83,7 +86,7 @@ const dmSans = localFont({
   weight: '400 700',
   style: 'normal',
   display: 'swap',
-  variable: '--font-sans',
+  variable: '--font-dm-sans',
   declarations: [
     { prop: 'font-family', value: "'DM Sans'" },
     {
@@ -111,7 +114,7 @@ export const dmSansLatinExt = localFont({
   ],
 });
 
-// 앱 루트 <html>의 className에 넣어 --font-pixel, --font-mono, --font-sans를 정의한다.
+// 앱 루트 <html>의 className에 넣어 --font-press-start-2p, --font-jetbrains-mono, --font-dm-sans를 정의한다.
 export const fontVariables = [pressStart2P.variable, jetbrainsMono.variable, dmSans.variable].join(
   ' ',
 );
