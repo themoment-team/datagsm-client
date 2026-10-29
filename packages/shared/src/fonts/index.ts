@@ -7,7 +7,7 @@ import localFont from 'next/font/local';
 // next/font/local은 src 항목마다 unicode-range를 줄 수 없어 subset마다 따로 호출한다.
 // latin-ext는 preload하지 않고, 대체 폰트 보정과 CSS 변수는 latin 쪽에서만 만든다.
 // next/font 호출 인자는 리터럴만 허용하므로 unicode-range 값을 상수로 빼지 않는다.
-// latin-ext 호출은 @font-face만 만들면 되지만 next/font가 const 할당을 요구해 쓰지 않는 변수로 둔다.
+// latin-ext 호출은 @font-face만 만들면 되지만, 앱이 참조하지 않는 const는 번들러(turbopack)가 버리므로 export해 둔다.
 //
 // DM Sans와 JetBrains Mono는 Google Fonts가 주던 것과 같이 굵기 전체를 담은 가변 폰트를 쓰고,
 // 기존에 쓰던 굵기 범위로 제한한다.
@@ -28,8 +28,7 @@ const pressStart2P = localFont({
   ],
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const pressStart2PLatinExt = localFont({
+export const pressStart2PLatinExt = localFont({
   src: '../../node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-ext-400-normal.woff2',
   weight: '400',
   style: 'normal',
@@ -62,8 +61,7 @@ const jetbrainsMono = localFont({
   ],
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const jetbrainsMonoLatinExt = localFont({
+export const jetbrainsMonoLatinExt = localFont({
   src: '../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-ext-wght-normal.woff2',
   weight: '400 600',
   style: 'normal',
@@ -96,8 +94,7 @@ const dmSans = localFont({
   ],
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dmSansLatinExt = localFont({
+export const dmSansLatinExt = localFont({
   src: '../../node_modules/@fontsource-variable/dm-sans/files/dm-sans-latin-ext-wght-normal.woff2',
   weight: '400 700',
   style: 'normal',
