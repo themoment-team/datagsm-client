@@ -19,8 +19,8 @@ export const metadata = createDocsPageMetadata({ title: "React + Spring Boot (BF
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm">
         이 예제는 보안을 위해 BFF(Backend For Frontend) 패턴을 사용합니다.
-        프론트엔드에서 직접 OAuth 플로우를 처리하는 것보다 BFF 패턴을 사용하면 더 안전합니다.
-        PKCE를 사용하시는 경우에도 백엔드를 통한 인증 처리를 고려해보세요.
+        프론트엔드에서 직접 토큰을 다루는 것보다 BFF 패턴을 사용하면 더 안전합니다.
+        인가 서버의 CORS 허용 출처는 DataGSM 자사 서비스로 제한되므로 PKCE를 사용해도 토큰 교환은 백엔드가 담당합니다.
       </div>
     </div>
   </div>
@@ -175,13 +175,16 @@ private val logger = KotlinLogging.logger {}
 
 @Service
 class OAuthService(
-    @Value("\\\${'$'}{oauth.client-id}") private val clientId: String,
-    @Value("\\\${'$'}{oauth.callback-uri}") private val callbackUri: String,
-    private val webClient: WebClient = WebClient.create()
+    @Value("\\\${oauth.client-id}") private val clientId: String,
+    @Value("\\\${oauth.callback-uri}") private val callbackUri: String
 ) {
 
+    private val webClient: WebClient = WebClient.create()
     private val oauthBaseUrl = "https://oauth.authorization.datagsm.kr"
     private val userinfoBaseUrl = "https://oauth.resource.datagsm.kr"
+
+    // 콘솔에서 클라이언트에 등록한 scope만 요청할 수 있습니다.
+    private val scope = "datagsm:account_read datagsm:student_read"
 
     /**
      * DataGSM OAuth 인가 URL 생성
@@ -193,10 +196,11 @@ class OAuthService(
      */
     fun buildAuthorizeUrl(state: String, codeChallenge: String): String {
         return UriComponentsBuilder
-            .fromHttpUrl(oauthBaseUrl)
+            .fromUriString(oauthBaseUrl)
             .path("/v1/oauth/authorize")
             .queryParam("client_id", clientId)
             .queryParam("redirect_uri", callbackUri)
+            .queryParam("scope", scope)
             .queryParam("state", state)
             .queryParam("code_challenge", codeChallenge)
             .queryParam("code_challenge_method", "S256")
@@ -236,6 +240,7 @@ class OAuthService(
 
     /**
      * Refresh Token으로 새로운 Access Token 발급
+     * - 회전 방식이므로 응답의 새 Refresh Token으로 교체해야 합니다.
      *
      * @param refreshToken Refresh Token
      * @return TokenResponse (새로운 accessToken, refreshToken)
@@ -276,7 +281,7 @@ class OAuthService(
             .bodyToMono<UserInfo>()
             .block() ?: throw RuntimeException("Failed to get user info")
 
-        logger.info { "Successfully fetched user info for: \\\${userInfo.email}" }
+        logger.info { "Successfully fetched user info for: \${userInfo.email}" }
         return userInfo
     }
 }`} />
@@ -293,15 +298,26 @@ data class TokenResponse(
     @JsonProperty("access_token")
     val accessToken: String,
 
-    @JsonProperty("refresh_token")
-    val refreshToken: String,
+    @JsonProperty("token_type")
+    val tokenType: String,
 
     @JsonProperty("expires_in")
-    val expiresIn: Int
+    val expiresIn: Long,
+
+    @JsonProperty("refresh_token")
+    val refreshToken: String?,
+
+    @JsonProperty("scope")
+    val scope: String,
+
+    // scope에 openid를 요청한 코드 교환에서만 값이 있습니다.
+    @JsonProperty("id_token")
+    val idToken: String? = null
 )
 
 // DataGSM /userinfo 응답 구조
 data class UserInfo(
+    val sub: String,
     val id: Long,
     val email: String,
     val role: String,
@@ -310,16 +326,31 @@ data class UserInfo(
     // isStudent는 Deprecated이며 objectType == "STUDENT"의 파생값입니다. 신규 연동은 objectType을 사용하세요.
     val isStudent: Boolean,
     val student: StudentInfo?,
-    val teacher: TeacherInfo?
+    val teacher: TeacherInfo?,
+    // club_read, project_read를 요청해야 채워지며 그렇지 않으면 빈 배열입니다.
+    val clubs: List<ClubSummary> = emptyList(),
+    val projects: List<ProjectSummary> = emptyList()
 )
 
 data class StudentInfo(
     val id: Long,
     val name: String,
-    val grade: Int,
-    val classNum: Int,
-    val number: Int,
-    val major: String
+    val sex: String,
+    val email: String,
+    val grade: Int?,
+    val classNum: Int?,
+    val number: Int?,
+    val studentNumber: Int?,
+    val major: String?,
+    val specialty: String?,
+    val role: String,
+    val dormitoryFloor: Int?,
+    val dormitoryRoom: Int?,
+    // club_read가 없으면 null입니다.
+    val majorClub: ClubSummary?,
+    val autonomousClub: ClubSummary?,
+    val githubId: String?,
+    val githubUrl: String?
 )
 
 data class TeacherInfo(
@@ -328,6 +359,19 @@ data class TeacherInfo(
     val email: String,
     val department: String,
     val description: String?
+)
+
+data class ClubSummary(
+    val id: Long,
+    val name: String,
+    val type: String
+)
+
+data class ProjectSummary(
+    val id: Long,
+    val name: String,
+    val status: String,
+    val club: ClubSummary?
 )`} />
 </CodeTabs>
 
@@ -338,7 +382,7 @@ data class TeacherInfo(
 <CodeTabs>
   <CodeTab label="controller/AuthController.kt" language="kotlin" code={`package com.example.oauth.controller
 
-import com.example.oauth.dto.UserInfo
+import com.example.oauth.dto.TokenResponse
 import com.example.oauth.service.OAuthService
 import com.example.oauth.service.PkceService
 import jakarta.servlet.http.Cookie
@@ -350,6 +394,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import java.util.UUID
 
 private val logger = KotlinLogging.logger {}
@@ -359,7 +404,8 @@ private val logger = KotlinLogging.logger {}
 class AuthController(
     private val oauthService: OAuthService,
     private val pkceService: PkceService,
-    @Value("\\\${'$'}{oauth.frontend-url}") private val frontendUrl: String
+    @Value("\\\${oauth.frontend-url}") private val frontendUrl: String,
+    @Value("\\\${oauth.cookie-secure}") private val cookieSecure: Boolean
 ) {
 
     /**
@@ -386,50 +432,63 @@ class AuthController(
         session.setAttribute("oauth_state", state)
 
         // DataGSM OAuth 인가 URL로 리다이렉트
-        val authorizeUrl = oauthService.buildAuthorizeUrl(state, codeChallenge)
-        logger.info { "Redirecting to DataGSM OAuth: $authorizeUrl" }
-        httpResponse.sendRedirect(authorizeUrl)
+        httpResponse.sendRedirect(oauthService.buildAuthorizeUrl(state, codeChallenge))
     }
 
     /**
      * GET /api/auth/callback
      * DataGSM OAuth 서버 콜백 처리 및 토큰 발급
      *
-     * DataGSM 로그인 성공 후 redirect_uri로 돌아오는 엔드포인트입니다.
+     * 로그인 성공 시 code, 동의 거부 시 error=access_denied가 전달됩니다.
      */
     @GetMapping("/callback")
     fun handleCallback(
         @RequestParam(required = false) code: String?,
-        @RequestParam state: String,
+        @RequestParam(required = false) state: String?,
+        @RequestParam(required = false) error: String?,
         session: HttpSession,
         httpResponse: HttpServletResponse
     ) {
+        val savedState = session.getAttribute("oauth_state") as? String
+        val codeVerifier = session.getAttribute("code_verifier") as? String
+
+        // 세션 정리 (일회용)
+        session.removeAttribute("oauth_state")
+        session.removeAttribute("code_verifier")
+
+        // State 검증 (CSRF 방지). 오류 응답에도 state가 포함되므로 error보다 먼저 확인합니다.
+        if (savedState == null || state != savedState) {
+            logger.warn { "OAuth state mismatch" }
+            httpResponse.sendRedirect("$frontendUrl/login?error=invalid_state")
+            return
+        }
+
+        // 사용자가 동의를 거부하면 code 없이 error=access_denied로 돌아옵니다.
+        if (error != null) {
+            val reason = if (error == "access_denied") "access_denied" else "auth_failed"
+            logger.warn { "OAuth authorization failed: $reason" }
+            httpResponse.sendRedirect("$frontendUrl/login?error=$reason")
+            return
+        }
+
+        if (code == null || codeVerifier == null) {
+            httpResponse.sendRedirect("$frontendUrl/login?error=auth_failed")
+            return
+        }
+
         try {
-            // State 검증 (CSRF 방지)
-            val savedState = session.getAttribute("oauth_state") as? String
-                ?: throw IllegalStateException("No state in session")
-            if (state != savedState) throw SecurityException("State mismatch - possible CSRF attack")
-
-            // 사용자가 로그인을 취소하거나 인증 서버 에러로 code가 없는 경우 처리
-            if (code == null) throw IllegalArgumentException("Authorization code is missing")
-
-            // code_verifier 조회
-            val codeVerifier = session.getAttribute("code_verifier") as? String
-                ?: throw IllegalStateException("No code_verifier in session")
-
-            // 세션 정리 (일회용)
-            session.removeAttribute("oauth_state")
-            session.removeAttribute("code_verifier")
-
             // Token 교환 (PKCE)
             val tokens = oauthService.exchangeToken(code, codeVerifier)
 
             // httpOnly 쿠키에 토큰 저장
-            setTokenCookies(httpResponse, tokens.accessToken, tokens.refreshToken)
+            setTokenCookies(httpResponse, tokens)
 
             logger.info { "OAuth callback successful, redirecting to frontend" }
             httpResponse.sendRedirect(frontendUrl)
 
+        } catch (e: WebClientResponseException.TooManyRequests) {
+            logger.warn { "Token exchange rate limited" }
+            httpResponse.sendRedirect("$frontendUrl/login?error=rate_limited")
         } catch (e: Exception) {
             logger.error(e) { "OAuth callback failed" }
             httpResponse.sendRedirect("$frontendUrl/login?error=auth_failed")
@@ -445,22 +504,34 @@ class AuthController(
         request: HttpServletRequest,
         httpResponse: HttpServletResponse
     ): ResponseEntity<Map<String, String>> {
+        val refreshToken = getRefreshTokenFromCookie(request)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(mapOf("error" to "No refresh token"))
+
         return try {
-            val refreshToken = getRefreshTokenFromCookie(request)
-                ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(mapOf("error" to "No refresh token"))
-
-            logger.info { "Refreshing access token" }
-
+            // Refresh Token은 회전 방식이므로 응답의 새 토큰으로 쿠키를 교체합니다.
             val tokens = oauthService.refreshToken(refreshToken)
-            setTokenCookies(httpResponse, tokens.accessToken, tokens.refreshToken)
+            setTokenCookies(httpResponse, tokens)
 
             ResponseEntity.ok(mapOf("message" to "Token refreshed"))
 
-        } catch (e: Exception) {
+        } catch (e: WebClientResponseException.TooManyRequests) {
+            // 요청 한도 초과는 로그인 만료가 아니므로 쿠키를 유지합니다.
+            logger.warn { "Token refresh rate limited" }
+            ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(mapOf("error" to "Too many requests"))
+        } catch (e: WebClientResponseException) {
             logger.error(e) { "Token refresh failed" }
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(mapOf("error" to "Token refresh failed"))
+
+            if (e.statusCode.is5xxServerError()) {
+                ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(mapOf("error" to "OAuth server error"))
+            } else {
+                // invalid_grant 등은 다시 로그인해야 합니다.
+                clearTokenCookies(httpResponse)
+                ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(mapOf("error" to "Token refresh failed"))
+            }
         }
     }
 
@@ -481,17 +552,16 @@ class AuthController(
      */
     @GetMapping("/me")
     fun getCurrentUser(request: HttpServletRequest): ResponseEntity<Any> {
+        val accessToken = getAccessTokenFromCookie(request)
+            ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(mapOf("error" to "Not authenticated"))
+
         return try {
-            val accessToken = getAccessTokenFromCookie(request)
-                ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(mapOf("error" to "Not authenticated"))
-
-            val userInfo = oauthService.getUserInfo(accessToken)
-            ResponseEntity.ok(userInfo)
-
-        } catch (e: Exception) {
+            ResponseEntity.ok(oauthService.getUserInfo(accessToken))
+        } catch (e: WebClientResponseException) {
+            // 401(토큰 만료), 403(scope 부족), 429(요청 한도 초과)를 구분할 수 있도록 상태 코드를 그대로 전달합니다.
             logger.error(e) { "Failed to get user info" }
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            ResponseEntity.status(e.statusCode)
                 .body(mapOf("error" to "Failed to get user info"))
         }
     }
@@ -499,25 +569,11 @@ class AuthController(
     /**
      * 토큰을 httpOnly 쿠키에 저장
      */
-    private fun setTokenCookies(
-        httpResponse: HttpServletResponse,
-        accessToken: String,
-        refreshToken: String
-    ) {
-        val accessTokenCookie = Cookie("access_token", accessToken).apply {
-            isHttpOnly = true
-            secure = true
-            path = "/"
-            maxAge = 3600 // 1시간
+    private fun setTokenCookies(httpResponse: HttpServletResponse, tokens: TokenResponse) {
+        httpResponse.addCookie(createCookie("access_token", tokens.accessToken, tokens.expiresIn.toInt()))
+        tokens.refreshToken?.let {
+            httpResponse.addCookie(createCookie("refresh_token", it, 30 * 24 * 3600)) // 30일
         }
-        val refreshTokenCookie = Cookie("refresh_token", refreshToken).apply {
-            isHttpOnly = true
-            secure = true
-            path = "/"
-            maxAge = 30 * 24 * 3600 // 30일
-        }
-        httpResponse.addCookie(accessTokenCookie)
-        httpResponse.addCookie(refreshTokenCookie)
     }
 
     /**
@@ -525,11 +581,18 @@ class AuthController(
      */
     private fun clearTokenCookies(httpResponse: HttpServletResponse) {
         listOf("access_token", "refresh_token").forEach { name ->
-            httpResponse.addCookie(Cookie(name, "").apply {
-                isHttpOnly = true; secure = true; path = "/"; maxAge = 0
-            })
+            httpResponse.addCookie(createCookie(name, "", 0))
         }
     }
+
+    private fun createCookie(name: String, value: String, maxAgeSeconds: Int): Cookie =
+        Cookie(name, value).apply {
+            isHttpOnly = true
+            secure = cookieSecure
+            path = "/"
+            maxAge = maxAgeSeconds
+            setAttribute("SameSite", "Lax")
+        }
 
     private fun getAccessTokenFromCookie(request: HttpServletRequest): String? =
         request.cookies?.firstOrNull { it.name == "access_token" }?.value
@@ -544,21 +607,28 @@ class AuthController(
 <CodeTabs>
   <CodeTab label="config/SecurityConfig.kt" language="kotlin" code={`package com.example.oauth.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    @Value("\\\${oauth.frontend-url}") private val frontendUrl: String
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
-            .csrf { it.disable() } // API이므로 CSRF 비활성화 (프로덕션에서는 고려 필요)
-            .cors { it.disable() } // CORS는 @CrossOrigin으로 처리
+            .csrf { it.disable() } // 쿠키는 SameSite=Lax입니다. 프로덕션에서는 CSRF 토큰 적용을 검토하세요.
+            .cors(Customizer.withDefaults())
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/api/auth/**").permitAll()
@@ -567,21 +637,44 @@ class SecurityConfig {
 
         return http.build()
     }
+
+    // 프론트엔드가 쿠키를 포함해 호출할 수 있도록 출처를 명시합니다.
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration().apply {
+            allowedOrigins = listOf(frontendUrl)
+            allowedMethods = listOf("GET", "POST", "OPTIONS")
+            allowedHeaders = listOf("Content-Type")
+            allowCredentials = true
+        }
+
+        return UrlBasedCorsConfigurationSource().apply {
+            registerCorsConfiguration("/api/**", config)
+        }
+    }
 }`} />
 </CodeTabs>
 
 ### 7. 환경 변수 설정
 
+`OAUTH_CALLBACK_URI`는 콘솔에 등록한 리다이렉트 URI와 정확히 일치해야 합니다. `datagsm:account_read`, `datagsm:student_read`도 콘솔에서 클라이언트에 등록해 두어야 하며, 등록하지 않은 scope를 요청하면 `invalid_scope` 오류가 발생합니다.
+
 <CodeTabs>
-  <CodeTab label="application.properties" language="properties" code={`oauth.client-id=\\\${OAUTH_CLIENT_ID}
-oauth.callback-uri=\\\${OAUTH_CALLBACK_URI:http://localhost:8080/api/auth/callback}
-oauth.frontend-url=\\\${OAUTH_FRONTEND_URL:http://localhost:3000}
+  <CodeTab label="application.properties" language="properties" code={`# backend/의 상위 폴더에 있는 프로젝트 루트 .env를 읽습니다.
+spring.config.import=optional:file:../.env[.properties]
+
+oauth.client-id=\${OAUTH_CLIENT_ID}
+oauth.callback-uri=\${OAUTH_CALLBACK_URI:http://localhost:8080/api/auth/callback}
+oauth.frontend-url=\${OAUTH_FRONTEND_URL:http://localhost:3000}
+oauth.cookie-secure=\${OAUTH_COOKIE_SECURE:true}
 
 server.port=8080
 logging.level.com.example.oauth=DEBUG`} />
   <CodeTab label=".env" language="bash" code={`OAUTH_CLIENT_ID=your-client-id
 OAUTH_CALLBACK_URI=http://localhost:8080/api/auth/callback
-OAUTH_FRONTEND_URL=http://localhost:3000`} />
+OAUTH_FRONTEND_URL=http://localhost:3000
+# 로컬 HTTP 개발에서만 false로 둡니다.
+OAUTH_COOKIE_SECURE=false`} />
 </CodeTabs>
 
 ## 프론트엔드 구현 (React + TypeScript)
@@ -591,13 +684,40 @@ OAUTH_FRONTEND_URL=http://localhost:3000`} />
 <CodeTabs>
   <CodeTab label="hooks/useAuth.ts" language="typescript" code={`import { useState, useEffect, useCallback } from 'react';
 
+const API_BASE_URL = 'http://localhost:8080/api/auth';
+const RATE_LIMIT_RETRY_MS = 60 * 1000;
+
+interface ClubSummary {
+  id: number;
+  name: string;
+  type: 'MAJOR_CLUB' | 'AUTONOMOUS_CLUB';
+}
+
+interface ProjectSummary {
+  id: number;
+  name: string;
+  status: 'ACTIVE' | 'ENDED';
+  club: ClubSummary | null;
+}
+
 interface StudentInfo {
   id: number;
   name: string;
-  grade: number;
-  classNum: number;
-  number: number;
-  major: string;
+  sex: 'MAN' | 'WOMAN';
+  email: string;
+  grade: number | null;
+  classNum: number | null;
+  number: number | null;
+  studentNumber: number | null;
+  major: 'SW_DEVELOPMENT' | 'SMART_IOT' | 'AI' | null;
+  specialty: string | null;
+  role: 'STUDENT_COUNCIL' | 'DORMITORY_MANAGER' | 'GENERAL_STUDENT' | 'GRADUATE' | 'WITHDRAWN';
+  dormitoryFloor: number | null;
+  dormitoryRoom: number | null;
+  majorClub: ClubSummary | null;
+  autonomousClub: ClubSummary | null;
+  githubId: string | null;
+  githubUrl: string | null;
 }
 
 interface TeacherInfo {
@@ -605,40 +725,79 @@ interface TeacherInfo {
   name: string;
   email: string;
   department: string;
-  description?: string;
+  description: string | null;
 }
 
-interface UserInfo {
+export interface UserInfo {
+  sub: string;
   id: number;
   email: string;
-  role: string;
-  status: string;
-  objectType?: string;
+  role: 'ROOT' | 'ADMIN' | 'USER';
+  status: 'PENDING' | 'ACTIVE';
+  objectType: 'STUDENT' | 'TEACHER' | null;
   /** @deprecated objectType === 'STUDENT'의 파생값입니다. 신규 연동은 objectType을 사용하세요. */
   isStudent: boolean;
-  student?: StudentInfo;
-  teacher?: TeacherInfo;
+  student: StudentInfo | null;
+  teacher: TeacherInfo | null;
+  clubs: ClubSummary[];
+  projects: ProjectSummary[];
 }
+
+const requestCurrentUser = () =>
+  fetch(\`\${API_BASE_URL}/me\`, {
+    credentials: 'include', // httpOnly 쿠키 포함
+  });
 
 export function useAuth() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE_URL = 'http://localhost:8080/api/auth';
+  /**
+   * 토큰 갱신
+   * Refresh Token은 회전 방식이므로 여러 탭이 같은 토큰으로 동시에 갱신하면
+   * 재사용으로 판단되어 로그인이 끊깁니다. Web Locks로 한 번에 하나만 실행합니다.
+   */
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      return await navigator.locks.request('datagsm-token-refresh', async () => {
+        const response = await fetch(\`\${API_BASE_URL}/refresh\`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (response.status === 401) {
+          setUser(null);
+        }
+
+        // 429는 로그인 만료가 아니므로 사용자 상태를 유지하고 잠시 후 다시 시도합니다.
+        if (response.status === 429) {
+          setTimeout(refreshToken, RATE_LIMIT_RETRY_MS);
+        }
+
+        return response.ok;
+      });
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+      return false;
+    }
+  }, []);
 
   /**
    * 현재 로그인한 사용자 데이터 가져오기
    */
   const fetchUser = useCallback(async () => {
     try {
-      const response = await fetch(\`\${API_BASE_URL}/me\`, {
-        credentials: 'include', // httpOnly 쿠키 포함
-      });
+      let response = await requestCurrentUser();
+
+      // Access Token 쿠키가 만료됐으면 갱신한 뒤 한 번 더 시도합니다.
+      if (response.status === 401 && (await refreshToken())) {
+        response = await requestCurrentUser();
+      }
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-      } else {
+      } else if (response.status === 401) {
         setUser(null);
       }
     } catch (err) {
@@ -647,7 +806,7 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshToken]);
 
   /**
    * 로그인 시작
@@ -674,29 +833,6 @@ export function useAuth() {
   };
 
   /**
-   * 토큰 자동 갱신
-   */
-  const refreshToken = async () => {
-    try {
-      const response = await fetch(\`\${API_BASE_URL}/refresh\`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        setUser(null);
-        return false;
-      }
-
-      return true;
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-      setUser(null);
-      return false;
-    }
-  };
-
-  /**
    * 초기 로드 시 사용자 데이터 가져오기
    */
   useEffect(() => {
@@ -714,7 +850,7 @@ export function useAuth() {
     }, 50 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, refreshToken]);
 
   return {
     user,
@@ -728,12 +864,25 @@ export function useAuth() {
 
 ### 2. 로그인 컴포넌트
 
+인증 상태와 자동 갱신 타이머가 하나만 유지되도록 `useAuth`는 `App`에서 한 번만 호출하고 하위 컴포넌트에는 props로 전달합니다. 로그인 컴포넌트는 BFF가 전달한 `error` 쿼리를 읽어 안내 문구를 표시합니다.
+
 <CodeTabs>
   <CodeTab label="components/LoginButton.tsx" language="typescript" code={`import React from 'react';
-import { useAuth } from '../hooks/useAuth';
 
-export function LoginButton() {
-  const { login, loading } = useAuth();
+const ERROR_MESSAGES: Record<string, string> = {
+  access_denied: '권한 요청을 거부했습니다. 로그인하려면 권한을 허용해 주세요.',
+  invalid_state: '로그인 요청을 확인할 수 없습니다. 다시 시도해 주세요.',
+  rate_limited: '요청이 많습니다. 잠시 후 다시 시도해 주세요.',
+  auth_failed: '로그인에 실패했습니다. 다시 시도해 주세요.',
+};
+
+interface LoginButtonProps {
+  onLogin: () => void;
+}
+
+export function LoginButton({ onLogin }: LoginButtonProps) {
+  const errorCode = new URLSearchParams(window.location.search).get('error');
+  const errorMessage = errorCode ? (ERROR_MESSAGES[errorCode] ?? ERROR_MESSAGES.auth_failed) : null;
 
   return (
     <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
@@ -743,12 +892,17 @@ export function LoginButton() {
         DataGSM 계정으로 안전하게 로그인하세요.
       </p>
 
+      {errorMessage && (
+        <p role="alert" className="text-red-600 text-sm mb-4 text-center">
+          {errorMessage}
+        </p>
+      )}
+
       <button
-        onClick={login}
-        disabled={loading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={onLogin}
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
-        {loading ? '로딩 중...' : 'DataGSM으로 로그인'}
+        DataGSM으로 로그인
       </button>
     </div>
   );
@@ -759,30 +913,27 @@ export function LoginButton() {
 
 <CodeTabs>
   <CodeTab label="components/UserProfile.tsx" language="typescript" code={`import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import type { UserInfo } from '../hooks/useAuth';
 
-export function UserProfile() {
-  const { user, logout, loading } = useAuth();
+interface UserProfileProps {
+  user: UserInfo;
+  onLogout: () => void;
+}
 
-  if (loading) {
-    return <div className="text-center py-4">로딩 중...</div>;
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  const student = user.student;
+export function UserProfile({ user, onLogout }: UserProfileProps) {
+  const student = user.objectType === 'STUDENT' ? user.student : null;
+  const teacher = user.objectType === 'TEACHER' ? user.teacher : null;
+  const name = student?.name ?? teacher?.name ?? '사용자';
 
   return (
     <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
       <div className="flex items-center space-x-4 mb-6">
         <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-2xl font-bold text-white">
-          {student?.name?.charAt(0) ?? user.email.charAt(0)}
+          {name.charAt(0)}
         </div>
 
         <div>
-          <h2 className="text-xl font-bold">{student?.name ?? '사용자'}</h2>
+          <h2 className="text-xl font-bold">{name}</h2>
           <p className="text-gray-600">{user.email}</p>
         </div>
       </div>
@@ -790,22 +941,30 @@ export function UserProfile() {
       {student && (
         <div className="space-y-2 mb-6">
           <p className="text-sm text-gray-600">
-            <span className="font-medium">학년:</span> {student.grade}학년
+            <span className="font-medium">학년:</span> {student.grade ?? '-'}학년
           </p>
           <p className="text-sm text-gray-600">
-            <span className="font-medium">반:</span> {student.classNum}반
+            <span className="font-medium">반:</span> {student.classNum ?? '-'}반
           </p>
           <p className="text-sm text-gray-600">
-            <span className="font-medium">번호:</span> {student.number}번
+            <span className="font-medium">번호:</span> {student.number ?? '-'}번
           </p>
           <p className="text-sm text-gray-600">
-            <span className="font-medium">학과:</span> {student.major}
+            <span className="font-medium">학과:</span> {student.major ?? '-'}
+          </p>
+        </div>
+      )}
+
+      {teacher && (
+        <div className="space-y-2 mb-6">
+          <p className="text-sm text-gray-600">
+            <span className="font-medium">부서:</span> {teacher.department}
           </p>
         </div>
       )}
 
       <button
-        onClick={logout}
+        onClick={onLogout}
         className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
       >
         로그아웃
@@ -824,7 +983,7 @@ import { UserProfile } from './components/UserProfile';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, loading, login, logout } = useAuth();
 
   if (loading) {
     return (
@@ -841,7 +1000,7 @@ function App() {
           DataGSM OAuth Demo
         </h1>
 
-        {isAuthenticated ? <UserProfile /> : <LoginButton />}
+        {user ? <UserProfile user={user} onLogout={logout} /> : <LoginButton onLogin={login} />}
       </div>
     </div>
   );
@@ -865,8 +1024,8 @@ export default App;`} />
         <li>✅ Secure 플래그 (HTTPS에서만 쿠키 전송)</li>
         <li>✅ SameSite=Lax (CSRF 공격 방지)</li>
         <li>✅ client_secret 미사용 (클라이언트 노출 위험 제거)</li>
-        <li>✅ 서버 사이드 검증 (토큰 관리)</li>
-        <li>✅ 자동 토큰 갱신 (사용자 경험 개선)</li>
+        <li>✅ 서버 사이드 검증 (토큰 관리, state 검증, access_denied 처리)</li>
+        <li>✅ 자동 토큰 갱신 (회전된 Refresh Token 교체, 동시 갱신 방지)</li>
       </ul>
     </div>
   </div>
@@ -990,13 +1149,17 @@ describe('useAuth', () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
+        sub: 'test@gsm.hs.kr',
         id: 1,
         email: 'test@gsm.hs.kr',
         role: 'USER',
         status: 'ACTIVE',
         objectType: 'STUDENT',
         isStudent: true,
-        student: { id: 1, name: '홍길동', grade: 1, classNum: 1, number: 1, major: 'SW' },
+        student: { id: 1, name: '홍길동', grade: 1, classNum: 1, number: 1, major: 'SW_DEVELOPMENT' },
+        teacher: null,
+        clubs: [],
+        projects: [],
       }),
     });
 
@@ -1014,8 +1177,9 @@ describe('useAuth', () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          id: 1, email: 'test@gsm.hs.kr', role: 'USER', status: 'ACTIVE', objectType: 'STUDENT', isStudent: true,
-          student: { id: 1, name: '홍길동', grade: 1, classNum: 1, number: 1, major: 'SW' },
+          sub: 'test@gsm.hs.kr', id: 1, email: 'test@gsm.hs.kr', role: 'USER', status: 'ACTIVE', objectType: 'STUDENT', isStudent: true,
+          student: { id: 1, name: '홍길동', grade: 1, classNum: 1, number: 1, major: 'SW_DEVELOPMENT' },
+          teacher: null, clubs: [], projects: [],
         }),
       })
       .mockResolvedValueOnce({
@@ -1065,7 +1229,7 @@ npm start`} />
 ## 다음 단계
 
 - [PKCE 가이드](/oauth/pkce) - PKCE 개념 및 구현 상세 설명
-- [HTTP API 기술 문서](/oauth/http/code) - OAuth API 명세
+- [HTTP API 기술 문서](/oauth/http/authorize) - OAuth API 명세
 - [토큰 관리](/oauth/http/token-exchange) - 토큰 교환 및 갱신
 
 ## 참고 자료
