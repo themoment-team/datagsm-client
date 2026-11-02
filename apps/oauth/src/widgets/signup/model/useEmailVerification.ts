@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { getApiErrorCode, minutesToMs } from '@repo/shared/utils';
+import { getApiErrorCode, getRateLimitMessage, minutesToMs } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
 import { useCheckEmailCode } from './useCheckEmailCode';
@@ -24,6 +24,8 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
   const [codeSent, setCodeSent] = useState(false);
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [remainingTime, setRemainingTime] = useState(0);
+  // 코드가 틀리거나 만료된 게 아니라 요청 한도·서버 오류로 확인에 실패해, 같은 코드로 다시 확인해 볼 수 있는 상태
+  const [canRetryVerify, setCanRetryVerify] = useState(false);
 
   const hasShownExpiredToast = useRef(false);
   const onCodeExpiredRef = useRef(onCodeExpired);
@@ -51,6 +53,7 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
 
         localStorage.removeItem(STORAGE_KEY);
         setCodeSent(false);
+        setCanRetryVerify(false);
         setIsCodeVerified((verified) => {
           if (verified) return verified;
 
@@ -84,27 +87,38 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
         case 409:
           toast.error('이미 해당 이메일을 가진 계정이 존재합니다.');
           break;
+        case 429:
+          toast.error(getRateLimitMessage(error));
+          break;
         default:
           toast.error('인증 코드 전송에 실패했습니다.');
       }
     },
   });
 
-  const { mutate: checkEmailCode } = useCheckEmailCode({
+  const { mutate: checkEmailCode, isPending: isVerifyingCode } = useCheckEmailCode({
     onSuccess: () => {
       setIsCodeVerified(true);
+      setCanRetryVerify(false);
       toast.success('인증 코드가 확인되었습니다.');
     },
     onError: (error: unknown) => {
       setIsCodeVerified(false);
       switch (getApiErrorCode(error)) {
         case 400:
+          setCanRetryVerify(false);
           toast.error('인증 코드가 일치하지 않습니다.');
           break;
         case 404:
+          setCanRetryVerify(false);
           toast.error('인증 코드가 만료되었거나 존재하지 않습니다.');
           break;
+        case 429:
+          setCanRetryVerify(true);
+          toast.error(getRateLimitMessage(error));
+          break;
         default:
+          setCanRetryVerify(true);
           toast.error('인증 코드 확인에 실패했습니다.');
       }
     },
@@ -129,6 +143,8 @@ export const useEmailVerification = ({ onCodeExpired }: UseEmailVerificationPara
     isCodeVerified,
     remainingTime,
     isSendingCode,
+    isVerifyingCode,
+    canRetryVerify,
     canResend: remainingTime === 0,
     sendCode,
     verifyCode,
