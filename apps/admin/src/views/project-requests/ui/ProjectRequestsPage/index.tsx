@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { useURLFilters } from '@repo/shared/hooks';
-import type { ProjectEditRequest, ProjectRequestStatus } from '@repo/shared/types';
+import type { BaseApiResponse, ProjectEditRequest, ProjectRequestStatus } from '@repo/shared/types';
 import { CommonPagination, PageTitleBar, PageWindow, Skeleton } from '@repo/shared/ui';
 import { cn } from '@repo/shared/utils';
 
-import { PROJECT_REQUEST_STATUS_TABS } from '@/entities/project';
+import { PROJECT_REQUEST_STATUS_TABS, parseProjectRequestStatus } from '@/entities/project';
 import { RequestCard, RequestReviewDialog } from '@/widgets/project-requests';
 
 import { useGetProjectRequests } from '../../model';
@@ -23,17 +23,23 @@ const ProjectRequestsPage = () => {
   const searchParams = useSearchParams();
   const { updateURL } = useURLFilters<{ status: string }>();
 
-  const status = (searchParams.get('status') as ProjectRequestStatus | null) ?? DEFAULT_STATUS;
+  const status = parseProjectRequestStatus(searchParams.get('status')) ?? DEFAULT_STATUS;
   const page = Number(searchParams.get('page')) || 0;
 
-  const { data, isLoading } = useGetProjectRequests({
+  const { data, isLoading, isError, error } = useGetProjectRequests({
     requestStatus: status,
     page,
     size: PAGE_SIZE,
   });
 
-  const requests = data?.data.requests ?? [];
-  const totalPages = data?.data.totalPages ?? 0;
+  // 다시 불러오다 실패해도 이전 응답은 남는다. 처리 전 목록일 수 있어 쓰지 않고 오류를 보여 준다.
+  const listData = isError ? undefined : data?.data;
+  const requests = listData?.requests ?? [];
+  const totalPages = listData?.totalPages ?? 0;
+  // 서버가 실패 이유를 내려 주면 그 문구를 그대로 보여 준다.
+  const errorMessage =
+    (error as { response?: { data?: BaseApiResponse } } | null)?.response?.data?.message ||
+    '신청 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
 
   const [selected, setSelected] = useState<ProjectEditRequest | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,6 +67,7 @@ const ProjectRequestsPage = () => {
               <button
                 key={tab.value}
                 type="button"
+                aria-pressed={status === tab.value}
                 onClick={() => updateURL({ status: tab.value }, 0)}
                 className={cn(
                   'border-foreground border px-3 py-1 font-mono text-xs uppercase tracking-widest transition-colors',
@@ -79,6 +86,14 @@ const ProjectRequestsPage = () => {
               {Array.from({ length: 4 }).map((_, index) => (
                 <Skeleton key={index} className={cn('border-foreground h-32 border')} />
               ))}
+            </div>
+          ) : isError ? (
+            <div
+              className={cn(
+                'border-foreground text-muted-foreground flex h-40 items-center justify-center border border-dashed font-mono text-sm',
+              )}
+            >
+              {errorMessage}
             </div>
           ) : requests.length === 0 ? (
             <div

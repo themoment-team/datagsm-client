@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { COOKIE_KEYS } from '@repo/shared/constants';
-import { isValidRelativePath } from '@repo/shared/utils';
+import { LOGIN_CANCELED_PATH } from '@repo/shared/constants';
+import { isValidRelativePath, parseOAuthState } from '@repo/shared/utils';
 
-interface OAuthCallbackHandlerOptions {
+import { setAuthCookies } from './authCookies';
+import { clearOAuthLoginCookies, getOAuthLoginCookieName } from './oauthAuthorize';
+
+export interface OAuthCallbackHandlerOptions {
   /**
    * 토큰 교환에 함께 보낼 client_secret. 시크릿을 쓰는 클라이언트(어드민)만 넘긴다.
    * 넘겼는데 값이 비어 있으면 설정 누락으로 보고 교환하지 않는다.
@@ -14,27 +17,58 @@ interface OAuthCallbackHandlerOptions {
 /**
  * OAuth 로그인 콜백(`/api/callback`) GET 핸들러를 만든다.
  * code를 토큰으로 교환해 쿠키에 심고 state 경로로 보내며, 어느 단계든 실패하면 /로 돌려보낸다.
+ * 인가 서버가 error를 돌려주면(동의 거부 등) 로그인 취소 안내 화면으로 보낸다.
+ *
+ * state의 nonce가 쿠키와 다르거나 code_verifier 쿠키가 없으면 이 브라우저가 시작한 로그인이 아니므로 교환하지 않는다.
+ * 남이 발급받은 code로 피해자를 공격자 계정에 로그인시키는 로그인 CSRF를 막기 위해서다.
+ * 시크릿 클라이언트는 서버가 PKCE를 강제하지 않을 수 있어 code_verifier 확인만으로는 부족하다.
+ *
+ * nonce가 맞았다면 이 로그인 요청은 결과와 관계없이 여기서 끝나므로 verifier와 nonce를 지워 다시 쓰지 못하게 한다.
+ * nonce가 다르면 지우지 않는다. 남이 보낸 콜백으로 이 브라우저에서 진행 중인 로그인을 끊을 수 있기 때문이다.
  */
 export const createOAuthCallbackHandler =
   ({ getClientSecret }: OAuthCallbackHandlerOptions = {}) =>
   async (request: NextRequest) => {
+    const returnPath = parseOAuthState(
+      request.nextUrl.searchParams.get('state'),
+      request.cookies.get(getOAuthLoginCookieName('OAUTH_STATE'))?.value,
+    );
+
+    const finish = (response: NextResponse) => {
+      if (returnPath !== null) {
+        clearOAuthLoginCookies(response);
+      }
+      return response;
+    };
+
     try {
       const searchParams = request.nextUrl.searchParams;
       const code = searchParams.get('code');
-      const state = searchParams.get('state');
+      const error = searchParams.get('error');
+      const targetPath = returnPath && isValidRelativePath(returnPath) ? returnPath : '/';
 
-      if (!code) {
-        return NextResponse.redirect(new URL('/', request.url));
+      // 동의를 거부하거나(access_denied) 요청을 처리하지 못하면 인가 서버는 code 대신 error를 붙여 돌려보낸다.
+      // /로 보내면 미들웨어가 곧바로 인가를 다시 시작해 같은 동의 화면이 다시 뜨므로 안내 화면으로 보낸다.
+      if (error) {
+        const canceledUrl = new URL(LOGIN_CANCELED_PATH, request.url);
+        canceledUrl.searchParams.set('error', error);
+        canceledUrl.searchParams.set('returnTo', targetPath);
+        return finish(NextResponse.redirect(canceledUrl));
+      }
+
+      const codeVerifier = request.cookies.get(getOAuthLoginCookieName('CODE_VERIFIER'))?.value;
+
+      if (!code || returnPath === null || !codeVerifier) {
+        return finish(NextResponse.redirect(new URL('/', request.url)));
       }
 
       const oauthBaseUrl = process.env.NEXT_PUBLIC_OAUTH_BASE_URL;
       const clientId = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID;
       const clientSecret = getClientSecret?.();
       const redirectUri = process.env.NEXT_PUBLIC_DATAGSM_REDIRECT_URI;
-      const codeVerifier = request.cookies.get('code_verifier')?.value;
 
       if (!oauthBaseUrl || !clientId || (getClientSecret && !clientSecret) || !redirectUri) {
-        return NextResponse.redirect(new URL('/', request.url));
+        return finish(NextResponse.redirect(new URL('/', request.url)));
       }
 
       const tokenResponse = await fetch(`${oauthBaseUrl}/v1/oauth/token`, {
@@ -53,7 +87,7 @@ export const createOAuthCallbackHandler =
       });
 
       if (!tokenResponse.ok) {
-        return NextResponse.redirect(new URL('/', request.url));
+        return finish(NextResponse.redirect(new URL('/', request.url)));
       }
 
       const tokenData = await tokenResponse.json();
@@ -62,34 +96,16 @@ export const createOAuthCallbackHandler =
       const refreshToken = tokenData.refresh_token;
 
       if (!accessToken || !refreshToken) {
-        return NextResponse.redirect(new URL('/', request.url));
+        return finish(NextResponse.redirect(new URL('/', request.url)));
       }
 
-      const targetPath = state && isValidRelativePath(state) ? state : '/';
       const redirectUrl = new URL(targetPath, request.url);
       const response = NextResponse.redirect(redirectUrl);
 
-      // 쿠키 설정
-      response.cookies.set(COOKIE_KEYS.ACCESS_TOKEN, accessToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60, // 1시간
-      });
+      setAuthCookies(response, { accessToken, refreshToken, expiresIn: tokenData.expires_in });
 
-      response.cookies.set(COOKIE_KEYS.REFRESH_TOKEN, refreshToken, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30일
-      });
-
-      response.cookies.delete('code_verifier');
-
-      return response;
+      return finish(response);
     } catch {
-      return NextResponse.redirect(new URL('/', request.url));
+      return finish(NextResponse.redirect(new URL('/', request.url)));
     }
   };

@@ -87,6 +87,37 @@ describe('getMyProjectDisplay', () => {
     expect(display.badgeVariant).toBe('destructive');
     expect(display.showRejectReason).toBe(true);
   });
+
+  it('등록된 프로젝트는 심사 상태와 관계없이 수정 신청할 수 있다', () => {
+    const projects = [
+      buildProject({ projectId: 10, requestId: null, requestStatus: 'ACCEPTED' }),
+      buildProject({ projectId: 10, requestId: 20, requestStatus: 'PENDING' }),
+      buildProject({ projectId: 10, requestId: 20, requestStatus: 'REJECTED' }),
+    ];
+
+    expect(projects.map((project) => getMyProjectDisplay(project).action)).toEqual([
+      'edit',
+      'edit',
+      'edit',
+    ]);
+  });
+
+  it('심사 중인 신규 신청은 고칠 수 없고 심사가 끝나기 전에는 수정할 수 없다고 안내한다', () => {
+    const display = getMyProjectDisplay(
+      buildProject({ projectId: null, requestId: 20, requestStatus: 'PENDING' }),
+    );
+
+    expect(display.action).toBeNull();
+    expect(display.notice).toContain('수정할 수 없습니다');
+  });
+
+  it('거절된 신규 신청은 수정 신청이 아니라 재신청으로 다시 낸다', () => {
+    const display = getMyProjectDisplay(
+      buildProject({ projectId: null, requestId: 20, requestStatus: 'REJECTED' }),
+    );
+
+    expect(display.action).toBe('reapply');
+  });
 });
 
 describe('getMyProjectKey', () => {

@@ -8,10 +8,15 @@ function base64UrlEncode(array: Uint8Array): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function generateCodeVerifier(): string {
+/** 32바이트 난수를 패딩 없는 base64url 43자로 만든다. */
+export function generateRandomToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return base64UrlEncode(array);
+}
+
+export function generateCodeVerifier(): string {
+  return generateRandomToken();
 }
 
 export async function generateCodeChallenge(verifier: string): Promise<string> {

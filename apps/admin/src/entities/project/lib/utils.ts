@@ -64,3 +64,12 @@ export const PROJECT_REQUEST_STATUS_TABS: { value: ProjectRequestStatus; label: 
   { value: 'ACCEPTED', label: '승인됨' },
   { value: 'REJECTED', label: '거절됨' },
 ];
+
+/**
+ * URL의 status 값을 심사 상태로 바꾼다. 탭에 없는 값은 undefined로 본다.
+ * 검증 없이 넘기면 `?status=foo`가 그대로 서버로 가 400이 난다.
+ */
+export const parseProjectRequestStatus = (
+  value: string | null | undefined,
+): ProjectRequestStatus | undefined =>
+  PROJECT_REQUEST_STATUS_TABS.find((tab) => tab.value === value)?.value;

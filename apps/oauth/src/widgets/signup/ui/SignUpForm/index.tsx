@@ -26,7 +26,12 @@ import {
   SelectValue,
   Textarea,
 } from '@repo/shared/ui';
-import { cn, formatEmailWithDomain, getApiErrorCode } from '@repo/shared/utils';
+import {
+  cn,
+  formatEmailWithDomain,
+  getApiErrorCode,
+  getRateLimitMessage,
+} from '@repo/shared/utils';
 import { Eye, EyeOff } from 'lucide-react';
 import { Controller, SubmitHandler, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -43,6 +48,7 @@ import { useEmailVerification, useSignUp } from '@/widgets/signup';
 import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
+const VERIFICATION_CODE_LENGTH = 8;
 const FIELD_CLASS =
   'border-foreground focus-visible:border-foreground aria-invalid:border-destructive aria-invalid:text-destructive rounded-none focus-visible:ring-0';
 
@@ -90,6 +96,8 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
     isCodeVerified,
     remainingTime,
     isSendingCode,
+    isVerifyingCode,
+    canRetryVerify,
     canResend,
     sendCode,
     verifyCode,
@@ -99,6 +107,15 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
       setValue('code', '');
     },
   });
+
+  // 입력이 바뀌어야만 자동 확인이 다시 돌기 때문에, 요청 한도·서버 오류로 실패한 같은 코드는 버튼으로 다시 확인한다.
+  const isRetryVerifyVisible =
+    canRetryVerify && !isCodeVerified && codeValue.length === VERIFICATION_CODE_LENGTH;
+
+  const handleRetryVerify = () => {
+    lastCheckedCode.current = codeValue;
+    verifyCode(formatEmailWithDomain(emailValue), codeValue);
+  };
 
   const handlePrivacyCheckboxClick = () => {
     const isAgreed = getValues('privacyAgreed');
@@ -135,7 +152,7 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
     if (
       codeSent &&
       debouncedCode &&
-      debouncedCode.length === 8 &&
+      debouncedCode.length === VERIFICATION_CODE_LENGTH &&
       lastCheckedCode.current !== debouncedCode
     ) {
       lastCheckedCode.current = debouncedCode;
@@ -161,6 +178,10 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
               ? '이미 해당 이메일로 가입되었거나 신청된 계정이 있습니다.'
               : '이미 존재하는 계정입니다.',
           );
+          break;
+        case 429:
+          // 코드 확인 API와 한도를 나눠 쓰므로 코드를 여러 번 틀린 직후에도 걸릴 수 있다.
+          toast.error(getRateLimitMessage(error));
           break;
         default:
           toast.error(isTeacher ? '회원가입 신청에 실패했습니다.' : '회원가입에 실패했습니다.');
@@ -288,6 +309,18 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                   </p>
                 ) : (
                   <FormErrorMessage error={errors.code} className={cn(ERROR_MESSAGE_CLASS)} />
+                )}
+                {isRetryVerifyVisible && (
+                  <button
+                    type="button"
+                    onClick={handleRetryVerify}
+                    disabled={isVerifyingCode}
+                    className={cn(
+                      'text-foreground self-start text-xs leading-4 underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+                    )}
+                  >
+                    다시 확인
+                  </button>
                 )}
               </div>
             </div>

@@ -21,6 +21,8 @@ import { getDeploymentUrlLabel, getRepositoryLabel } from '@/entities/project';
 interface ProjectListProps {
   projects: Project[];
   isLoading?: boolean;
+  /** 조회에 실패했을 때 빈 목록 문구 대신 보여줄 글자 */
+  errorMessage?: string;
   onEdit?: (project: Project) => void;
   onDelete?: (projectId: number) => void;
 }
@@ -76,7 +78,15 @@ const TagCell = ({ items, format, emptyLabel = '-' }: TagCellProps) => {
   );
 };
 
-const ProjectList = ({ projects, isLoading, onEdit, onDelete }: ProjectListProps) => {
+const ProjectList = ({ projects, isLoading, errorMessage, onEdit, onDelete }: ProjectListProps) => {
+  if (errorMessage) {
+    return (
+      <p className={cn('text-muted-foreground py-12 text-center font-mono text-xs')}>
+        {errorMessage}
+      </p>
+    );
+  }
+
   if (!isLoading && !projects.length) {
     return (
       <p className={cn('text-muted-foreground py-12 text-center font-mono text-xs')}>

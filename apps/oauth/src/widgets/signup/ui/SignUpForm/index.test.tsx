@@ -330,4 +330,119 @@ describe('SignUpForm', () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe('요청 횟수 초과', () => {
+    // 서버는 코드 전송·확인·가입에 이메일별 한도를 두고, 확인과 가입은 같은 한도를 나눠 쓴다.
+    const RATE_LIMIT_MESSAGE = '요청 횟수를 초과했습니다. 120초 후에 다시 시도해주세요.';
+
+    const submitAfterVerified = async (user: ReturnType<typeof userEvent.setup>) => {
+      await sendCode(user);
+      await verifyCode(user);
+      await screen.findByText('인증 완료');
+      await user.type(screen.getByLabelText('비밀번호'), 'password1');
+      await user.type(screen.getByLabelText('비밀번호 확인'), 'password1');
+      await agreePrivacy(user);
+      await user.click(screen.getByRole('button', { name: 'SIGN UP' }));
+    };
+
+    it('코드 전송이 429로 막히면 서버가 알려 준 대기 시간을 안내한다', async () => {
+      mockAccountApi({ sendCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+
+      await user.type(screen.getByLabelText('이메일'), 's25001');
+      await user.click(screen.getByRole('button', { name: '코드전송' }));
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByLabelText('이메일')).toBeEnabled();
+    });
+
+    it('코드 확인이 429로 막히면 대기 시간을 안내하고 비밀번호 입력을 닫아 둔다', async () => {
+      mockAccountApi({ verifyCode: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+      await sendCode(user);
+
+      await verifyCode(user);
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(screen.getByLabelText('비밀번호')).toBeDisabled();
+    });
+
+    it.each([
+      [429, RATE_LIMIT_MESSAGE],
+      [500, '인증 코드 확인에 실패했습니다.'],
+    ])(
+      '코드 확인이 %s로 실패하면 다시 확인 버튼으로 같은 코드를 바로 다시 확인한다',
+      async (status, message) => {
+        let isFailing = true;
+        const requests = mockAccountApi({
+          verifyCode: () => (isFailing ? apiError(status, RATE_LIMIT_MESSAGE) : apiSuccess(null)),
+        });
+        const { user } = setup();
+        await sendCode(user);
+        await verifyCode(user);
+        await screen.findByText(message);
+
+        isFailing = false;
+        await user.click(screen.getByRole('button', { name: '다시 확인' }));
+
+        expect(await screen.findByText('인증 완료')).toBeInTheDocument();
+        expect(requests.verifyCode).toEqual([
+          { email: 's25001@gsm.hs.kr', code: 'ABCD1234' },
+          { email: 's25001@gsm.hs.kr', code: 'ABCD1234' },
+        ]);
+        expect(screen.queryByRole('button', { name: '다시 확인' })).not.toBeInTheDocument();
+      },
+    );
+
+    it('코드 확인이 500으로 실패하면 서버 문구 대신 고정 문구로 안내한다', async () => {
+      mockAccountApi({ verifyCode: () => apiError(500, 'Internal Server Error') });
+      const { user } = setup();
+      await sendCode(user);
+
+      await verifyCode(user);
+
+      expect(await screen.findByText('인증 코드 확인에 실패했습니다.')).toBeInTheDocument();
+      expect(screen.queryByText('Internal Server Error')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      [400, '인증 코드가 일치하지 않습니다.'],
+      [404, '인증 코드가 만료되었거나 존재하지 않습니다.'],
+    ])('코드 확인이 %s로 실패하면 같은 코드로 다시 확인할 수 없다', async (status, message) => {
+      const requests = mockAccountApi({ verifyCode: () => apiError(status, 'error') });
+      const { user } = setup();
+      await sendCode(user);
+      await verifyCode(user);
+      await screen.findByText(message);
+
+      await user.type(screen.getByLabelText('인증 코드'), '{Backspace}');
+      act(() => vi.advanceTimersByTime(1000));
+      await verifyCode(user, '4');
+
+      expect(screen.queryByRole('button', { name: '다시 확인' })).not.toBeInTheDocument();
+      expect(requests.verifyCode).toHaveLength(1);
+    });
+
+    it('가입이 429로 막히면 대기 시간을 안내하고 다시 누를 수 있게 남겨 둔다', async () => {
+      mockAccountApi({ signUp: () => apiError(429, RATE_LIMIT_MESSAGE) });
+      const { user } = setup();
+
+      await submitAfterVerified(user);
+
+      expect(await screen.findByText(RATE_LIMIT_MESSAGE)).toBeInTheDocument();
+      expect(mockRouter.push).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'SIGN UP' })).toBeEnabled();
+    });
+
+    it('서버 안내 문구가 비어 있으면 기본 문구로 안내한다', async () => {
+      mockAccountApi({ signUp: () => apiError(429, '') });
+      const { user } = setup();
+
+      await submitAfterVerified(user);
+
+      expect(
+        await screen.findByText('요청 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.'),
+      ).toBeInTheDocument();
+    });
+  });
 });

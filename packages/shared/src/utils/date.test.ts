@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, minutesToMs } from './date';
+import { formatDate, formatDateTime, minutesToMs } from './date';
 
 describe('minutesToMs', () => {
   it('분을 밀리초로 바꾼다', () => {
@@ -18,5 +18,13 @@ describe('formatDate', () => {
 
   it('시간대 표기가 없는 날짜 문자열도 받는다', () => {
     expect(formatDate('2026-12-31T23:00:00')).toBe('2026년 12월 31일');
+  });
+});
+
+describe('formatDateTime', () => {
+  // 시간대에 따라 결과가 바뀌지 않도록 로컬 시각으로 만든다.
+  it('epoch milliseconds를 한국어 연·월·일과 오전·오후 시각으로 표시한다', () => {
+    expect(formatDateTime(new Date(2026, 2, 2, 14, 5).getTime())).toBe('2026년 3월 2일 오후 2:05');
+    expect(formatDateTime(new Date(2026, 2, 2, 9, 30).getTime())).toBe('2026년 3월 2일 오전 9:30');
   });
 });

@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 
 import { ApiResponse, SignInFormType } from '@repo/shared/types';
 import { SignInForm } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
 import {
@@ -15,22 +14,23 @@ import {
   DataEditRequirementsResponse,
   STUDENT_DATA_EDIT_FIELDS,
 } from '@/entities/data-edit';
-import { DataEditForm, OAuthSessionErrorFallback, useGetOAuthSession } from '@/widgets/oauth';
+import {
+  DataEditForm,
+  OAuthSessionErrorFallback,
+  OAuthSessionExpiredDialog,
+  useGetOAuthSession,
+  useOAuthSessionExpiry,
+} from '@/widgets/oauth';
 
-const BUFFER_TIME_MS = 30000;
 const STORAGE_KEY = 'oauth_session_timestamp';
 
 const OAuthAuthorizeForm = () => {
   const [isPending, setIsPending] = useState(false);
   const [credentials, setCredentials] = useState<SignInFormType | null>(null);
   const [dataEditFields, setDataEditFields] = useState<DataEditFieldSpec[] | null>(null);
-  const [remainingTime, setRemainingTime] = useState<number | null>(null);
-  const [isExpired, setIsExpired] = useState(false);
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
-  const sessionExpiresAt = useRef<number | null>(null);
-  const hasShownExpiredToast = useRef(false);
   const {
     data: sessionResponse,
     isLoading: isLoadingServiceInfo,
@@ -42,27 +42,7 @@ const OAuthAuthorizeForm = () => {
   const sessionData = sessionResponse?.data;
   const serviceName = sessionData?.serviceName;
   const serviceScope = sessionData?.requestedScopes;
-
-  const updateRemainingTime = useCallback(() => {
-    if (!sessionExpiresAt.current) return false;
-
-    const now = Date.now();
-    const clientExpiresAt = sessionExpiresAt.current - BUFFER_TIME_MS;
-    const remaining = Math.max(0, Math.ceil((clientExpiresAt - now) / 1000));
-
-    setRemainingTime(remaining);
-
-    if (remaining <= 0) {
-      setIsExpired(true);
-      if (!hasShownExpiredToast.current) {
-        hasShownExpiredToast.current = true;
-        toast.error('인증 세션이 만료되었습니다. 처음부터 다시 시도해주세요.');
-      }
-      return true;
-    }
-
-    return false;
-  }, []);
+  const { remainingTime, isExpired, expire } = useOAuthSessionExpiry(sessionData?.expiresAt);
 
   useEffect(() => {
     if (
@@ -74,7 +54,6 @@ const OAuthAuthorizeForm = () => {
       return;
 
     const { expiresAt, serviceName, requestedScopes } = sessionData;
-    sessionExpiresAt.current = expiresAt;
 
     localStorage.setItem(
       STORAGE_KEY,
@@ -85,38 +64,13 @@ const OAuthAuthorizeForm = () => {
         requestedScopes,
       }),
     );
-
-    updateRemainingTime();
   }, [
     sessionData,
     sessionData?.expiresAt,
     sessionData?.serviceName,
     sessionData?.requestedScopes,
     token,
-    updateRemainingTime,
   ]);
-
-  useEffect(() => {
-    if (isExpired) return;
-
-    const timer = setInterval(() => {
-      const expired = updateRemainingTime();
-      if (expired) clearInterval(timer);
-    }, 1000);
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        updateRemainingTime();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [isExpired, updateRemainingTime]);
 
   /** authorize 제출. 정보 수정 값이 있으면 함께 실어 보낸다. */
   const submitAuthorize = async (credentials: SignInFormType, dataEdit?: DataEditPayload) => {
@@ -179,7 +133,7 @@ const OAuthAuthorizeForm = () => {
             }
 
             toast.error('세션이 만료되었습니다. 다시 시도해주세요.');
-            setIsExpired(true);
+            expire();
             break;
           case 401:
             toast.error('이메일 또는 비밀번호가 일치하지 않습니다.');
@@ -272,50 +226,7 @@ const OAuthAuthorizeForm = () => {
         />
       )}
 
-      {isExpired && (
-        <div
-          className={cn(
-            'bg-background fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm',
-          )}
-        >
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="session-expired-title"
-            aria-describedby="session-expired-description"
-            className={cn('border-destructive bg-background max-w-100 w-full border-2')}
-          >
-            <div className={cn('bg-destructive flex items-center gap-3 px-4 py-3')}>
-              <div
-                className={cn(
-                  'bg-background text-destructive font-pixel flex size-6 flex-shrink-0 items-center justify-center text-[8px]',
-                )}
-              >
-                D
-              </div>
-              <span className={cn('text-background font-pixel text-[9px]')}>DataGSM</span>
-              <span className={cn('text-background font-pixel text-[9px]')}>Session</span>
-              <span className={cn('text-background font-pixel text-[9px]')}>Expiration</span>
-            </div>
-
-            <div className={cn('flex flex-col items-center gap-2 p-5 text-center')}>
-              <h2
-                id="session-expired-title"
-                className={cn('text-destructive text-xl font-semibold leading-[1.45]')}
-              >
-                인증 세션 만료
-              </h2>
-              <p
-                id="session-expired-description"
-                className={cn('text-muted-foreground text-xs leading-[18px]')}
-              >
-                보안을 위해 인증 세션이 만료되었습니다.
-                <br />이 창을 닫고 서비스에서 다시 로그인을 시도하세요.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {isExpired && <OAuthSessionExpiredDialog />}
     </div>
   );
 };

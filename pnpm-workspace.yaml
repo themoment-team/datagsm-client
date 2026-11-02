@@ -1,3 +1,10 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# 여러 패키지가 함께 쓰는 의존성 버전. 각 package.json에는 `catalog:`로 적고 버전은 여기서만 바꾼다.
+catalog:
+  next: 15.5.28
+  '@next/eslint-plugin-next': 15.5.28
+  '@next/mdx': 15.5.28
+  axios: ^1.20.0

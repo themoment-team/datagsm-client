@@ -2,15 +2,14 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 
+import { Button } from '@repo/shared/ui';
+import { cn } from '@repo/shared/utils';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
-
 import { PROJECT_ICON_ACCEPT } from '@/entities/project';
 
-import { useUploadProjectIcon } from '../../model/useUploadProjectIcon';
+import { ProjectIconUploadError, useUploadProjectIcon } from '../../model/useUploadProjectIcon';
 
 interface ProjectIconFieldProps {
   initialUrl?: string | null;
@@ -54,7 +53,10 @@ const ProjectIconField = ({
       },
       onError: (error) => {
         URL.revokeObjectURL(localUrl);
-        toast.error(error instanceof Error ? error.message : '아이콘 업로드에 실패했습니다.');
+        // 직접 만든 안내만 보여 준다. 그 밖의 오류는 axios·브라우저의 영문 message일 수 있다.
+        toast.error(
+          error instanceof ProjectIconUploadError ? error.message : '아이콘 업로드에 실패했습니다.',
+        );
       },
     });
   };

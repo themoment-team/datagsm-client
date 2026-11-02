@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { NextRequest } from 'next/server';
 
+import { parseOAuthState } from '@repo/shared/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { config, middleware } from './middleware';
@@ -31,7 +32,7 @@ describe('admin middleware', () => {
         client_id: 'admin-client',
         redirect_uri: 'http://localhost:3001/api/callback',
         response_type: 'code',
-        state: '/students',
+        state: expect.stringMatching(/^[A-Za-z0-9_-]{43}\.\/students$/),
         code_challenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
         code_challenge_method: 'S256',
       });
@@ -40,18 +41,27 @@ describe('admin middleware', () => {
     it('state에는 쿼리를 빼고 경로만 담는다', async () => {
       const response = await middleware(requestTo('/students?grade=2'));
 
+      const state = new URL(response.headers.get('location')!).searchParams.get('state');
+      expect(parseOAuthState(state, response.cookies.get('oauth_state')?.value)).toBe('/students');
+    });
+
+    it('콜백이 같은 브라우저인지 대조할 state nonce를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
+      const response = await middleware(requestTo('/students'));
+
+      const cookie = response.cookies.get('oauth_state');
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
       expect(new URL(response.headers.get('location')!).searchParams.get('state')).toBe(
-        '/students',
+        `${cookie!.value}./students`,
       );
     });
 
-    it('challenge를 만든 verifier를 10분짜리 httpOnly 쿠키로 남긴다', async () => {
+    it('challenge를 만든 verifier를 15분짜리 httpOnly 쿠키로 남긴다', async () => {
       const { generateCodeChallenge } = await import('@repo/shared/utils');
 
       const response = await middleware(requestTo('/'));
 
       const cookie = response.cookies.get('code_verifier');
-      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 });
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
       const challenge = new URL(response.headers.get('location')!).searchParams.get(
         'code_challenge',
       );
@@ -62,7 +72,9 @@ describe('admin middleware', () => {
       expect((await middleware(requestTo('/'))).cookies.get('code_verifier')?.secure).toBe(false);
 
       vi.stubEnv('NODE_ENV', 'production');
-      expect((await middleware(requestTo('/'))).cookies.get('code_verifier')?.secure).toBe(true);
+      expect((await middleware(requestTo('/'))).cookies.get('__Host-code_verifier')?.secure).toBe(
+        true,
+      );
     });
 
     it.each([
@@ -83,10 +95,35 @@ describe('admin middleware', () => {
     expect(response.headers.get('location')).toBeNull();
   });
 
+  it('표시 쿠키 도입 전에 로그인해 토큰 쿠키만 있으면 로그인 표시 쿠키를 채운다', async () => {
+    const response = await middleware(requestTo('/students', { accessToken: 'token' }));
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.cookies.get('loggedIn')?.value).toBe('1');
+  });
+
   it('/api 경로는 토큰이 없어도 통과시킨다', async () => {
     const response = await middleware(requestTo('/api/callback?code=abc'));
 
     expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
+  });
+
+  it('/api 요청에는 httpOnly accessToken 쿠키를 Authorization 헤더로 옮겨 붙인다', async () => {
+    const response = await middleware(requestTo('/api/v1/students', { accessToken: 'token' }));
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('x-middleware-request-authorization')).toBe('Bearer token');
+  });
+
+  it('로그인 취소 화면은 토큰이 없어도 인가로 보내지 않는다', async () => {
+    // 인가로 보내면 IdP 세션은 있고 동의 기록은 없어서, 방금 거부한 동의 화면이 다시 뜬다.
+    const response = await middleware(
+      requestTo('/login/canceled?error=access_denied&returnTo=%2Fstudents'),
+    );
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('location')).toBeNull();
   });
 
   describe('matcher', () => {
@@ -104,6 +141,10 @@ describe('admin middleware', () => {
       '/logo.svg',
     ])('%s에는 적용하지 않는다', (path) => {
       expect(matcher.test(path)).toBe(false);
+    });
+
+    it('/api 요청은 별도 matcher로 받아 Authorization 헤더를 붙인다', () => {
+      expect(config.matcher).toContain('/api/:path*');
     });
   });
 });

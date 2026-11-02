@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { COOKIE_KEYS } from '@repo/shared/constants';
+import { logoutLocally } from '@repo/shared/lib';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -17,7 +17,7 @@ import {
   Input,
   Label,
 } from '@repo/shared/ui';
-import { cn, deleteCookie } from '@repo/shared/utils';
+import { cn } from '@repo/shared/utils';
 import { AlertTriangle } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -29,10 +29,13 @@ import { useWithdrawal } from '../../model/useWithdrawal';
 export const WithdrawalSection = () => {
   const [open, setOpen] = useState(false);
   const { mutate: withdraw, isPending } = useWithdrawal({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('회원 탈퇴가 완료되었습니다.');
-      deleteCookie(COOKIE_KEYS.ACCESS_TOKEN);
-      deleteCookie(COOKIE_KEYS.REFRESH_TOKEN);
+      try {
+        await logoutLocally();
+      } catch {
+        // 계정은 이미 삭제됐으므로 쿠키를 지우지 못해도 새로고침한다.
+      }
       window.location.reload();
     },
     onError: (error) => {

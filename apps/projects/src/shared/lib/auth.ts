@@ -1,12 +1,8 @@
 'use client';
 
-import { COOKIE_KEYS } from '@repo/shared/constants';
-import { getCookie } from '@repo/shared/utils';
+import { getIsAuthenticated } from '@repo/shared/utils';
 
-/** 클라이언트에서 로그인 여부를 확인한다 (accessToken 쿠키 존재 여부). */
-export const getIsAuthenticated = (): boolean => {
-  return Boolean(getCookie(COOKIE_KEYS.ACCESS_TOKEN));
-};
+export { getIsAuthenticated };
 
 /**
  * 로그인 시작. 서버 라우트(`/api/login`)로 이동해 PKCE 흐름을 시작한다.
