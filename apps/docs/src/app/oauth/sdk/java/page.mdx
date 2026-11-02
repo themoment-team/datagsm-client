@@ -8,7 +8,7 @@ export const metadata = createDocsPageMetadata({ title: "Java / Kotlin SDK", pat
 
 **DataGSM OAuth SDK Java**는 DataGSM OAuth 인증을 Java 및 Kotlin 애플리케이션에서 쉽고 안전하게 구현할 수 있도록 설계된 공식 클라이언트 SDK입니다.
 
-이 SDK를 사용하면 복잡한 OAuth 인증 플로우를 직접 구현할 필요 없이, 간단한 인터페이스를 통해 Authorization Code 교환, PKCE 지원, 토큰 갱신, 사용자 데이터 조회 등의 기능을 손쉽게 사용할 수 있습니다.
+이 SDK를 사용하면 복잡한 OAuth 인증 플로우를 직접 구현할 필요 없이, 간단한 인터페이스를 통해 Authorization Code 교환, PKCE, 토큰 갱신, OpenID Connect, 사용자 데이터 조회 등의 기능을 손쉽게 사용할 수 있습니다.
 
 ### 주요 특징
 
@@ -18,7 +18,8 @@ export const metadata = createDocsPageMetadata({ title: "Java / Kotlin SDK", pat
 | **Kotlin 완벽 호환**    | Java와 Kotlin 프로젝트 모두에서 자연스럽게 사용할 수 있습니다.                            |
 | **빌더 패턴**           | 직관적이고 유연한 클라이언트 구성을 지원합니다.                                          |
 | **자동 리소스 관리**       | `AutoCloseable` 구현으로 리소스 누수를 자동으로 방지합니다.                            |
-| **PKCE 지원**         | RFC 7636 표준 PKCE를 지원하여 모바일/SPA 앱에서 안전하게 사용할 수 있습니다.                 |
+| **PKCE 지원**         | RFC 7636 표준 PKCE를 지원합니다. 공개 클라이언트와 기밀 클라이언트 모두에 권장합니다.             |
+| **OpenID Connect**  | `id_token`, `nonce`, Discovery, JWKS 조회를 지원합니다.                       |
 | **다양한 Grant 타입 지원** | Authorization Code, Refresh Token, Client Credentials Grant를 지원합니다. |
 | **구체적인 예외 처리**      | HTTP 상태 코드별 전용 예외 타입을 제공하여 정확한 에러 핸들링이 가능합니다.                       |
 | **검증된 HTTP 클라이언트**  | OkHttp 기반으로 안정적이고 효율적인 통신을 보장합니다.                                   |
@@ -34,46 +35,37 @@ export const metadata = createDocsPageMetadata({ title: "Java / Kotlin SDK", pat
 
 ## 설치
 
-프로젝트 빌드 도구에 맞는 의존성을 추가하세요.
+프로젝트 빌드 도구에 맞는 의존성을 추가하세요. SDK는 Maven Central에 배포되므로 JitPack이나 별도 인증 토큰이 필요 없습니다.
 
 <CodeTabs>
-  <CodeTab label="Gradle (Kotlin DSL)" language="kotlin" code={`dependencies {
-    implementation("com.github.themoment-team:datagsm-oauth-sdk-java:1.5.0")
+  <CodeTab label="Gradle (Kotlin DSL)" language="kotlin" code={`repositories {
+    mavenCentral()
 }
 
-repositories {
-    maven { url = uri("https://jitpack.io") }
+dependencies {
+    implementation("io.github.themoment-team:datagsm-oauth-sdk-java:2.1.0")
 }`} />
 
-  <CodeTab label="Gradle (Groovy)" language="groovy" code={`dependencies {
-    implementation 'com.github.themoment-team:datagsm-oauth-sdk-java:1.5.0'
+  <CodeTab label="Gradle (Groovy)" language="groovy" code={`repositories {
+    mavenCentral()
 }
 
-repositories {
-    maven { url 'https://jitpack.io' }
+dependencies {
+    implementation 'io.github.themoment-team:datagsm-oauth-sdk-java:2.1.0'
 }`} />
 
-  <CodeTab label="Maven" language="xml" code={`<repositories>
-    <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
-    </repository>
-</repositories>
-
-<dependencies>
-    <dependency>
-        <groupId>com.github.themoment-team</groupId>
-        <artifactId>datagsm-oauth-sdk-java</artifactId>
-        <version>1.5.0</version>
-    </dependency>
-</dependencies>`} />
+  <CodeTab label="Maven" language="xml" code={`<dependency>
+    <groupId>io.github.themoment-team</groupId>
+    <artifactId>datagsm-oauth-sdk-java</artifactId>
+    <version>2.1.0</version>
+</dependency>`} />
 </CodeTabs>
 
 ## 빠른 시작
 
 ### 1. 클라이언트 초기화
 
-`DataGsmOAuthClient` 인스턴스를 생성합니다. Client ID와 Client Secret은 필수 파라미터입니다.
+`DataGsmOAuthClient` 인스턴스를 생성합니다. `client_secret`을 보관하는 백엔드는 `builder(clientId, clientSecret)`을, 시크릿을 보관할 수 없는 모바일·데스크톱 앱은 `builder(clientId)`를 사용합니다.
 
 <CodeTabs>
   <CodeTab label="Java" language="java" code={`import team.themoment.datagsm.sdk.oauth.DataGsmOAuthClient;
@@ -85,7 +77,10 @@ DataGsmOAuthClient client = DataGsmOAuthClient.builder("your-client-id", "your-c
 DataGsmOAuthClient clientWithCustomUrl = DataGsmOAuthClient.builder("your-client-id", "your-client-secret")
     .authorizationBaseUrl("https://oauth.authorization.datagsm.kr")
     .userInfoBaseUrl("https://oauth.resource.datagsm.kr")
-    .build();`} />
+    .build();
+
+// 공개 클라이언트 (client_secret 없음, PKCE 필수)
+DataGsmOAuthClient publicClient = DataGsmOAuthClient.builder("your-client-id").build();`} />
 
   <CodeTab label="Kotlin" language="kotlin" code={`import team.themoment.datagsm.sdk.oauth.DataGsmOAuthClient
 
@@ -96,9 +91,14 @@ val client = DataGsmOAuthClient.builder("your-client-id", "your-client-secret").
 val clientWithCustomUrl = DataGsmOAuthClient.builder("your-client-id", "your-client-secret")
     .authorizationBaseUrl("https://oauth.authorization.datagsm.kr")
     .userInfoBaseUrl("https://oauth.resource.datagsm.kr")
-    .build()`} />
+    .build()
+
+// 공개 클라이언트 (client_secret 없음, PKCE 필수)
+val publicClient = DataGsmOAuthClient.builder("your-client-id").build()`} />
 
 </CodeTabs>
+
+`client_secret`을 `null`이나 빈 문자열로 넘기면 `IllegalArgumentException`이 발생합니다. 공개 클라이언트는 `builder(clientId)`로 만듭니다. 공개 클라이언트에서 `code_verifier` 없는 코드 교환이나 `getClientCredentialsToken`을 호출하면 `IllegalStateException`이 발생합니다.
 
 ### 2. OAuth 인증 플로우
 
@@ -109,13 +109,14 @@ DataGSM OAuth는 Authorization Code Grant 방식을 사용합니다.
 사용자를 DataGSM OAuth 로그인 페이지로 리다이렉트하기 위한 URL을 생성합니다.
 
 <CodeTabs>
-  <CodeTab label="Java" language="java" code={`import team.themoment.datagsm.sdk.oauth.model.AuthorizationUrlBuilder;
+  <CodeTab label="Java" language="java" code={`import java.util.List;
+import team.themoment.datagsm.sdk.oauth.model.AuthorizationUrlBuilder;
 
 String redirectUri = "https://myapp.com/callback";
 
 AuthorizationUrlBuilder urlBuilder = client.createAuthorizationUrl(redirectUri)
     .state("random-csrf-token") // CSRF 방지 (권장)
-    .scope("read write");       // Scope 설정 (선택)
+    .scopes(List.of("datagsm:account_read", "datagsm:student_read")); // 필요한 권한 범위를 명시
 
 String authorizationUrl = urlBuilder.build();
 // 사용자를 authorizationUrl로 리다이렉트`} />
@@ -126,12 +127,18 @@ val redirectUri = "https://myapp.com/callback"
 
 val urlBuilder = client.createAuthorizationUrl(redirectUri)
     .state("random-csrf-token") // CSRF 방지 (권장)
-    .scope("read write")        // Scope 설정 (선택)
+    .scopes(listOf("datagsm:account_read", "datagsm:student_read")) // 필요한 권한 범위를 명시
 
 val authorizationUrl = urlBuilder.build()
 // 사용자를 authorizationUrl로 리다이렉트`} />
 
 </CodeTabs>
+
+권한 범위 표기는 `{appId}:{name}`이고 DataGSM 자사 앱의 Application ID는 `datagsm`입니다. 값은 클라이언트에 등록되어 있어야 하며, 등록되지 않은 값을 요청하면 `invalid_scope`가 됩니다. 필요한 값은 [권한 범위 레퍼런스](/oauth/scopes)를 참고하세요.
+
+`scope`를 생략하면 서버는 클라이언트에 등록된 범위에서 `club_read`, `project_read`를 뺀 값을 부여합니다. 남는 값이 없으면 `invalid_scope`입니다.
+
+사용자가 동의를 거부하면 `redirect_uri?error=access_denied&error_description=...&state=...`로 돌아옵니다. 콜백에서는 `state`를 저장한 값과 비교하고 `code`가 없는 경우를 먼저 처리하세요.
 
 #### Authorization Code를 토큰으로 교환
 
@@ -147,7 +154,8 @@ TokenResponse tokenResponse = client.exchangeCodeForToken(authorizationCode, red
 String accessToken = tokenResponse.getAccessToken();
 String refreshToken = tokenResponse.getRefreshToken();
 String tokenType = tokenResponse.getTokenType();   // 보통 "Bearer"
-Long expiresIn = tokenResponse.getExpiresIn();     // 만료 시간(초)`} />
+Long expiresIn = tokenResponse.getExpiresIn();     // 만료 시간(초)
+List<String> scopes = tokenResponse.getScopes();   // 부여된 권한 범위 목록`} />
 
   <CodeTab label="Kotlin" language="kotlin" code={`import team.themoment.datagsm.sdk.oauth.model.TokenResponse
 
@@ -160,7 +168,8 @@ val tokenResponse = client.exchangeCodeForToken(authorizationCode, redirectUri)
 val accessToken = tokenResponse.accessToken
 val refreshToken = tokenResponse.refreshToken
 val tokenType = tokenResponse.tokenType   // 보통 "Bearer"
-val expiresIn = tokenResponse.expiresIn   // 만료 시간(초)`} />
+val expiresIn = tokenResponse.expiresIn   // 만료 시간(초)
+val scopes = tokenResponse.scopes         // 부여된 권한 범위 목록`} />
 
 </CodeTabs>
 
@@ -174,7 +183,7 @@ String newAccessToken = newTokenResponse.getAccessToken();
 String newRefreshToken = newTokenResponse.getRefreshToken();
 
 // Scope를 줄여서 갱신 (다운스코핑)
-TokenResponse limitedTokenResponse = client.refreshToken(refreshToken, "read");`} />
+TokenResponse limitedTokenResponse = client.refreshToken(refreshToken, List.of("datagsm:account_read"));`} />
 
   <CodeTab label="Kotlin" language="kotlin" code={`// Refresh Token으로 새로운 토큰 발급
 val newTokenResponse = client.refreshToken(refreshToken)
@@ -183,9 +192,11 @@ val newAccessToken = newTokenResponse.accessToken
 val newRefreshToken = newTokenResponse.refreshToken
 
 // Scope를 줄여서 갱신 (다운스코핑)
-val limitedTokenResponse = client.refreshToken(refreshToken, "read")`} />
+val limitedTokenResponse = client.refreshToken(refreshToken, listOf("datagsm:account_read"))`} />
 
 </CodeTabs>
+
+갱신할 때마다 새 Refresh Token이 발급되므로 응답의 값으로 교체해 저장하세요. 이전 토큰을 다시 쓰면 `invalid_grant`가 되고 저장된 토큰도 삭제됩니다. 갱신 응답에는 `id_token`이 없습니다. `scope`로 좁혀도 저장된 범위는 유지됩니다.
 
 ### 3. 사용자 데이터 조회
 
@@ -206,19 +217,24 @@ System.out.println("상태: " + userInfo.getStatus());       // PENDING, ACTIVE
 
 // objectType 기준으로 학생/선생님 데이터 분기 조회
 // isStudent()/getIsStudent()는 Deprecated이며 objectType == STUDENT 파생값입니다.
-if (userInfo.getObjectType() == AccountObjectType.STUDENT) {
-    Student student = userInfo.getStudent();
+// student_read가 없으면 student, teacher는 null입니다.
+Student student = userInfo.getStudent();
+Teacher teacher = userInfo.getTeacher();
+if (userInfo.getObjectType() == AccountObjectType.STUDENT && student != null) {
     System.out.println("이름: " + student.getName());
     System.out.println("학번: " + student.getStudentNumber());
     System.out.println("학년: " + student.getGrade());
     System.out.println("반: " + student.getClassNum());
     System.out.println("학과: " + student.getMajor());
-} else if (userInfo.getObjectType() == AccountObjectType.TEACHER) {
-    Teacher teacher = userInfo.getTeacher();
+} else if (userInfo.getObjectType() == AccountObjectType.TEACHER && teacher != null) {
     System.out.println("이름: " + teacher.getName());
     System.out.println("부서: " + teacher.getDepartment());
     System.out.println("설명: " + teacher.getDescription());
-}`} />
+}
+
+// club_read, project_read가 없으면 빈 목록입니다. null을 반환하지 않습니다.
+userInfo.getClubs().forEach(club -> System.out.println("동아리: " + club.getName()));
+userInfo.getProjects().forEach(project -> System.out.println("프로젝트: " + project.getName()));`} />
 
   <CodeTab label="Kotlin" language="kotlin" code={`import team.themoment.datagsm.sdk.oauth.model.UserInfo
 import team.themoment.datagsm.sdk.oauth.model.Student
@@ -236,29 +252,32 @@ println("상태: \${userInfo.status}")   // PENDING, ACTIVE
 
 // objectType 기준으로 학생/선생님 데이터 분기 조회
 // isStudent는 Deprecated이며 objectType == STUDENT 파생값입니다.
+// student_read가 없으면 student, teacher는 null입니다.
 when (userInfo.objectType) {
-    AccountObjectType.STUDENT -> {
-        val student = userInfo.student
+    AccountObjectType.STUDENT -> userInfo.student?.let { student ->
         println("이름: \${student.name}")
         println("학번: \${student.studentNumber}")
         println("학년: \${student.grade}")
         println("반: \${student.classNum}")
         println("학과: \${student.major}")
     }
-    AccountObjectType.TEACHER -> {
-        val teacher = userInfo.teacher
+    AccountObjectType.TEACHER -> userInfo.teacher?.let { teacher ->
         println("이름: \${teacher.name}")
         println("부서: \${teacher.department}")
         println("설명: \${teacher.description}")
     }
     else -> {}
-}`} />
+}
+
+// club_read, project_read가 없으면 빈 목록입니다. null을 반환하지 않습니다.
+userInfo.clubs.forEach { club -> println("동아리: \${club.name}") }
+userInfo.projects.forEach { project -> println("프로젝트: \${project.name}") }`} />
 
 </CodeTabs>
 
 ## PKCE 지원
 
-PKCE(Proof Key for Code Exchange, RFC 7636)는 모바일 앱, SPA 등 Public Client 환경에서 Authorization Code 탈취 공격을 방지합니다.
+PKCE(Proof Key for Code Exchange, RFC 7636)는 Authorization Code 탈취 공격을 방지합니다. 공개 클라이언트는 반드시 사용하고, 기밀 클라이언트에도 권장합니다. PKCE로 발급된 code는 `code_verifier`로 교환하며 `client_secret`을 보내지 않습니다.
 
 ### PKCE 플로우
 
@@ -318,13 +337,15 @@ println("Access Token: \${tokenResponse.accessToken}")`} />
 <CodeTabs>
   <CodeTab label="Java" language="java" code={`// 수동으로 Code Verifier를 지정하는 경우
 AuthorizationUrlBuilder urlBuilder = client.createAuthorizationUrl(redirectUri)
-    .enablePkce("my-custom-code-verifier-43-to-128-chars", "S256"); // S256 또는 plain`} />
+    .enablePkce("my-custom-code-verifier-43-to-128-chars", "S256");`} />
 
   <CodeTab label="Kotlin" language="kotlin" code={`// 수동으로 Code Verifier를 지정하는 경우
 val urlBuilder = client.createAuthorizationUrl(redirectUri)
-    .enablePkce("my-custom-code-verifier-43-to-128-chars", "S256") // S256 또는 plain`} />
+    .enablePkce("my-custom-code-verifier-43-to-128-chars", "S256")`} />
 
 </CodeTabs>
+
+`method`에는 `S256`을 사용하세요. `plain`은 호환용으로 수용되지만 Discovery에 광고되지 않으며 제거 일정은 미정입니다. 새 연동에서는 쓰지 마세요.
 
 ## Client Credentials Grant
 
@@ -335,7 +356,7 @@ val urlBuilder = client.createAuthorizationUrl(redirectUri)
 TokenResponse tokenResponse = client.getClientCredentialsToken();
 
 // scope를 지정하여 토큰 발급
-TokenResponse tokenResponseWithScope = client.getClientCredentialsToken("read");
+TokenResponse tokenResponseWithScope = client.getClientCredentialsToken(List.of("datagsm:account_read"));
 
 System.out.println("Access Token: " + tokenResponse.getAccessToken());
 System.out.println("Token Type: " + tokenResponse.getTokenType());
@@ -346,7 +367,7 @@ System.out.println("Expires In: " + tokenResponse.getExpiresIn());
 val tokenResponse = client.getClientCredentialsToken()
 
 // scope를 지정하여 토큰 발급
-val tokenResponseWithScope = client.getClientCredentialsToken("read")
+val tokenResponseWithScope = client.getClientCredentialsToken(listOf("datagsm:account_read"))
 
 println("Access Token: \${tokenResponse.accessToken}")
 println("Token Type: \${tokenResponse.tokenType}")
@@ -354,6 +375,80 @@ println("Expires In: \${tokenResponse.expiresIn}")
 // Client Credentials Grant에서는 Refresh Token이 발급되지 않습니다.`} />
 
 </CodeTabs>
+
+`scope`를 생략하면 클라이언트에 등록된 범위 전체가 부여되고, 등록되지 않은 값은 오류 없이 제외됩니다. 응답에 `refresh_token`과 `id_token`은 없습니다. 자세한 내용은 [Client Credentials 토큰 발급](/oauth/http/client-credentials)을 참고하세요.
+
+## OpenID Connect
+
+`openid`를 요청하면 토큰 응답에 `id_token`이 포함됩니다. SDK는 `id_token`의 서명을 검증하지 않습니다. `getJwkSet()`으로 받은 공개키와 JWT 라이브러리로 RS256 서명과 `iss`, `aud`, `exp`, `nonce`를 직접 검증하세요. 자세한 절차는 [OIDC 가이드](/oauth/oidc)를 참고하세요.
+
+<CodeTabs>
+  <CodeTab label="Java" language="java" code={`import java.util.List;
+import java.util.UUID;
+import team.themoment.datagsm.sdk.oauth.model.*;
+
+String redirectUri = "https://myapp.com/callback";
+String state = UUID.randomUUID().toString();
+String nonce = UUID.randomUUID().toString(); // 세션에 저장해 두고 id_token 검증에 사용
+
+// Step 1: openid를 포함해 인가 요청
+AuthorizationUrlBuilder urlBuilder = client.createAuthorizationUrl(redirectUri)
+    .state(state)
+    .nonce(nonce)
+    .scopes(List.of("openid", "datagsm:account_read"))
+    .enablePkce();
+
+String authorizationUrl = urlBuilder.build();
+String codeVerifier = urlBuilder.getCodeVerifier();
+
+// Step 2: 토큰 교환
+TokenResponse tokenResponse = client.exchangeCodeForToken("received-code", redirectUri, codeVerifier);
+String idToken = tokenResponse.getIdToken(); // openid를 요청했을 때만 값이 있습니다
+
+// Step 3: 검증에 필요한 값 조회
+OidcDiscoveryDocument discovery = client.getDiscoveryDocument();
+JsonWebKeySet jwkSet = client.getJwkSet();
+JsonWebKey key = jwkSet.findByKid("id_token-header-kid"); // id_token 헤더의 kid로 조회
+
+// /userinfo의 sub는 id_token의 sub와 같은 값입니다
+UserInfo userInfo = client.getUserInfo(tokenResponse.getAccessToken());
+String sub = userInfo.getSub();`} />
+
+  <CodeTab label="Kotlin" language="kotlin" code={`import java.util.UUID
+import team.themoment.datagsm.sdk.oauth.model.*
+
+val redirectUri = "https://myapp.com/callback"
+val state = UUID.randomUUID().toString()
+val nonce = UUID.randomUUID().toString() // 세션에 저장해 두고 id_token 검증에 사용
+
+// Step 1: openid를 포함해 인가 요청
+val urlBuilder = client.createAuthorizationUrl(redirectUri)
+    .state(state)
+    .nonce(nonce)
+    .scopes(listOf("openid", "datagsm:account_read"))
+    .enablePkce()
+
+val authorizationUrl = urlBuilder.build()
+val codeVerifier = urlBuilder.codeVerifier
+
+// Step 2: 토큰 교환
+val tokenResponse = client.exchangeCodeForToken("received-code", redirectUri, codeVerifier)
+val idToken = tokenResponse.idToken // openid를 요청했을 때만 값이 있습니다
+
+// Step 3: 검증에 필요한 값 조회
+val discovery = client.discoveryDocument
+val jwkSet = client.jwkSet
+val key = jwkSet.findByKid("id_token-header-kid") // id_token 헤더의 kid로 조회
+
+// /userinfo의 sub는 id_token의 sub와 같은 값입니다
+val userInfo = client.getUserInfo(tokenResponse.accessToken)
+val sub = userInfo.sub`} />
+
+</CodeTabs>
+
+### 로그아웃
+
+`getLogoutEndpoint()`는 `POST /v1/oauth/logout` 주소를 반환합니다. Discovery에는 이 주소가 없으며 SDK가 인가 서버 주소에 고정 경로를 붙여 만든 값입니다. 이 엔드포인트는 브라우저의 SSO 세션 쿠키로 동작하므로 앱 서버에서 호출하면 세션이 삭제되지 않습니다. OIDC RP-Initiated Logout이 아니며, 이미 발급된 Access Token은 만료될 때까지 유효합니다.
 
 ## API 레퍼런스
 
@@ -369,7 +464,7 @@ SDK는 다음과 같은 API 메서드를 제공합니다.
 
 | 반환 타입                     | 설명                                     |
 |---------------------------|----------------------------------------|
-| `AuthorizationUrlBuilder` | URL 빌더 (state, scope, PKCE 등 추가 설정 가능) |
+| `AuthorizationUrlBuilder` | URL 빌더 (state, scope, nonce, PKCE 등 추가 설정 가능) |
 
 **`client.exchangeCodeForToken(code, redirectUri)`** - Authorization Code를 토큰으로 교환
 
@@ -406,10 +501,10 @@ SDK는 다음과 같은 API 메서드를 제공합니다.
 
 **`client.refreshToken(refreshToken, scope)`** - Scope를 지정하여 토큰 갱신
 
-| 파라미터           | 타입       | 설명                     |
-|----------------|----------|------------------------|
-| `refreshToken` | `String` | Refresh Token          |
-| `scope`        | `String` | 요청할 권한 범위 (원본보다 좁아야 함) |
+| 파라미터           | 타입                         | 설명                                                 |
+|----------------|----------------------------|----------------------------------------------------|
+| `refreshToken` | `String`                   | Refresh Token                                      |
+| `scope`        | `String` 또는 `List<String>` | 요청할 권한 범위. `String`은 공백으로 구분합니다. 원본을 넘으면 `invalid_scope`입니다. |
 
 **`client.getClientCredentialsToken()`** - Client Credentials로 토큰 발급
 
@@ -419,9 +514,17 @@ SDK는 다음과 같은 API 메서드를 제공합니다.
 
 **`client.getClientCredentialsToken(scope)`** - Scope를 지정하여 Client Credentials 토큰 발급
 
-| 파라미터    | 타입       | 설명         |
-|---------|----------|------------|
-| `scope` | `String` | 요청할 권한 범위  |
+| 파라미터    | 타입                         | 설명                             |
+|---------|----------------------------|--------------------------------|
+| `scope` | `String` 또는 `List<String>` | 요청할 권한 범위. `String`은 공백으로 구분합니다. |
+
+### OpenID Connect API
+
+| 메서드                         | 반환 타입                   | 설명                                  |
+|-----------------------------|-------------------------|-------------------------------------|
+| `client.getDiscoveryDocument()` | `OidcDiscoveryDocument` | `/.well-known/openid-configuration` 조회 |
+| `client.getJwkSet()`        | `JsonWebKeySet`         | `/v1/oauth/jwks` 조회                 |
+| `client.getLogoutEndpoint()` | `String`                | 로그아웃 엔드포인트 주소 반환 (요청을 보내지 않음)       |
 
 ### Account API
 
@@ -433,7 +536,7 @@ SDK는 다음과 같은 API 메서드를 제공합니다.
 
 | 반환 타입      | 설명                                           |
 |------------|----------------------------------------------|
-| `UserInfo` | 사용자 데이터 (`objectType`에 따라 학생 또는 선생님 데이터 포함) |
+| `UserInfo` | 사용자 데이터 (권한 범위와 `objectType`에 따라 채워지는 필드가 다름) |
 
 ## 모델 레퍼런스
 
@@ -447,7 +550,9 @@ OAuth 토큰 응답 모델 (RFC 6749)
 | `tokenType`    | `String` | Token 타입, 보통 `"Bearer"` (필수)                 |
 | `expiresIn`    | `Long`   | Access Token 만료 시간 (초 단위, 선택)                |
 | `refreshToken` | `String` | Refresh Token (선택, Client Credentials에서는 없음) |
-| `scope`        | `String` | 부여된 권한 범위 (선택)                               |
+| `scope`        | `String` | 부여된 권한 범위 (공백 구분)                            |
+| `scopes`       | `List<String>` | `scope`를 나눈 목록 (`getScopes()`, 읽기 전용)       |
+| `idToken`      | `String` | ID Token (`openid`를 요청한 코드 교환에서만 값이 있음)      |
 
 ### AuthorizationUrlBuilder
 
@@ -457,30 +562,37 @@ Authorization URL 빌더 모델
 |----------------------------------------|----------------------------------------|
 | `redirectUri(String)`                  | Redirect URI 설정 (필수)                   |
 | `state(String)`                        | State 파라미터 설정 (CSRF 방지 권장)             |
-| `scope(String)`                        | Scope 설정 (선택)                          |
+| `scope(String)`                        | Scope 설정, 공백 구분 (선택)                   |
+| `scopes(List<String>)`                 | Scope 목록 설정 (선택)                       |
+| `nonce(String)`                        | OIDC `nonce` 설정 (`openid` 요청 시 권장)      |
 | `enablePkce()`                         | PKCE 자동 활성화 (S256 메소드)                 |
-| `enablePkce(String, String)`           | PKCE 수동 활성화 (codeVerifier, method 지정)  |
+| `enablePkce(String, String)`           | PKCE 수동 활성화 (codeVerifier, method 지정). 잘못된 값이면 `IllegalArgumentException` |
 | `build()`                              | Authorization URL 생성                   |
 | `getCodeVerifier()`                    | 생성된 Code Verifier 조회 (PKCE 사용 시)       |
 
 ### UserInfo
 
-사용자 데이터 모델
+사용자 데이터 모델. 서버가 SDK에 없는 enum 값을 보내면 해당 필드는 예외 없이 `null`이 됩니다.
 
 | 필드           | 타입                | 설명                                                                        |
 |--------------|-------------------|---------------------------------------------------------------------------|
+| `sub`        | `String`          | OIDC 사용자 식별자. email과 같은 값이며 `id_token`의 `sub`와 일치합니다                     |
 | `id`         | `Long`            | 사용자 고유 ID                                                                 |
 | `email`      | `String`          | 이메일 주소                                                                    |
 | `role`       | `AccountRole`     | 계정 역할                                                                     |
 | `status`     | `AccountStatus`   | 계정 상태 (`PENDING`, `ACTIVE`). 선생님 계정은 어드민 승인 전까지 `PENDING`으로 유지됩니다              |
 | `objectType` | `AccountObjectType?` | 연결된 대상 종류 (`STUDENT`, `TEACHER`, nullable)                             |
 | `isStudent`  | `Boolean`         | **(Deprecated)** 학생 계정 여부. `objectType == STUDENT`의 파생값이며, 신규 연동은 `objectType`을 사용하세요 |
-| `student`    | `Student?`        | 학생 데이터 (`objectType`이 `STUDENT`인 경우, nullable)                          |
-| `teacher`    | `Teacher?`        | 선생님 데이터 (`objectType`이 `TEACHER`인 경우, nullable)                         |
+| `student`    | `Student?`        | 학생 데이터. `student_read`가 없거나 학생 계정이 아니면 `null`                         |
+| `teacher`    | `Teacher?`        | 선생님 데이터. `student_read`가 없거나 선생님 계정이 아니면 `null`                       |
+| `clubs`      | `List<ClubSummary>` | 소속 동아리. `club_read`가 없으면 빈 목록이며 `null`을 반환하지 않습니다                       |
+| `projects`   | `List<ProjectSummary>` | 참여 프로젝트. `project_read`가 없으면 빈 목록이며 `null`을 반환하지 않습니다                 |
+
+`getUserInfo`를 호출하려면 `account_read` 또는 `self_read`가 필요합니다. `student_read`만 있으면 403입니다. `self_read`는 Deprecated이며 전환 방법은 [권한 범위 레퍼런스](/oauth/scopes)를 참고하세요.
 
 ### Student
 
-학생 데이터 모델
+학생 데이터 모델. 졸업생과 자퇴생은 학번, 기숙사 정보가 `null`일 수 있습니다. 자퇴 여부는 `role == WITHDRAWN`으로 확인합니다.
 
 | 필드               | 타입            | 설명        |
 |------------------|---------------|-----------|
@@ -497,8 +609,8 @@ Authorization URL 빌더 모델
 | `role`           | `StudentRole` | 학생 역할     |
 | `dormitoryFloor` | `Integer`     | 기숙사 층     |
 | `dormitoryRoom`  | `Integer`     | 기숙사 호실    |
-| `majorClub`      | `ClubInfo`    | 전공동아리 데이터 |
-| `autonomousClub` | `ClubInfo`    | 창체동아리 데이터 |
+| `majorClub`      | `ClubSummary` | 전공동아리 데이터. `club_read`와 `self_read`가 없으면 `null` |
+| `autonomousClub` | `ClubSummary` | 창체동아리 데이터. `club_read`와 `self_read`가 없으면 `null` |
 | `githubId`       | `String`      | GitHub 아이디  |
 | `githubUrl`      | `String`      | GitHub 프로필 URL |
 
@@ -514,7 +626,7 @@ Authorization URL 빌더 모델
 | `department`  | `TeacherDepartment` | 소속 부서                |
 | `description` | `String?`         | 선생님 설명 (미설정 시 `null`) |
 
-### ClubInfo
+### ClubSummary
 
 동아리 데이터 모델
 
@@ -523,9 +635,46 @@ Authorization URL 빌더 모델
 | `id`   | `Long`     | 동아리 고유 ID |
 | `name` | `String`   | 동아리 이름    |
 | `type` | `ClubType` | 동아리 유형    |
-| `status` | `ClubStatus` | 동아리 상태    |
-| `foundedYear` | `Integer` | 동아리 개설 연도 |
-| `abolishedYear` | `Integer` | 동아리 폐지 연도 |
+
+### ProjectSummary
+
+프로젝트 데이터 모델
+
+| 필드       | 타입              | 설명              |
+|----------|-----------------|-----------------|
+| `id`     | `Long`          | 프로젝트 고유 ID      |
+| `name`   | `String`        | 프로젝트 이름         |
+| `status` | `ProjectStatus` | 프로젝트 운영 상태      |
+| `club`   | `ClubSummary`   | 소유 동아리 (없으면 `null`) |
+
+### OidcDiscoveryDocument
+
+Discovery 문서 모델. 목록 필드는 `null` 대신 빈 목록을 반환합니다.
+
+| 메서드                                    | 설명                 |
+|----------------------------------------|--------------------|
+| `getIssuer()`                          | `issuer`           |
+| `getAuthorizationEndpoint()`           | 인가 엔드포인트           |
+| `getTokenEndpoint()`                   | 토큰 엔드포인트           |
+| `getJwksUri()`                         | JWKS 주소            |
+| `getUserinfoEndpoint()`                | UserInfo 엔드포인트     |
+| `getEndSessionEndpoint()`              | **(Deprecated)** 서버가 값을 주지 않아 `null`입니다. `DataGsmOAuthClient.getLogoutEndpoint()`를 사용하세요 |
+| `getResponseTypesSupported()`          | 지원 `response_type` |
+| `getGrantTypesSupported()`             | 지원 `grant_type`    |
+| `getSubjectTypesSupported()`           | 지원 subject 유형      |
+| `getIdTokenSigningAlgValuesSupported()` | `id_token` 서명 알고리즘 |
+| `getCodeChallengeMethodsSupported()`   | 지원 PKCE 방식         |
+| `getScopesSupported()`                 | 지원 권한 범위           |
+| `getTokenEndpointAuthMethodsSupported()` | 토큰 엔드포인트 인증 방식   |
+| `getClaimsSupported()`                 | 지원 클레임             |
+
+### JsonWebKeySet, JsonWebKey
+
+| 모델              | 메서드                                                                        | 설명                     |
+|-----------------|----------------------------------------------------------------------------|------------------------|
+| `JsonWebKeySet` | `getKeys()`                                                                | 공개키 목록                 |
+| `JsonWebKeySet` | `findByKid(String)`                                                        | `kid`가 일치하는 키. 없으면 `null` |
+| `JsonWebKey`    | `getKty()`, `getKid()`, `getN()`, `getE()`, `getUse()`, `getAlg()`         | JWK 필드                 |
 
 ### Enum 타입
 
@@ -536,7 +685,6 @@ Authorization URL 빌더 모델
 | `ROOT`         | 최고 관리자    |
 | `ADMIN`        | 관리자       |
 | `USER`         | 일반 사용자    |
-| `API_KEY_USER` | API 키 사용자 |
 
 #### AccountStatus
 
@@ -596,12 +744,12 @@ Authorization URL 빌더 모델
 | `MAJOR_CLUB`      | 전공동아리  |
 | `AUTONOMOUS_CLUB` | 창체동아리  |
 
-#### ClubStatus
+#### ProjectStatus
 
-| 값                 | 설명     |
-|-------------------|--------|
-| `ACTIVE`          | 운영 중  |
-| `ABOLISHED`       | 폐지됨  |
+| 값        | 설명     |
+|----------|--------|
+| `ACTIVE` | 운영 중   |
+| `ENDED`  | 종료     |
 
 ## 예외 처리
 
@@ -609,15 +757,29 @@ SDK는 HTTP 상태 코드별로 구체적인 예외 타입을 제공합니다.
 
 ### 예외 종류
 
-| 예외 타입                   | HTTP 상태 | 발생 상황               | 권장 처리 방법                        |
-|-------------------------|---------|---------------------|---------------------------------|
-| `UnauthorizedException` | 401     | 토큰이 유효하지 않음 또는 만료   | 토큰 갱신 또는 재인증                    |
-| `ForbiddenException`    | 403     | 필요한 권한 범위 부족        | 권한 범위 확인 및 요청                   |
-| `BadRequestException`   | 400     | 잘못된 요청 파라미터         | 요청 파라미터 검증                      |
-| `NotFoundException`     | 404     | 요청한 리소스를 찾을 수 없음    | 요청 경로 확인                        |
-| `RateLimitException`    | 429     | Rate limit 초과       | 재시도 로직 구현 (Exponential Backoff) |
-| `ServerErrorException`  | 500     | 서버 내부 오류            | 잠시 후 재시도 또는 관리자 문의              |
-| `DataGsmException`      | 기타      | 기타 API 오류           | 에러 메시지 확인 후 적절한 처리              |
+| 예외 타입                   | HTTP 상태 | 발생 상황                                  | 권장 처리 방법                        |
+|-------------------------|---------|----------------------------------------|---------------------------------|
+| `BadRequestException`   | 400     | 잘못된 파라미터, `invalid_grant`, `invalid_scope` | `getErrorCode()` 확인 후 재인증 또는 요청 수정 |
+| `UnauthorizedException` | 401     | Access Token 무효 또는 만료, `invalid_client` | 토큰 갱신 또는 클라이언트 자격증명 확인           |
+| `ForbiddenException`    | 403     | 필요한 권한 범위 부족                           | 권한 범위 확인 및 요청                   |
+| `NotFoundException`     | 404     | 요청한 리소스를 찾을 수 없음                       | 요청 경로 확인                        |
+| `RateLimitException`    | 429     | 요청 한도 초과                               | 재시도 로직 구현 (Exponential Backoff) |
+| `ServerErrorException`  | 500, 502, 503, 504 | 서버 오류                       | 잠시 후 재시도 또는 관리자 문의              |
+| `DataGsmException`      | 기타      | 네트워크 오류 등 기타 오류. 모든 예외의 부모 클래스         | 에러 메시지 확인 후 적절한 처리              |
+
+토큰 요청과 `/userinfo` 호출의 한도는 OAuth 클라이언트 기준 분당 300회입니다.
+
+### 서버 오류 정보
+
+모든 예외는 `DataGsmException`을 상속하며 서버 응답을 파싱한 값을 제공합니다.
+
+| 메서드                     | 설명                                                                          |
+|-------------------------|-----------------------------------------------------------------------------|
+| `getStatusCode()`       | HTTP 상태 코드. 응답이 없으면 `DataGsmException.NO_STATUS_CODE`(-1)                    |
+| `hasStatusCode()`       | HTTP 상태 코드가 있는지 여부                                                          |
+| `getErrorCode()`        | 토큰 요청은 `invalid_grant` 같은 `error` 값, `/userinfo`는 `UNAUTHORIZED` 같은 `status` 값 |
+| `getErrorDescription()` | `error_description` 또는 `message` 값                                           |
+| `getResponseBody()`     | 원본 응답 본문                                                                    |
 
 ### 예외 처리 예제
 
@@ -642,8 +804,8 @@ try {
     logger.warn("Rate limit exceeded", e);
     // exponential backoff 등의 재시도 전략 구현 권장
 } catch (BadRequestException e) {
-    // 잘못된 요청 파라미터
-    logger.error("Invalid request parameters: {}", e.getMessage());
+    // 잘못된 요청 파라미터. 토큰 요청이면 getErrorCode()가 invalid_grant 등을 반환합니다
+    logger.error("Invalid request: {} {}", e.getErrorCode(), e.getErrorDescription());
 } catch (NotFoundException e) {
     // 리소스를 찾을 수 없음
     logger.error("Resource not found: {}", e.getMessage());
@@ -675,8 +837,8 @@ try {
     logger.warn("Rate limit exceeded", e)
     // exponential backoff 등의 재시도 전략 구현 권장
 } catch (e: BadRequestException) {
-    // 잘못된 요청 파라미터
-    logger.error("Invalid request parameters: \${e.message}")
+    // 잘못된 요청 파라미터. 토큰 요청이면 errorCode가 invalid_grant 등을 반환합니다
+    logger.error("Invalid request: \${e.errorCode} \${e.errorDescription}")
 } catch (e: NotFoundException) {
     // 리소스를 찾을 수 없음
     logger.error("Resource not found: \${e.message}")
@@ -882,6 +1044,8 @@ Spring Boot를 사용하지 않는 일반 Java 애플리케이션에서는 직�
 import team.themoment.datagsm.sdk.oauth.exception.*;
 import team.themoment.datagsm.sdk.oauth.model.*;
 
+import java.util.List;
+
 public class Main {
     public static void main(String[] args) {
         // try-with-resources로 자동 리소스 관리
@@ -889,15 +1053,17 @@ public class Main {
 
             // 1. Authorization URL 생성 및 사용자 리다이렉트
             String redirectUri = "https://myapp.com/callback";
-            String authUrl = client.createAuthorizationUrl(redirectUri)
+            AuthorizationUrlBuilder urlBuilder = client.createAuthorizationUrl(redirectUri)
                 .state("random-csrf-token")
-                .enablePkce()
-                .build();
+                .scopes(List.of("datagsm:account_read", "datagsm:student_read", "datagsm:club_read"))
+                .enablePkce();
+            String authUrl = urlBuilder.build();
+            String codeVerifier = urlBuilder.getCodeVerifier();
             // 사용자를 authUrl로 리다이렉트 (실제 구현 필요)
 
             // 2. Authorization Code로 토큰 교환
             String authCode = "authorization_code_from_callback";
-            TokenResponse tokenResponse = client.exchangeCodeForToken(authCode, redirectUri);
+            TokenResponse tokenResponse = client.exchangeCodeForToken(authCode, redirectUri, codeVerifier);
 
             System.out.println("Access Token 발급 완료");
             System.out.printf("만료 시간: %d초%n", tokenResponse.getExpiresIn());
@@ -911,8 +1077,9 @@ public class Main {
             System.out.printf("상태: %s%n", userInfo.getStatus());
 
             // 4. objectType 기준으로 학생/선생님 데이터 분기 조회
-            if (userInfo.getObjectType() == AccountObjectType.STUDENT) {
-                Student student = userInfo.getStudent();
+            Student student = userInfo.getStudent();
+            Teacher teacher = userInfo.getTeacher();
+            if (userInfo.getObjectType() == AccountObjectType.STUDENT && student != null) {
                 System.out.printf("이름: %s%n", student.getName());
                 System.out.printf("학번: %d%n", student.getStudentNumber());
                 System.out.printf("학년/반/번호: %d학년 %d반 %d번%n",
@@ -923,8 +1090,7 @@ public class Main {
                 if (student.getMajorClub() != null) {
                     System.out.printf("전공동아리: %s%n", student.getMajorClub().getName());
                 }
-            } else if (userInfo.getObjectType() == AccountObjectType.TEACHER) {
-                Teacher teacher = userInfo.getTeacher();
+            } else if (userInfo.getObjectType() == AccountObjectType.TEACHER && teacher != null) {
                 System.out.printf("이름: %s%n", teacher.getName());
                 System.out.printf("부서: %s%n", teacher.getDepartment());
             }
@@ -963,6 +1129,7 @@ fun main() {
             val redirectUri = "https://myapp.com/callback"
             val urlBuilder = client.createAuthorizationUrl(redirectUri)
                 .state("random-csrf-token")
+                .scopes(listOf("datagsm:account_read", "datagsm:student_read", "datagsm:club_read"))
                 .enablePkce()
             val authUrl = urlBuilder.build()
             val codeVerifier = urlBuilder.codeVerifier
@@ -985,8 +1152,7 @@ fun main() {
 
             // 4. objectType 기준으로 학생/선생님 데이터 분기 조회
             when (userInfo.objectType) {
-                AccountObjectType.STUDENT -> {
-                    val student = userInfo.student
+                AccountObjectType.STUDENT -> userInfo.student?.let { student ->
                     println("이름: \${student.name}")
                     println("학번: \${student.studentNumber}")
                     println("학년/반/번호: \${student.grade}학년 \${student.classNum}반 \${student.number}번")
@@ -997,8 +1163,7 @@ fun main() {
                         println("전공동아리: \${club.name}")
                     }
                 }
-                AccountObjectType.TEACHER -> {
-                    val teacher = userInfo.teacher
+                AccountObjectType.TEACHER -> userInfo.teacher?.let { teacher ->
                     println("이름: \${teacher.name}")
                     println("부서: \${teacher.department}")
                 }
@@ -1101,7 +1266,8 @@ java -jar your-application.jar
 
 - **Access Token**: 짧은 유효기간을 가지며, 메모리에서만 관리하세요.
 - **Refresh Token**: 안전한 저장소(암호화된 DB, Secure Storage 등)에 보관하세요.
-- **PKCE 사용**: 모바일/SPA 앱에서는 반드시 PKCE를 활성화하여 Code 탈취를 방지하세요.
+- **PKCE 사용**: 공개 클라이언트는 반드시 PKCE를 활성화하고, 기밀 클라이언트에도 권장합니다.
+- **Client Secret**: 시크릿은 백엔드에만 두고 프런트 코드에 넣지 마세요.
 - **HTTPS 사용**: 모든 통신은 반드시 HTTPS를 통해 이루어져야 합니다.
 - **State 파라미터**: Authorization URL 생성 시 CSRF 방지를 위해 `state` 파라미터를 설정하세요.
 
@@ -1125,9 +1291,9 @@ java -jar your-application.jar
 
 **해결 방법**:
 
-- OAuth 권한 범위 확인
-- 필요한 권한 범위가 부여되었는지 확인
-- 권한 범위 추가가 필요한 경우 관리자에게 문의
+- `getUserInfo`에는 `account_read` 또는 `self_read`가 필요합니다. `student_read`만 있으면 403입니다.
+- 필요한 권한 범위를 클라이언트에 등록하고 인가 요청의 `scope`에 명시
+- 권한 범위를 넓히면 사용자에게 동의 화면이 다시 표시되고, 기존 Refresh Token은 이전 범위를 유지하므로 재로그인이 필요합니다.
 
 #### 400 Bad Request 오류
 
@@ -1140,6 +1306,16 @@ java -jar your-application.jar
 - Client ID, Client Secret이 올바른지 확인
 - `redirectUri`가 Authorization 요청 시와 동일한지 확인
 - PKCE 사용 시 `codeVerifier`가 올바른지 확인
+- `invalid_scope`면 요청한 값이 클라이언트에 등록되어 있는지 확인
+
+#### 429 Too Many Requests 오류
+
+**원인**: OAuth 클라이언트 기준 분당 요청 한도 초과
+
+**해결 방법**:
+
+- 사용자 데이터를 캐시하고 요청 횟수를 줄이기
+- Exponential Backoff로 재시도
 
 ## 추가 리소스
 
@@ -1147,3 +1323,71 @@ java -jar your-application.jar
 - **이슈 트래커**: [GitHub Issues](https://github.com/themoment-team/datagsm-oauth-sdk-java/issues)
 
 문의사항이나 버그 리포트는 GitHub Issues를 통해 제출해 주세요.
+
+## 마이그레이션
+
+서버 쪽 변경은 [변경 사항 및 마이그레이션](/migration)을 참고하십시오. 아래 표의 Deprecated 항목은 동작하지만 제거 일정은 미정입니다.
+
+### 현재 Deprecated 항목
+
+- **Deprecated**: `DataGsmClient` → `DataGsmOAuthClient`
+  - 영향: 계속 동작합니다. 래퍼에는 새 API가 없습니다.
+  - 대응: 클래스를 교체합니다. 메서드 이름은 같습니다.
+- **Deprecated**: `UserInfo.getIsStudent()`, `setIsStudent()`, `isStudent()` → `getObjectType()`
+  - 영향: 계속 동작합니다.
+  - 대응: `getObjectType() == AccountObjectType.STUDENT`로 바꿉니다.
+- **Deprecated**: `Student.isLeaveSchool()` → `getRole() == StudentRole.WITHDRAWN`
+  - 영향: 계속 동작합니다.
+  - 대응: 역할 비교로 바꿉니다.
+- **Deprecated**: `OidcDiscoveryDocument.getEndSessionEndpoint()` → `DataGsmOAuthClient.getLogoutEndpoint()`
+  - 영향: 서버가 값을 주지 않아 `null`을 반환합니다.
+  - 대응: `getLogoutEndpoint()`로 바꿉니다.
+
+### 2.0.1 → 2.1.0
+
+필수 변경은 없습니다.
+
+- **추가**: `UserInfo.getSub()`
+  - 영향: 없습니다. 이 값을 주지 않는 이전 서버에서는 `null`입니다.
+  - 대응: 필요하면 사용합니다.
+- **Deprecated**: `getEndSessionEndpoint()` → `getLogoutEndpoint()`
+  - 영향: Discovery에 값이 없어 `null`을 반환합니다.
+  - 대응: `getLogoutEndpoint()`로 바꿉니다.
+
+### 2.0.0 → 2.0.1
+
+코드는 그대로이고 의존성 좌표만 바뀌었습니다.
+
+- **Breaking**: `com.github.themoment-team:datagsm-oauth-sdk-java` (JitPack) → `io.github.themoment-team:datagsm-oauth-sdk-java` (Maven Central)
+  - 영향: 좌표를 바꾸지 않으면 새 버전을 받을 수 없습니다.
+  - 대응: 의존성의 groupId를 바꿉니다. 다른 의존성에서 쓰지 않는다면 JitPack 저장소 설정을 지웁니다.
+
+### 1.x → 2.0
+
+- **Breaking**: `issueOAuthCode(OAuthCodeRequest)` → 제거
+  - 영향: 서버 엔드포인트가 삭제되어 컴파일 오류가 납니다.
+  - 대응: `createAuthorizationUrl()`과 `exchangeCodeForToken()`을 사용합니다.
+- **Breaking**: `OAuthCodeRequest`, `OAuthCodeResponse` → 제거
+  - 영향: 컴파일 오류가 납니다.
+  - 대응: 해당 타입을 지웁니다.
+- **Breaking**: `ClubInfo` (`status`, `foundedYear`, `abolishedYear` 포함) → `ClubSummary` (`id`, `name`, `type`)
+  - 영향: 컴파일 오류가 납니다.
+  - 대응: 타입을 바꾸고 제거된 필드를 쓰는 코드를 지웁니다.
+- **Breaking**: `ClubStatus` → 제거
+  - 영향: 컴파일 오류가 납니다.
+  - 대응: 해당 타입을 지웁니다.
+- **Breaking**: `Student.getIsLeaveSchool()`, `setIsLeaveSchool()` → 제거
+  - 영향: 컴파일 오류가 납니다.
+  - 대응: `student.getRole() == StudentRole.WITHDRAWN`을 사용합니다.
+- **Breaking**: `AccountRole.API_KEY_USER` → 제거
+  - 영향: 컴파일 오류가 납니다.
+  - 대응: 해당 값을 쓰는 분기를 지웁니다.
+- **Breaking**: `OAuthApi`에 추가 메서드 없음 → `List` scope 오버로드, `getDiscoveryDocument`, `getJwkSet`, `getLogoutEndpoint` 추가
+  - 영향: 인터페이스를 직접 구현했다면 컴파일 오류가 납니다.
+  - 대응: 추가된 메서드를 구현합니다.
+- **유지**: `refreshToken(token, "a b")`, `getClientCredentialsToken("a b")` → 그대로 동작하며 `List<String>` 오버로드 추가
+  - 영향: 없습니다.
+  - 대응: 없습니다.
+- **유지**: `DataGsmOAuthClient.builder(id, null)`은 예외 → 여전히 예외
+  - 영향: 없습니다.
+  - 대응: 공개 클라이언트는 `builder(id)`를 사용합니다.

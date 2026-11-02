@@ -8,7 +8,7 @@ export const metadata = createDocsPageMetadata({ title: "JavaScript / TypeScript
 
 **DataGSM OpenAPI SDK for JavaScript**는 DataGSM API를 Node.js 및 브라우저 환경에서 쉽고 안전하게 사용할 수 있도록 설계된 공식 클라이언트 SDK입니다.
 
-이 SDK는 모든 API 요청에 대해 최신 TypeScript 타입을 지원하며, Promise 기반의 비동기 인터페이스를 통해 학생, 동아리, 프로젝트, NEIS(급식, 학사일정, 시간표) 데이터에 효율적으로 접근할 수 있게 해줍니다.
+이 SDK는 모든 API 요청에 대해 최신 TypeScript 타입을 지원하며, Promise 기반의 비동기 인터페이스를 통해 학생, 동아리, 프로젝트, NEIS(급식, 학사일정, 시간표) 데이터를 조회하고 학생, 동아리, 프로젝트 데이터를 생성, 수정할 수 있게 해줍니다.
 
 ### 주요 특징
 
@@ -37,6 +37,8 @@ export const metadata = createDocsPageMetadata({ title: "JavaScript / TypeScript
   <CodeTab label="yarn" language="bash" code={`yarn add @themoment-team/datagsm-openapi`} />
 </CodeTabs>
 
+현재 버전은 `2.0.0`입니다.
+
 ## 빠른 시작
 
 ### 1. 클라이언트 초기화
@@ -56,8 +58,11 @@ const advancedClient = new DataGsmClient({
   apiKey: 'your-api-key-here',
   baseUrl: 'https://example.com', // 커스텀 URL (기본값: https://openapi.datagsm.kr)
   timeout: 5000, // 5초 타임아웃 (기본값: 30초)
+  headers: { 'X-Request-Source': 'my-app' }, // 모든 요청에 추가할 헤더
 });
 ```
+
+모든 메서드는 서버 공통 응답 형식(`{ status, code, message, data }`)을 그대로 반환합니다. 값이 없는 필드는 키가 생략되지 않고 `null`로 내려오므로 응답 타입의 선택 값은 `T | null`로 선언되어 있습니다.
 
 ### 2. API 호출 예제
 
@@ -78,6 +83,8 @@ const advancedClient = new DataGsmClient({
   });`} />
 
   <CodeTab label="TypeScript" language="typescript" code={`
+  import type { Student } from '@themoment-team/datagsm-openapi';
+
   // 학생 목록 조회 (1학년 1반)
   const response = await client.students().getStudents({
     grade: 1,
@@ -107,6 +114,8 @@ const advancedClient = new DataGsmClient({
   });`} />
 
   <CodeTab label="TypeScript" language="typescript" code={`
+  import type { Meal } from '@themoment-team/datagsm-openapi';
+
   // 특정 날짜의 급식 조회
   const response = await client.neis().getMeals({
     date: '2026-02-04' // YYYY-MM-DD 포맷
@@ -121,13 +130,17 @@ const advancedClient = new DataGsmClient({
 
 ## API 레퍼런스
 
+쓰기 메서드를 쓰려면 API 키에 해당 쓰기 권한 범위(`student:write`, `club:write`, `project:write`)가 있어야 합니다. 이 범위는 관리자 계정만 발급할 수 있습니다. 삭제, 종료, 재개 API는 응답 본문이 없어 `Promise<void>`를 반환합니다.
+
 ### 학생 API
 
-**`client.students()`** - 학생 데이터 조회
+**`client.students()`** - 학생 데이터 조회, 생성, 수정
 
-| 메서드                    | 설명              | 반환 타입                          |
-|:-----------------------|:----------------|:-------------------------------|
-| `getStudents(request)` | 조건에 맞는 학생 목록 조회 | `Promise<GetStudentsResponse>` |
+| 메서드                         | HTTP                    | 반환 타입                          |
+|:----------------------------|:------------------------|:-------------------------------|
+| `getStudents(request?)`     | `GET /v1/students`      | `Promise<GetStudentsResponse>` |
+| `createStudent(request)`    | `POST /v1/students`     | `Promise<StudentResponse>`     |
+| `updateStudent(id, request)` | `PUT /v1/students/{id}` | `Promise<StudentResponse>`     |
 
 #### 요청 파라미터
 
@@ -142,8 +155,8 @@ const advancedClient = new DataGsmClient({
 | `sex`                | `'MAN' \| 'WOMAN'` | 성별        |
 | `role`               | `Role`             | 학생 역할     |
 | `dormitoryRoom`      | `number`           | 기숙사 호실    |
-| `specialty`          | `string`           | 특기 분야     |
-| `major`              | `Major`            | 전공        |
+| `specialty`          | `string`           | 전공        |
+| `major`              | `Major`            | 학과        |
 | `githubId`           | `string`           | GitHub ID |
 | `includeGraduates`   | `boolean`          | 졸업생 포함 여부 |
 | `includeWithdrawn`   | `boolean`          | 자퇴생 포함 여부 |
@@ -161,13 +174,43 @@ const students = await client.students().getStudents({
 });
 ```
 
+#### 생성과 수정
+
+`CreateStudentRequest`는 `name`, `sex`, `email`이 필수입니다. 재학생은 `grade`, `classNum`, `number`도 필요합니다. `role`을 생략하면 `GENERAL_STUDENT`입니다. 졸업생은 학번, 기숙사, 동아리 정보를 가질 수 없고 자퇴생은 기숙사, 동아리 정보를 가질 수 없습니다.
+
+`UpdateStudentRequest`는 전체 교체 방식입니다. `name`, `sex`, `email`, `grade`, `classNum`, `number`, `role`이 필수이고, 생략한 선택 필드(`dormitoryRoomNumber`, `majorClubId`, `autonomousClubId`, `specialty`, `githubId`)는 비워집니다. `role`에는 `GRADUATE`, `WITHDRAWN`을 쓸 수 없으며 졸업생과 자퇴생은 이 API로 수정할 수 없습니다.
+
+```typescript
+const created = await client.students().createStudent({
+  name: '홍길동',
+  sex: 'MAN',
+  email: 's25001@gsm.hs.kr',
+  grade: 1,
+  classNum: 1,
+  number: 1,
+});
+
+await client.students().updateStudent(created.data.id, {
+  name: '홍길동',
+  sex: 'MAN',
+  email: 's25001@gsm.hs.kr',
+  grade: 1,
+  classNum: 1,
+  number: 2,
+  role: 'GENERAL_STUDENT',
+});
+```
+
 ### 동아리 API
 
-**`client.clubs()`** - 동아리 데이터 조회
+**`client.clubs()`** - 동아리 데이터 조회, 생성, 수정, 삭제
 
-| 메서드                 | 설명               | 반환 타입                       |
-|:--------------------|:-----------------|:----------------------------|
-| `getClubs(request)` | 조건에 맞는 동아리 목록 조회 | `Promise<GetClubsResponse>` |
+| 메서드                       | HTTP                    | 반환 타입                       |
+|:--------------------------|:------------------------|:----------------------------|
+| `getClubs(request?)`      | `GET /v1/clubs`         | `Promise<GetClubsResponse>` |
+| `createClub(request)`     | `POST /v1/clubs`        | `Promise<ClubResponse>`     |
+| `updateClub(id, request)` | `PUT /v1/clubs/{id}`    | `Promise<ClubResponse>`     |
+| `deleteClub(id)`          | `DELETE /v1/clubs/{id}` | `Promise<void>`             |
 
 #### 요청 파라미터
 
@@ -190,31 +233,99 @@ const clubs = await client.clubs().getClubs({
 });
 ```
 
+#### 생성과 수정
+
+`ClubRequest`는 생성과 수정에 함께 쓰며 수정은 전체 교체 방식입니다. `name`, `type`, `participantIds`, `foundedYear`, `status`가 필수입니다. 폐지(`ABOLISHED`) 동아리는 `leaderId`를 비우고 `participantIds`를 빈 배열로 보내며 `abolishedYear`를 함께 보냅니다.
+
+```typescript
+await client.clubs().updateClub(3, {
+  name: 'SW개발동아리',
+  type: 'MAJOR_CLUB',
+  leaderId: 1,
+  participantIds: [2, 3, 4],
+  foundedYear: 2022,
+  status: 'ACTIVE',
+});
+```
+
 ### 프로젝트 API
 
-**`client.projects()`** - 프로젝트 데이터 조회
+**`client.projects()`** - 프로젝트 데이터 조회, 생성, 수정, 삭제, 종료, 재개
 
-| 메서드                    | 설명                | 반환 타입                          |
-|:-----------------------|:------------------|:-------------------------------|
-| `getProjects(request)` | 조건에 맞는 프로젝트 목록 조회 | `Promise<GetProjectsResponse>` |
+| 메서드                          | HTTP                                | 반환 타입                          |
+|:-----------------------------|:------------------------------------|:-------------------------------|
+| `getProjects(request?)`      | `GET /v1/projects`                  | `Promise<GetProjectsResponse>` |
+| `createProject(request)`     | `POST /v1/projects`                 | `Promise<ProjectResponse>`     |
+| `updateProject(id, request)` | `PUT /v1/projects/{id}`             | `Promise<ProjectResponse>`     |
+| `deleteProject(id)`          | `DELETE /v1/projects/{id}`          | `Promise<void>`                |
+| `endProject(id, request)`    | `POST /v1/projects/{id}/end`        | `Promise<void>`                |
+| `reactivateProject(id)`      | `POST /v1/projects/{id}/reactivate` | `Promise<void>`                |
 
 #### 요청 파라미터
 
-| 파라미터            | 타입                    | 설명      |
-|:----------------|:----------------------|:--------|
-| `projectId`     | `number`              | 프로젝트 ID |
-| `projectName`   | `string`              | 프로젝트 이름 |
-| `clubId`        | `number`              | 동아리 ID  |
-| `status`        | `'ACTIVE' \| 'ENDED'` | 프로젝트 상태 |
-| `page`          | `number`              | 페이지 번호  |
-| `size`          | `number`              | 페이지 크기  |
-| `sortBy`        | `ProjectSortBy`       | 정렬 기준   |
-| `sortDirection` | `'ASC' \| 'DESC'`     | 정렬 방향   |
+| 파라미터            | 타입                     | 설명                                       |
+|:----------------|:-----------------------|:-----------------------------------------|
+| `projectId`     | `number`               | 프로젝트 ID                                  |
+| `projectName`   | `string`               | 프로젝트 이름                                  |
+| `clubId`        | `number`               | 동아리 ID                                   |
+| `status`        | `'ACTIVE' \| 'ENDED'`  | 프로젝트 상태. 생략하면 서버 기본값 `ACTIVE`가 적용됩니다.    |
+| `category`      | `KnownProjectCategory` | 지정한 카테고리를 포함하는 프로젝트만 조회합니다.              |
+| `page`          | `number`               | 페이지 번호                                   |
+| `size`          | `number`               | 페이지 크기                                   |
+| `sortBy`        | `ProjectSortBy`        | 정렬 기준                                    |
+| `sortDirection` | `'ASC' \| 'DESC'`      | 정렬 방향                                    |
 
 ```typescript
 const projects = await client.projects().getProjects({
   projectName: 'DataGSM',
 });
+
+// 종료된 팀 프로젝트 조회
+const ended = await client.projects().getProjects({ status: 'ENDED', category: 'TEAM' });
+ended.data.projects.forEach((project) => console.log(project.name, project.categories));
+```
+
+#### 프로젝트 카테고리
+
+`TOY_PROJECT`, `TEAM`, `CLUB`, `IDEA_FESTIVAL`, `NOT_DEPLOYED` 중 여러 개를 선택할 수 있습니다.
+
+- 응답의 `Project.categories`는 항상 배열이며 미분류이면 빈 배열입니다.
+- 응답 타입 `ProjectCategory`는 서버에 새 값이 추가되어도 깨지지 않도록 알 수 없는 문자열도 허용합니다. `switch`로 분기할 때는 `default`를 두세요.
+- 요청(필터, 생성, 수정)에는 `KnownProjectCategory`만 사용할 수 있습니다.
+
+#### 생성과 수정
+
+`CreateProjectRequest`는 `name`, `description`, `startYear`, `participantIds`가 필수입니다. `status`를 생략하면 `ACTIVE`로 생성되고, `ENDED`로 생성하려면 `endYear`가 필요합니다.
+
+`UpdateProjectRequest`의 필수 값은 생성과 같고, 나머지는 필드별 동작이 다릅니다. `status`, `endYear`는 바꿀 수 없으므로 `endProject`, `reactivateProject`를 사용하세요.
+
+| 필드 | 생략할 때 | 비우는 방법 |
+|:---|:---|:---|
+| `repositories`, `techStacks` | 빈 목록으로 덮어씁니다. 유지하려면 기존 값을 다시 보내야 합니다. | 생략하거나 빈 배열 |
+| `categories` | 기존 값을 유지합니다. | 빈 배열 |
+| `iconKey`, `deploymentUrl` | 기존 값을 유지합니다. | 빈 문자열 |
+
+```typescript
+const project = await client.projects().createProject({
+  name: 'DataGSM',
+  description: '학교 데이터를 제공하는 API 서비스',
+  startYear: 2024,
+  clubId: 3,
+  participantIds: [1, 2],
+  categories: ['TEAM', 'CLUB'],
+  deploymentUrl: 'https://datagsm.kr',
+});
+
+await client.projects().updateProject(project.data.id, {
+  name: 'DataGSM',
+  description: '설명 수정',
+  startYear: 2024,
+  participantIds: [1, 2],
+  categories: [],
+});
+
+await client.projects().endProject(project.data.id, { endYear: 2025 });
+await client.projects().reactivateProject(project.data.id);
 ```
 
 ### NEIS API
@@ -223,35 +334,30 @@ const projects = await client.projects().getProjects({
 
 | 메서드                      | 설명         | 반환 타입                            |
 |:-------------------------|:-----------|:---------------------------------|
-| `getMeals(request)`      | 급식 데이터 조회  | `Promise<GetMealsResponse>`      |
-| `getSchedules(request)`  | 학사일정 조회    | `Promise<GetSchedulesResponse>`  |
+| `getMeals(request?)`     | 급식 데이터 조회  | `Promise<GetMealsResponse>`      |
+| `getSchedules(request?)` | 학사일정 조회    | `Promise<GetSchedulesResponse>`  |
 | `getTimetables(request)` | 시간표 데이터 조회 | `Promise<GetTimetablesResponse>` |
 
 #### 요청 파라미터
 
-| 메서드                      | 파라미터                         | 타입        | 설명                  |
-|:-------------------------|:-----------------------------|:----------|:--------------------|
-| `getMeals`               | `date`                       | `string`  | 조회 날짜              |
-| `getMeals`               | `fromDate`                   | `string`  | 조회 시작 날짜           |
-| `getMeals`               | `toDate`                     | `string`  | 조회 종료 날짜           |
-| `getMeals`               | `isValidDateCombination`     | `boolean` | 날짜 조합 검증 여부        |
-| `getMeals`               | `isValidDateRange`           | `boolean` | 날짜 범위 검증 여부        |
-| `getMeals`               | `isValidDateRangePeriod`     | `boolean` | 날짜 범위 기간 검증 여부     |
-| `getSchedules`           | `date`                       | `string`  | 조회 날짜              |
-| `getSchedules`           | `fromDate`                   | `string`  | 조회 시작 날짜           |
-| `getSchedules`           | `toDate`                     | `string`  | 조회 종료 날짜           |
-| `getSchedules`           | `isValidDateCombination`     | `boolean` | 날짜 조합 검증 여부        |
-| `getSchedules`           | `isValidDateRange`           | `boolean` | 날짜 범위 검증 여부        |
-| `getSchedules`           | `isValidDateRangePeriod`     | `boolean` | 날짜 범위 기간 검증 여부     |
-| `getTimetables`          | `grade`                      | `number`  | 학년                  |
-| `getTimetables`          | `classNum`                   | `number`  | 반                   |
-| `getTimetables`          | `date`                       | `string`  | 조회 날짜              |
-| `getTimetables`          | `fromDate`                   | `string`  | 조회 시작 날짜           |
-| `getTimetables`          | `toDate`                     | `string`  | 조회 종료 날짜           |
-| `getTimetables`          | `isValidDateCombination`     | `boolean` | 날짜 조합 검증 여부        |
-| `getTimetables`          | `isValidDateRange`           | `boolean` | 날짜 범위 검증 여부        |
-| `getTimetables`          | `isValidDateRangePeriod`     | `boolean` | 날짜 범위 기간 검증 여부     |
-| `getTimetables`          | `isDateRequired`             | `boolean` | 날짜 필수 여부 검증        |
+| 메서드             | 파라미터       | 타입       | 설명                          |
+|:----------------|:-----------|:---------|:----------------------------|
+| `getMeals`      | `date`     | `string` | 조회 날짜 (`YYYY-MM-DD`)        |
+| `getMeals`      | `fromDate` | `string` | 조회 시작 날짜                    |
+| `getMeals`      | `toDate`   | `string` | 조회 종료 날짜                    |
+| `getSchedules`  | `date`     | `string` | 조회 날짜 (`YYYY-MM-DD`)        |
+| `getSchedules`  | `fromDate` | `string` | 조회 시작 날짜                    |
+| `getSchedules`  | `toDate`   | `string` | 조회 종료 날짜                    |
+| `getTimetables` | `grade`    | `number` | 학년 (1~3, 필수)                |
+| `getTimetables` | `classNum` | `number` | 반 (1~4, 필수)                 |
+| `getTimetables` | `date`     | `string` | 조회 날짜 (`YYYY-MM-DD`)        |
+| `getTimetables` | `fromDate` | `string` | 조회 시작 날짜                    |
+| `getTimetables` | `toDate`   | `string` | 조회 종료 날짜                    |
+
+- `date`와 `fromDate`, `toDate`는 함께 쓸 수 없습니다. TypeScript에서는 컴파일 오류가 납니다. 기간은 최대 365일입니다.
+- `getTimetables`는 날짜 조건이 하나 이상 필요합니다. `fromDate`나 `toDate`만 지정하면 그 날짜 이후 또는 이전을 조회합니다.
+- `getMeals`, `getSchedules`에서 날짜 조건을 모두 생략하면 서버에 저장된 전체 데이터를 조회합니다.
+- 학사일정의 `scheduleId` 형식이 바뀌어 이전에 저장한 ID는 조회되지 않습니다. 자세한 내용은 [변경 사항 및 마이그레이션](/migration)을 참고하세요.
 
 ```typescript
 // 학사일정 조회
@@ -264,9 +370,30 @@ const schedules = await client.neis().getSchedules({
 const timetables = await client.neis().getTimetables({
   grade: 2,
   classNum: 3,
-  date: '2026-03-01',
+  date: '2026-03-02',
 });
 ```
+
+### 상태 확인 API
+
+**`client.health()`** - 서버 상태 확인
+
+| 메서드       | HTTP              | 반환 타입                          |
+|:----------|:------------------|:-------------------------------|
+| `check()` | `GET /v1/health`  | `Promise<HealthCheckResponse>` |
+
+### 타입
+
+요청과 응답 타입은 패키지에서 `import type`으로 가져옵니다.
+
+| 영역 | 타입 |
+|:---|:---|
+| 공통 | `ApiResponse`, `PageRequest`, `SortDirection`, `Sex`, `Major`, `ClubType`, `ClubSummary`, `ParticipantInfo` |
+| 학생 | `Student`, `Role`, `EnrolledRole`, `StudentSortBy`, `GetStudentsRequest`, `GetStudentsResponse`, `CreateStudentRequest`, `UpdateStudentRequest`, `StudentResponse` |
+| 동아리 | `Club`, `ClubSortBy`, `ClubStatus`, `GetClubsRequest`, `GetClubsResponse`, `ClubRequest`, `ClubResponse` |
+| 프로젝트 | `Project`, `ProjectCategory`, `KnownProjectCategory`, `ProjectSortBy`, `ProjectStatus`, `GetProjectsRequest`, `GetProjectsResponse`, `CreateProjectRequest`, `UpdateProjectRequest`, `EndProjectRequest`, `ProjectResponse` |
+| NEIS | `NeisDateFilter`, `RequiredNeisDateFilter`, `Timetable`, `GetTimetablesRequest`, `GetTimetablesResponse`, `Meal`, `MealType`, `GetMealsRequest`, `GetMealsResponse`, `Schedule`, `GetSchedulesRequest`, `GetSchedulesResponse` |
+| 상태 확인 | `HealthCheckResponse` |
 
 ## 예외 처리
 
@@ -280,20 +407,31 @@ SDK는 발생한 오류 상황에 맞는 전용 에러 클래스를 제공합니
 | `UnauthorizedError` | 401     | 유효하지 않은 API 키      |
 | `ForbiddenError`    | 403     | 요청 권한 범위 부족        |
 | `NotFoundError`     | 404     | 리소스를 찾을 수 없음       |
+| `ConflictError`     | 409     | 이름, 이메일, 학번 등 중복   |
 | `RateLimitError`    | 429     | 요청 횟수 제한 초과        |
 | `ServerError`       | 500+    | 서버 내부 오류           |
 | `NetworkError`      | -       | 네트워크 연결 실패 또는 타임아웃 |
+| `DataGsmError`      | 그 외     | 위에 해당하지 않는 오류. 모든 에러의 부모 클래스 |
+
+모든 에러는 `statusCode`와 `response`(서버 응답 본문)를 가집니다. `RateLimitError`는 `retryAfter`(초), `NetworkError`는 `cause`(원인 에러)를 추가로 제공합니다. 경로의 ID가 양의 정수가 아니면 요청 전에 `TypeError`가 발생합니다.
 
 ### 예외 처리 예제
 
 ```typescript
-import { DataGsmError, RateLimitError, UnauthorizedError } from '@themoment-team/datagsm-openapi';
+import {
+  ConflictError,
+  DataGsmError,
+  RateLimitError,
+  UnauthorizedError,
+} from '@themoment-team/datagsm-openapi';
 
 try {
   const response = await client.students().getStudents();
 } catch (error) {
   if (error instanceof UnauthorizedError) {
     console.error('API 키를 확인해주세요.');
+  } else if (error instanceof ConflictError) {
+    console.error('이미 존재하는 데이터입니다.');
   } else if (error instanceof RateLimitError) {
     console.error('너무 많은 요청을 보냈습니다. 잠시 후 시도해주세요.');
     console.log(`재시도 가능 시간: ${error.retryAfter}초 후`);
@@ -319,7 +457,7 @@ DATAGSM_API_KEY=your_secret_api_key
 
 ```typescript
 const client = new DataGsmClient({
-  apiKey: process.env.DATAGSM_API_KEY,
+  apiKey: process.env.DATAGSM_API_KEY!,
 });
 ```
 
@@ -343,8 +481,8 @@ const client = new DataGsmClient({
 
 **해결 방법**:
 
-- API 키의 권한 범위 확인
-- 필요한 권한 범위가 부여되었는지 확인
+- API 키의 권한 범위 확인 (`student:read`, `student:write` 등)
+- 쓰기 권한 범위는 관리자 계정만 발급할 수 있습니다.
 - 권한 범위 추가가 필요한 경우 관리자에게 문의
 
 #### 타임아웃 오류
@@ -363,3 +501,36 @@ const client = new DataGsmClient({
 - **이슈 트래커**: [GitHub Issues](https://github.com/themoment-team/datagsm-openapi-sdk-javascript/issues)
 
 문의사항이나 버그 리포트는 GitHub Issues를 통해 제출해 주세요.
+
+## 마이그레이션
+
+JavaScript SDK에는 Deprecated API가 없고 2.0.0의 Breaking 변경만 있습니다. 서버 쪽 변경은 [변경 사항 및 마이그레이션](/migration)을 참고하십시오.
+
+### 1.x → 2.0.0
+
+아래는 1.1.0과 2.0.0을 비교한 내용입니다.
+
+- **Breaking**: 응답의 선택 값이 `grade?: number`처럼 선택 속성 → `grade: number | null`처럼 `null` 포함 타입
+  - 영향: 실제 응답 값은 이전에도 `null`이었고 타입만 맞췄습니다. TypeScript에서 `null` 처리 컴파일 오류가 납니다.
+  - 대응: `== null`이나 `??`로 바꿉니다. 대상은 `Student`, `Club`, `Project`, `ParticipantInfo`, `Meal`, `Schedule`입니다.
+- **Breaking**: `GetMealsResponse`, `GetSchedulesResponse`의 `data`가 배열 타입 → `data.meals`, `data.schedules`
+  - 영향: TypeScript에서 `response.data`를 배열로 쓴 코드는 컴파일 오류가 납니다.
+  - 대응: `response.data.meals`, `response.data.schedules`로 바꿉니다.
+- **Breaking**: `GetMealsRequest`, `GetSchedulesRequest`에 `isValidDateCombination`, `isValidDateRange`, `isValidDateRangePeriod` → 제거
+  - 영향: 해당 필드를 넘기면 컴파일 오류가 납니다.
+  - 대응: 필드를 지웁니다.
+- **Breaking**: `date`와 `fromDate`, `toDate`를 함께 지정 가능 → 유니언 타입 `NeisDateFilter`로 함께 쓸 수 없음
+  - 영향: 함께 지정하면 컴파일 오류가 납니다. 서버는 원래 400으로 거절합니다.
+  - 대응: 둘 중 하나만 지정합니다.
+- **Breaking**: `PageInfo`, `PagedResponse` 타입 → 제거
+  - 영향: 해당 타입을 쓰면 컴파일 오류가 납니다.
+  - 대응: 응답의 `totalPages`, `totalElements`를 사용합니다.
+- **동작 변경**: 성공 응답의 JSON이 깨지면 `undefined` 반환 → `DataGsmError` 발생
+  - 영향: 조용히 넘어가던 오류가 예외가 됩니다.
+  - 대응: 필요하면 `catch`에서 처리합니다.
+- **동작 변경**: 409가 `DataGsmError` → `ConflictError`
+  - 영향: `DataGsmError`를 상속하므로 기존 처리는 그대로 동작합니다.
+  - 대응: 필요하면 나눠서 처리합니다.
+- **추가**: 쓰기 API, `neis().getTimetables()`, 프로젝트 `status`, `category` 필터, `Project`의 `startYear`, `endYear`, `status`, `categories`, `iconUrl`, `iconKey`, `deploymentUrl`, `repositories`, `techStacks`
+  - 영향: 없습니다.
+  - 대응: 필요하면 사용합니다.

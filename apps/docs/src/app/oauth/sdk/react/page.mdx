@@ -10,20 +10,20 @@ export const metadata = createDocsPageMetadata({ title: "React SDK", pathname: "
 
 **datagsm-oauth-react**는 React 애플리케이션에서 DataGSM OAuth 인증을 쉽고 빠르게 연동할 수 있도록 돕는 공식 SDK입니다.
 
-이 SDK를 사용하면 복잡한 OAuth 리디렉션 흐름을 직접 구현할 필요 없이, 제공되는 React 컴포넌트와 Hook을 통해 간편하게 로그인 기능을 구현할 수 있습니다. 특히 보안이 강화된 PKCE(Proof Key for Code Exchange) 인증 방식을 지원하여 보다 안전한 인증 환경을 구축할 수 있습니다.
+이 SDK를 사용하면 복잡한 OAuth 리디렉션 흐름을 직접 구현할 필요 없이, 제공되는 React 컴포넌트와 Hook을 통해 간편하게 로그인 기능을 구현할 수 있습니다. SDK는 로그인 요청 생성과 콜백 검증을 담당하고, 토큰 교환은 앱의 백엔드가 처리합니다.
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
     <Shield className="h-5 w-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
     <div>
       <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-        PKCE 사용 권장
+        PKCE 기본 적용
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm">
         <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">datagsm-oauth-react</code>
-        는 auth모드를 'PKCE'로 설정하면 내부적으로
+        는 기본으로 PKCE(S256)를 사용합니다. 내부적으로
         <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">code_challenge</code>와
-        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">code_challenge_method</code>를 사용하여 Authorization Code 탈취 공격을 방지할 수 있습니다.
+        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">code_challenge_method</code>를 보내 Authorization Code 탈취 공격을 방지합니다.
         자세한 내용은 <a href="/oauth/pkce" className="underline font-medium">PKCE 가이드</a>를 참고하세요.
       </div>
     </div>
@@ -35,7 +35,9 @@ export const metadata = createDocsPageMetadata({ title: "React SDK", pathname: "
 | 특징                | 설명                                                                  |
 |-------------------|---------------------------------------------------------------------|
 | **간편한 연동**        | `OAuthProvider`와 `OAuthLoginButton` 컴포넌트만으로 빠르게 로그인 UI를 구성할 수 있습니다. |
-| **PKCE 지원**       | 추가적인 설정 없이 `authMode` 변경만으로 PKCE 인증 방식을 적용할 수 있습니다.                 |
+| **PKCE 기본 적용**    | 별도 설정 없이 PKCE(S256)가 적용됩니다.                                         |
+| **콜백 검증**         | `handleOAuthCallback`이 `state` 검증과 저장값 정리를 한 번에 처리합니다.                |
+| **OIDC 지원**       | `openid`를 요청하면 `nonce`를 만들어 함께 보내고 콜백에서 돌려줍니다.                       |
 | **React Hook 지원** | `useOAuth` Hook을 제공하여 커스텀 로그인 버튼이나 로직을 유연하게 작성할 수 있습니다.             |
 | **TypeScript 지원** | 모든 컴포넌트와 Hook은 TypeScript로 작성되어 타입 안정성을 보장합니다.                      |
 
@@ -44,6 +46,8 @@ export const metadata = createDocsPageMetadata({ title: "React SDK", pathname: "
 | 항목        | 최소 버전 | 권장 버전 |
 |-----------|-------|-------|
 | **React** | 18    | 19 이상 |
+
+PKCE는 Web Crypto(`crypto.subtle`)를 사용하므로 HTTPS 또는 localhost에서만 동작합니다. SDK는 로그인 요청 값을 `sessionStorage`에 저장하므로 사이트 데이터가 차단된 브라우저나 스토리지가 막힌 서드파티 iframe에서는 `login()`이 실패합니다.
 
 ## 설치
 
@@ -55,12 +59,21 @@ export const metadata = createDocsPageMetadata({ title: "React SDK", pathname: "
   <CodeTab label="pnpm" language="bash" code={`pnpm add @themoment-team/datagsm-oauth-react`} />
 </CodeTabs>
 
+현재 버전은 `2.0.0`입니다.
+
 ## 빠른 시작
+
+### 동작 흐름
+
+1. `login()`이 `state`, PKCE `code_verifier`, `openid`를 요청한 경우 `nonce`를 만들어 `sessionStorage`에 저장하고 DataGSM 인가 페이지로 이동합니다.
+2. 사용자가 로그인하고 동의하면 서버가 `redirectUri?code=...&state=...`로 돌려보냅니다. 동의를 거부하면 `redirectUri?error=access_denied&error_description=...&state=...`로 돌려보냅니다.
+3. 콜백 페이지에서 `handleOAuthCallback()`으로 `state`를 검증하고 저장해 둔 `code_verifier`와 `nonce`를 꺼냅니다.
+4. 앱의 백엔드가 `code`와 `code_verifier`로 토큰을 발급받습니다.
 
 ### 1. OAuthProvider 설정
 
 애플리케이션의 최상단 (예: `App.js`)을 `OAuthProvider`로 감싸고,
-[DataGSM](https://www.datagsm.kr/clients)에서 발급받은 `clientId`와 로그인 성공 후 리다이렉트될 `redirectUri`를 props로 전달합니다.
+[DataGSM](https://www.datagsm.kr/clients)에서 발급받은 `clientId`와 로그인 성공 후 리다이렉트될 `redirectUri`, 필요한 `scope`를 props로 전달합니다.
 
 ```javascript
 // src/main.jsx
@@ -77,7 +90,7 @@ root.render(
     <OAuthProvider
       clientId="YOUR_CLIENT_ID"
       redirectUri="YOUR_REDIRECT_URI"
-      authMode="PKCE"
+      scope={['datagsm:account_read', 'datagsm:student_read', 'openid']}
     >
       <App />
     </OAuthProvider>
@@ -88,8 +101,12 @@ root.render(
 | Prop | 타입 | 필수 여부 | 설명 |
 | --- | --- | --- | --- |
 | `clientId` | `string` | 필수 | DataGSM에서 발급받은 클라이언트 ID |
-| `redirectUri` | `string` | 필수 | 로그인 성공 후 리디렉션될 URI |
-| `authMode` | `'STANDARD' \| 'PKCE'` | 선택 | 인증 방식 설정. 기본값은 `'STANDARD'`입니다. |
+| `redirectUri` | `string` | 필수 | 클라이언트에 등록한 Redirect URI 중 하나. 정확히 일치해야 합니다. |
+| `authMode` | `'PKCE' \| 'STANDARD'` | 선택 | 인가 코드 흐름 방식. 기본값은 `'PKCE'`입니다. `'STANDARD'`는 `client_secret`을 보관한 백엔드가 code를 교환할 때만 사용합니다. |
+| `scope` | `readonly string[]` | 선택 | 요청할 권한 범위 목록. 값이 같으면 인라인 배열을 넘겨도 `login`이 다시 만들어지지 않습니다. |
+| `useNonce` | `boolean` | 선택 | `openid`를 요청할 때 `nonce`를 만들어 함께 보냅니다. 기본값은 `true`입니다. |
+| `issuer` | `string` | 선택 | 인가 서버 주소. 기본값은 `https://oauth.authorization.datagsm.kr`입니다. |
+| `authorizationUrl` | `string` | 선택 | 인가 엔드포인트 전체 주소. `issuer`보다 우선합니다. |
 | `children` | `ReactNode` | 필수 | `OAuthProvider`의 하위에 렌더링될 React 컴포넌트 |
 
 ### 2. 로그인 버튼 사용
@@ -104,7 +121,7 @@ import { OAuthLoginButton } from '@themoment-team/datagsm-oauth-react';
 function App() {
   return (
     <div>
-      <OAuthLoginButton />
+      <OAuthLoginButton onError={() => alert('로그인을 시작하지 못했습니다.')} />
     </div>
   );
 }
@@ -117,9 +134,138 @@ export default App;
 | Prop | 타입 | 필수 여부 | 설명 |
 | --- | --- | --- | --- |
 | `children` | `ReactNode` | 선택 | 버튼 내부에 렌더링될 내용. 기본값은 "Data GSM 로그인"입니다. |
-| `onClick` | `(event) => void` | 선택 | 기본 `login` 함수 호출 전에 실행할 커스텀 클릭 핸들러. |
+| `onClick` | `(event) => void` | 선택 | `login` 호출 전에 실행할 클릭 핸들러. `event.preventDefault()`를 호출하면 로그인을 시작하지 않습니다. |
+| `onError` | `(error: unknown) => void` | 선택 | `login`이 실패했을 때 호출됩니다. |
 
-### useOAuth Hook 사용하기
+### 3. 콜백 처리
+
+`handleOAuthCallback()`은 현재 URL에서 `code`, `state`, `error`를 읽고 `state`를 검증한 뒤 저장해 둔 `code_verifier`와 `nonce`를 돌려줍니다. 저장값은 성공과 실패에 관계없이 지웁니다.
+
+콜백은 한 번만 처리됩니다. 같은 URL을 다시 처리하면 `already_handled`를 돌려주므로, React StrictMode에서 effect가 두 번 실행되거나 뒤로 가기로 돌아와도 이미 쓴 code로 토큰 교환을 다시 시도하지 않습니다.
+
+```javascript
+// src/pages/OAuthCallbackPage.jsx
+
+import { useEffect, useState } from 'react';
+import { handleOAuthCallback } from '@themoment-team/datagsm-oauth-react';
+
+function OAuthCallbackPage() {
+  const [message, setMessage] = useState('로그인 처리 중...');
+
+  useEffect(() => {
+    const result = handleOAuthCallback();
+
+    if (!result.ok) {
+      // StrictMode 재실행이나 뒤로 가기면 첫 처리 결과를 그대로 둡니다.
+      if (result.error === 'already_handled') return;
+
+      if (result.error === 'access_denied') {
+        setMessage('권한 요청을 거부했습니다.');
+      } else if (result.error === 'invalid_state') {
+        setMessage('잘못된 로그인 요청입니다. 다시 시도해 주세요.');
+      } else {
+        setMessage(result.errorDescription ?? '로그인에 실패했습니다.');
+      }
+      return;
+    }
+
+    // code가 주소창과 방문 기록에 남지 않도록 지웁니다.
+    window.history.replaceState(null, '', window.location.pathname);
+
+    // code와 codeVerifier를 앱 백엔드로 보내 토큰을 발급받습니다.
+    fetch('/api/auth/datagsm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: result.code,
+        codeVerifier: result.codeVerifier,
+        nonce: result.nonce,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error('token exchange failed');
+        setMessage('로그인되었습니다.');
+      })
+      .catch(() => setMessage('로그인에 실패했습니다.'));
+  }, []);
+
+  return <p>{message}</p>;
+}
+
+export default OAuthCallbackPage;
+```
+
+결과는 `ok`로 구분합니다.
+
+| `ok` | 필드 |
+| --- | --- |
+| `true` | `code`, `state`, `codeVerifier`(`STANDARD` 모드면 `null`), `nonce`(`openid`를 요청하지 않았으면 `null`) |
+| `false` | `error`, `errorDescription` |
+
+| `error` | 의미 |
+| --- | --- |
+| `not_callback` | URL에 `code`, `state`, `error`가 없습니다. 콜백이 아닌 방문이며 저장값을 유지합니다. |
+| `already_handled` | 이미 처리한 콜백 URL입니다. 무시하면 됩니다. |
+| `invalid_state` | `state`가 다르거나 저장값이 없습니다. CSRF를 의심해야 합니다. |
+| `missing_code` | 오류도 code도 없는 콜백입니다. |
+| 그 밖의 값 | 서버가 보낸 값입니다. 사용자가 동의를 거부하면 `access_denied`입니다. |
+
+### 4. 토큰 교환
+
+인가 서버의 CORS 허용 출처는 DataGSM 자사 서비스로 제한되어 있어 외부 서비스의 브라우저에서 `/v1/oauth/token`을 직접 호출할 수 없습니다. 그래서 이 SDK는 토큰 교환 함수를 제공하지 않습니다. 콜백에서 얻은 값을 앱의 백엔드로 보내고, 백엔드가 아래처럼 교환하십시오.
+
+```typescript
+// 앱 백엔드 (예: Node.js)
+const response = await fetch('https://oauth.authorization.datagsm.kr/v1/oauth/token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: 'YOUR_CLIENT_ID',
+    code,
+    redirect_uri: 'YOUR_REDIRECT_URI', // 인가 요청과 같은 값
+    code_verifier: codeVerifier,
+  }),
+});
+
+if (!response.ok) {
+  // 실패 응답 예: { "error": "invalid_grant", "error_description": "..." }
+  throw new Error(`token exchange failed: ${response.status}`);
+}
+
+// 응답은 공통 응답으로 감싸지 않은 토큰 객체입니다.
+const token: {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string | null;
+  scope: string; // 공백으로 구분된 문자열
+  id_token?: string | null; // openid를 요청했을 때만 값이 있습니다
+} = await response.json();
+```
+
+- `STANDARD` 모드로 받은 code는 `client_secret`이 반드시 필요합니다. `client_secret`은 백엔드에만 두고 프런트 코드에 넣지 마십시오.
+- `openid`를 요청했다면 `id_token`을 검증하고 `nonce` 클레임이 콜백에서 받은 `nonce`와 같은지 확인하십시오. 자세한 절차는 [OIDC 가이드](/oauth/oidc)를 참고하십시오.
+
+## 권한 범위
+
+`scope`에는 필요한 값을 명시하십시오. 표기는 `{appId}:{name}`이고 DataGSM 자사 앱의 Application ID는 `datagsm`입니다. `openid`만 접두어가 없습니다.
+
+| scope | 설명 |
+| --- | --- |
+| `datagsm:account_read` | `/userinfo` 호출 권한과 계정 기본 정보 |
+| `datagsm:student_read` | `student`, `teacher` 정보 |
+| `datagsm:club_read` | `clubs`, `student.majorClub`, `student.autonomousClub` 정보. 명시해야 부여됩니다. |
+| `datagsm:project_read` | `projects` 정보. 명시해야 부여됩니다. |
+| `openid` | `id_token` 발급 요청 |
+
+요청한 값은 클라이언트에 등록되어 있어야 합니다. 등록되지 않은 값을 요청하면 `invalid_scope`가 됩니다.
+
+`scope`를 생략하면 서버는 클라이언트에 등록된 범위에서 `club_read`, `project_read`를 뺀 값을 부여합니다. 남는 값이 없으면 `invalid_scope`입니다. `openid`만 요청하면 `account_read`, `student_read` 중 클라이언트가 가진 값을 부여하고, 둘 다 없으면 `self_read`를 부여합니다. 전체 목록은 [권한 범위 레퍼런스](/oauth/scopes)를 참고하십시오.
+
+## API 레퍼런스
+
+### useOAuth
 
 디자인 시스템에 맞는 커스텀 버튼을 만들거나, 로그인 기능을 버튼 클릭 외의 다른 액션과 연결하고 싶을 때는 `useOAuth` Hook을 사용할 수 있습니다.
 
@@ -132,8 +278,12 @@ function CustomLoginButton() {
   const { login } = useOAuth();
 
   const handleLogin = async () => {
-    // PKCE 모드인 경우 login() 호출 시 code_verifier가 자동 생성되어 sessionStorage에 저장됩니다.
-    await login();
+    try {
+      // state, code_verifier, nonce를 저장한 뒤 인가 페이지로 이동합니다.
+      await login();
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -151,46 +301,24 @@ export default CustomLoginButton;
 | 반환 값 | 타입 | 설명 |
 | --- | --- | --- |
 | `login` | `() => Promise<void>` | 호출 시 DataGSM OAuth 로그인 페이지로 리디렉션하는 함수 |
-| `clientId` | `string` | `OAuthProvider`에 전달된 클라이언트 ID |
-| `redirectUri` | `string` | `OAuthProvider`에 전달된 리디렉션 URI |
-| `authMode` | `'STANDARD' \| 'PKCE'` | 현재 설정된 인증 방식 |
+| `handleCallback` | `(url?: string) => OAuthCallbackResult` | `handleOAuthCallback`과 같습니다. |
 | `getCodeVerifier` | `() => string \| null` | 저장된 PKCE `code_verifier`를 가져오는 함수 |
 | `clearVerifier` | `() => void` | 저장된 PKCE `code_verifier`를 삭제하는 함수 |
+| `clientId`, `redirectUri`, `authMode`, `scope`, `useNonce`, `issuer`, `authorizationUrl` | `OAuthProvider` props와 같음 | `OAuthProvider`에 설정된 값 |
 
-## PKCE 인증 방식 사용하기
+### 함수와 상수
 
-PKCE(Proof Key for Code Exchange) 모드를 사용하면 로그인 과정에서 보안을 한층 더 강화할 수 있습니다.
+| 이름 | 설명 |
+| --- | --- |
+| `handleOAuthCallback(url?)` | 콜백을 검증하고 `OAuthCallbackResult`를 반환합니다. `url`을 생략하면 현재 주소를 처리합니다. `location.search`나 `/callback?code=...` 같은 상대 URL도 받습니다. |
+| `parseOAuthCallback(url?)` | 검증 없이 `code`, `state`, `error`, `errorDescription`을 꺼냅니다. |
+| `verifyState(receivedState)` | `state`만 검증하고 `boolean`을 반환합니다. 저장된 `state`는 결과와 관계없이 지워집니다. |
+| `clearAuthorizationRequest()` | 저장된 `state`, `code_verifier`, `nonce`를 지웁니다. |
+| `DATAGSM_OAUTH_ISSUER` | 기본 인가 서버 주소입니다. |
 
-1. `OAuthProvider`의 `authMode`를 `"PKCE"`로 설정합니다.
-2. `login()` 함수가 실행되면 SDK 내부적으로 `code_verifier`를 생성하여 `sessionStorage`에 저장하고, 이에 대응하는 `code_challenge`를 생성하여 인증 서버로 함께 보냅니다.
-3. 리다이렉트된 페이지(Callback URI)에서 백엔드에 액세스 토큰을 요청할 때, `getCodeVerifier()`를 통해 저장된 `code_verifier` 값을 가져와 함께 전달해야 합니다.
-4. 토큰 요청이 완료된 후에는 `clearVerifier()`를 호출하여 저장된 값을 삭제하는 것이 권장됩니다.
+### 타입
 
-```javascript
-// Callback 페이지 예시
-import { useEffect } from 'react';
-import { useOAuth } from '@themoment-team/datagsm-oauth-react';
-
-function CallbackPage() {
-  const { getCodeVerifier, clearVerifier } = useOAuth();
-
-  useEffect(() => {
-    const codeVerifier = getCodeVerifier();
-    const code = new URLSearchParams(window.location.search).get('code');
-
-    if (code && codeVerifier) {
-      // 백엔드 API 호출 시 code와 codeVerifier를 함께 전달
-      fetchAccessToken(code, codeVerifier).finally(() => {
-        clearVerifier(); // 사용 후 정리
-      });
-    }
-  }, []);
-
-  return <div>로그인 중...</div>;
-}
-
-export default CallbackPage;
-```
+`AuthMode`, `OAuthConfig`, `OAuthContextValue`, `OAuthProviderProps`, `OAuthLoginButtonProps`, `OAuthCallbackParams`, `OAuthCallbackResult`, `OAuthCallbackSuccess`, `OAuthCallbackFailure`, `OAuthCallbackErrorCode`를 내보냅니다.
 
 ## 문제 해결
 
@@ -204,9 +332,46 @@ export default CallbackPage;
 1. 애플리케이션의 최상위 컴포넌트가 `OAuthProvider`로 감싸져 있는지 확인하세요.
 2. `useOAuth` 또는 `OAuthLoginButton`을 사용하는 컴포넌트가 `OAuthProvider`의 하위 트리에서 렌더링되는지 확인하세요.
 
+#### login()이 실패합니다
+
+**원인**: Web Crypto나 `sessionStorage`를 쓸 수 없는 환경이거나, `scope` 값에 공백이 들어 있습니다.
+
+**해결 방법**:
+1. HTTPS 또는 localhost에서 실행하세요. `http://192.168.x.x:5173` 같은 주소에서는 PKCE를 쓸 수 없습니다.
+2. 사이트 데이터 차단 설정과 iframe 환경을 확인하세요.
+3. `scope`는 공백으로 합친 문자열이 아니라 값마다 배열 원소로 넘기세요.
+
+#### invalid_scope 오류
+
+**원인**: 요청한 값이 클라이언트에 등록되어 있지 않거나, `scope`를 생략했는데 기본으로 부여할 값이 없습니다.
+
+**해결 방법**: 콘솔에서 클라이언트에 값을 등록하고 `scope`를 명시하세요.
+
 ## 추가 리소스
 
 - **GitHub 저장소**: [DataGSM OAuth SDK React](https://github.com/themoment-team/datagsm-oauth-sdk-react)
 - **이슈 트래커**: [GitHub Issues](https://github.com/themoment-team/datagsm-oauth-sdk-react/issues)
 
 문의사항이나 버그 리포트는 GitHub Issues를 통해 제출해 주세요.
+
+## 마이그레이션
+
+React SDK에는 Deprecated API가 없습니다. 서버 쪽 변경은 [변경 사항 및 마이그레이션](/migration)을 참고하십시오.
+
+### 1.x → 2.0.0
+
+- **Breaking**: 기본 `authMode`는 `STANDARD` → 기본 `authMode`는 `PKCE`
+  - 영향: `authMode`를 지정하지 않은 앱은 `code_verifier` 없이 토큰을 교환하면 실패합니다.
+  - 대응: `client_secret`으로 교환한다면 `authMode="STANDARD"`를 명시합니다. PKCE를 쓴다면 토큰 요청에 `code_verifier`를 추가합니다.
+- **Breaking**: `authMode`를 지정하지 않으면 Web Crypto가 필요 없음 → 기본 PKCE라 `crypto.subtle` 필요
+  - 영향: HTTP 개발 서버나 HTTP 배포에서 `login()`이 실패합니다.
+  - 대응: HTTPS 또는 localhost로 옮기거나 `authMode="STANDARD"`를 명시합니다.
+- **Breaking**: `STANDARD` 모드는 `sessionStorage`를 쓰지 않음 → 모든 인가 요청에 `state`를 붙이고 모드와 관계없이 `sessionStorage`에 저장
+  - 영향: 스토리지가 차단된 환경에서 `login()`이 실패합니다.
+  - 대응: 지원 환경을 확인하고 `onError` 또는 `catch`로 실패를 처리합니다.
+- **동작 변경**: 콜백 처리를 앱이 직접 구현 → `handleOAuthCallback()` 추가
+  - 영향: `getCodeVerifier()`, `clearVerifier()`는 그대로 동작하지만 `state`는 검증되지 않습니다.
+  - 대응: `handleOAuthCallback()`으로 바꿉니다. 기존 조합을 유지한다면 `verifyState()`를 함께 호출합니다.
+- **추가**: `scope`, `useNonce`, `issuer`, `authorizationUrl` props와 `handleCallback`, `parseOAuthCallback`, `verifyState`, `clearAuthorizationRequest`, `DATAGSM_OAUTH_ISSUER`
+  - 영향: 없습니다.
+  - 대응: `scope`를 명시합니다.
