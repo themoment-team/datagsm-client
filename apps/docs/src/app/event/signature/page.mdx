@@ -32,7 +32,7 @@ DataGSM 서버는 이벤트를 전송할 때 다음 헤더를 함께 보냅니�
 X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>
 ```
 
-- `secret`: Event를 콘솔에 등록할 때 1회 노출된 64자 hex secret
+- `secret`: Event를 콘솔에 등록할 때 1회 노출된 64자 hex secret. hex로 디코딩하지 않고 문자열 그대로 `UTF-8` 바이트를 키로 사용합니다.
 - `payload`: HTTP 요청 본문(JSON) 원문 바이트(`UTF-8`)
 - 서명 값은 HMAC-SHA256 결과를 소문자 hex로 인코딩한 문자열입니다.
 
