@@ -1,0 +1,100 @@
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+
+export const metadata = createDocsPageMetadata({ title: "변경 사항 및 마이그레이션", pathname: "/migration" })
+
+# 변경 사항 및 마이그레이션
+
+### 개요
+
+DataGSM 서버와 SDK의 명세가 크게 바뀌었습니다. 기존 연동이 갑자기 멈추지 않도록 서버는 이전 동작 상당수를 유지하고 있습니다.
+
+이 문서는 변경 내용을 세 가지로 나누어 설명합니다.
+
+- **계속 동작하는 항목**: 코드를 고치지 않아도 동작합니다. 새로 연동한다면 권장 방식을 사용하십시오.
+- **대응이 필요한 항목**: 이전 동작이 유지되지 않습니다. 해당하는 연동은 수정해야 합니다.
+- **SDK 변경**: 버전을 올릴 때 필요한 작업입니다.
+
+### 계속 동작하는 항목
+
+아래 항목은 호환성을 위해 유지됩니다. 제거 일정은 정해져 있지 않으며, 제거가 결정되면 사전에 공지합니다.
+
+#### OAuth
+
+| 항목 | 현재 동작 | 신규 연동 권장 방식 |
+|------|-----------|---------------------|
+| `self_read` | 계정, `student` 또는 `teacher`, `student` 안의 동아리를 반환 | [`account_read student_read club_read`로 전환](/oauth/scopes) |
+| `scope` 생략 | 클라이언트 권한 범위 중 `club_read`, `project_read`를 뺀 전체를 부여 | 필요한 권한 범위를 명시 |
+| `openid` 단독 요청 | `account_read`, `student_read`를 부여. 둘 다 없으면 `self_read`를 부여 | 필요한 권한 범위를 `openid`와 함께 명시 |
+| `isStudent` 응답 필드 | `objectType == STUDENT`에서 계산한 값을 반환 | `objectType` 사용 |
+| PKCE `plain` | 수용하지만 Discovery에는 광고하지 않음 | `S256` 사용 |
+| JSON 토큰 요청 | 그대로 동작 | JSON 또는 `application/x-www-form-urlencoded` |
+| JSON의 `camelCase` 필드 | `grantType`, `clientId` 등을 별칭으로 허용. form 요청에는 적용되지 않음 | `snake_case` 사용 |
+| JSON의 `scope` 배열 | 배열과 공백 구분 문자열을 모두 허용 | 공백 구분 문자열 사용 |
+| 본문의 `client_secret` | 그대로 동작. `Authorization: Basic`도 지원 | 둘 중 하나만 사용 |
+| 기존 Refresh Token | 발급 당시 권한 범위를 유지 | 권한 범위를 바꾸면 재로그인 안내 |
+
+`client_secret` 방식 자체는 폐기 대상이 아닙니다. 백엔드가 있는 기밀 클라이언트의 정식 인증 방식입니다.
+
+### 대응이 필요한 항목
+
+#### OAuth
+
+| 변경 후 동작 | 기존 연동 영향 | 해야 할 일 |
+|--------------|----------------|------------|
+| `/userinfo`에 `account_read` 또는 `self_read`가 필요 | `student_read`만 가진 토큰은 `403` | `account_read`를 함께 요청 |
+| `club_read`가 없으면 `student` 안의 동아리를 숨김 (`self_read` 제외) | `majorClub`, `autonomousClub`이 `null` | `club_read`를 명시적으로 요청 |
+| 기본 부여할 권한 범위가 없으면 `scope` 생략 요청을 거부 | `invalid_scope` 오류 | 클라이언트에 권한 범위를 등록하고 명시 |
+| 클라이언트에 없는 권한 범위 요청을 거부 | `invalid_scope` 오류 | 콘솔에서 권한 범위를 먼저 등록 |
+| 요청 범위가 넓어지면 동의를 다시 받음 | SSO 세션이 있어도 동의 화면이 표시 | 사용자 안내 추가 |
+| 동의를 거부하면 콜백에 오류를 전달 | `code` 없이 `error=access_denied`로 복귀 | [콜백에서 오류 처리](/oauth/http/authorize) |
+| Discovery에 `end_session_endpoint`가 없음 | 로그아웃 주소를 Discovery에서 읽을 수 없음 | [`POST /v1/oauth/logout`을 직접 호출](/oauth/oidc) |
+| OAuth 요청 한도 적용 | 클라이언트당 분당 300회 초과 시 `429` | 재시도와 호출량 조절 |
+
+`self_read`를 사용 중이라면 [권한 범위 레퍼런스](/oauth/scopes)의 전환 절차를 따르십시오.
+
+#### OpenAPI
+
+| 변경 후 동작 | 기존 연동 영향 | 해야 할 일 |
+|--------------|----------------|------------|
+| `scheduleId` 형식이 `7430310_20251215_3f9a1c2b7e4d8a06`으로 변경 | 저장해 둔 이전 ID는 더 이상 조회 결과와 일치하지 않음 | 학사일정을 다시 수집하고 ID 형식에 의존하지 않기 |
+| 같은 날 학사일정을 모두 반환 | 날짜당 한 건을 가정한 코드가 일부 일정을 누락 | 날짜별 목록으로 처리 |
+| 프로젝트 `PUT`에서 `repositories`, `techStacks`를 생략하면 비움 | 필드를 보내지 않으면 기존 값이 삭제 | 수정할 때 두 필드를 항상 전송 |
+
+프로젝트 `PUT`의 `categories`, `iconKey`, `deploymentUrl`은 생략하면 기존 값을 유지합니다. `iconKey`와 `deploymentUrl`에 빈 문자열을 보내면 값이 삭제됩니다.
+
+#### Event
+
+| 변경 후 동작 | 기존 연동 영향 | 해야 할 일 |
+|--------------|----------------|------------|
+| `verification_status`가 `VERIFIED`인 구독만 발송 | `PENDING`, `FAILED` 상태에서는 이벤트를 받지 못함 | [구독 상태 확인](/event) |
+
+### SDK 변경
+
+| SDK | 최신 버전 | 패키지 | 주요 변경 |
+|-----|-----------|--------|-----------|
+| [OAuth React](/oauth/sdk/react) | `2.0.0` | `@themoment-team/datagsm-oauth-react` | 기본 `authMode`가 `PKCE`로 변경, `state` 필수 처리 |
+| [OAuth Java / Kotlin](/oauth/sdk/java) | `2.1.0` | `io.github.themoment-team:datagsm-oauth-sdk-java` | Maven Central 이전, OIDC 지원 |
+| [OpenAPI Java / Kotlin](/api/sdk/java) | `3.0.1` | `io.github.themoment-team:datagsm-openapi-sdk-java` | Maven Central 이전, Java 17, 쓰기 API |
+| [OpenAPI JavaScript / TypeScript](/api/sdk/javascript) | `2.0.0` | `@themoment-team/datagsm-openapi` | 응답 타입 변경, 쓰기 API |
+| [OpenAPI Python](/api/sdk/python) | `2.0.0` | `datagsm-openapi-sdk` | `Optional` 필드 전환, 쓰기 API |
+
+버전별 수정 방법은 각 SDK 문서의 **마이그레이션** 절을 참고하십시오.
+
+#### Deprecated API
+
+아래 API는 계속 동작하지만 새 코드에서는 대체 API를 사용하십시오. 제거 일정은 정해져 있지 않습니다. React, JavaScript, Python SDK에는 Deprecated API가 없고, 메이저 버전에서 변경된 내용만 있습니다.
+
+| SDK | Deprecated | 대체 |
+|-----|------------|------|
+| OAuth Java | `DataGsmClient` | `DataGsmOAuthClient` |
+| OAuth Java | `UserInfo.isStudent()`, `getIsStudent()`, `setIsStudent()` | `getObjectType()` |
+| OAuth Java | `Student.isLeaveSchool()` | `getRole() == StudentRole.WITHDRAWN` |
+| OAuth Java | `OidcDiscoveryDocument.getEndSessionEndpoint()` | `DataGsmOAuthClient.getLogoutEndpoint()` |
+| OpenAPI Java | `DataGsmClient` | `DataGsmOpenApiClient` |
+| OpenAPI Java | `ClubRequest.status()`, `getStatus()` | `clubStatus()` |
+
+서버 응답의 `end_session_endpoint`가 제공되지 않으므로 `getEndSessionEndpoint()`는 `null`을 반환합니다.
+
+### 비공식 SDK
+
+[.NET SDK](/api/sdk/dotnet)와 [Go SDK](/api/sdk/go)는 커뮤니티가 관리하는 패키지로, 위 변경이 반영되어 있지 않을 수 있습니다.

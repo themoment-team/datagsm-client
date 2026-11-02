@@ -6,33 +6,37 @@
 
 - [Overview](https://docs.datagsm.kr/): 서비스 소개, 역사, 제공 기능, 빠른 시작 가이드
 - [OpenAPI 개요](https://docs.datagsm.kr/api): API 키 발급, 권한 범위, 공통 헤더, 상태 코드, API 키 관리 권장 사항
-- [학생 데이터 API](https://docs.datagsm.kr/api/http/student): GET /v1/students — 학년·반·번호·성별·역할·기숙사 호실 등 필터링, 페이지네이션, 정렬 지원. STUDENT_READ 권한 필요
-- [동아리 데이터 API](https://docs.datagsm.kr/api/http/club): GET /v1/clubs — 동아리 종류(전공·취업·자율) 필터링, 부장·부원 데이터 포함. CLUB_READ 권한 필요
-- [프로젝트 데이터 API](https://docs.datagsm.kr/api/http/project): GET /v1/projects — 동아리별 프로젝트 및 참가자 데이터 조회. PROJECT_READ 권한 필요
-- [NEIS 데이터 API 개요](https://docs.datagsm.kr/api/http/neis): 급식·학사일정·시간표 API 공통 사항. NEIS_READ 권한 필요
+- [학생 데이터 API](https://docs.datagsm.kr/api/http/student): GET /v1/students — 학년·반·번호·성별·역할·기숙사 호실 등 필터링, 페이지네이션, 정렬 지원(student:read). 생성·수정 API(student:write)
+- [동아리 데이터 API](https://docs.datagsm.kr/api/http/club): GET /v1/clubs — 동아리 종류(전공·창체) 필터링, 부장·부원 데이터 포함(club:read). 생성·수정·삭제 API(club:write)
+- [프로젝트 데이터 API](https://docs.datagsm.kr/api/http/project): GET /v1/projects — 동아리별 프로젝트, 참가자, 카테고리 데이터 조회(project:read). 생성·수정·종료·재활성화·삭제 API(project:write)
+- [NEIS 데이터 API 개요](https://docs.datagsm.kr/api/http/neis): 급식·학사일정·시간표 API 공통 사항. neis:read 권한 필요
 - [급식 데이터 API](https://docs.datagsm.kr/api/http/neis/meals): GET /v1/neis/meals — 날짜·기간 기준 급식 메뉴, 알레르기, 영양 데이터 조회
-- [학사일정 데이터 API](https://docs.datagsm.kr/api/http/neis/schedules): GET /v1/neis/schedules — 날짜·기간 기준 학사일정·행사 데이터 조회
+- [학사일정 데이터 API](https://docs.datagsm.kr/api/http/neis/schedules): GET /v1/neis/schedules — 날짜·기간 기준 학사일정·행사 데이터 조회. 같은 날 일정을 모두 반환하며 날짜·행사명·scheduleId 순 정렬
 - [시간표 데이터 API](https://docs.datagsm.kr/api/http/neis/timetables): GET /v1/neis/timetables — 학년·반·날짜·기간 기준 교시별 과목·교사 시간표 조회
 - [SDK 개요](https://docs.datagsm.kr/api/sdk): OpenAPI SDK 사용 이점 — 타입 안전성, 에러 처리, 보일러플레이트 제거 비교
-- [SDK Java/Kotlin](https://docs.datagsm.kr/api/sdk/java): datagsm-openapi-sdk-java:1.1.1 (JitPack, OkHttp 기반). JDK 13+
-- [SDK JavaScript/TypeScript](https://docs.datagsm.kr/api/sdk/javascript): datagsm-openapi-sdk-javascript (npm, fetch 기반). Node.js 20+
-- [SDK Python](https://docs.datagsm.kr/api/sdk/python): datagsm-openapi-sdk (pip, httpx + Pydantic v2 기반). Python 3.9+
-- [SDK .NET](https://docs.datagsm.kr/api/sdk/dotnet): datagsm-openapi-sdk-dotnet (NuGet, HttpClient 기반, 비공식 패키지). .NET 8.0+
-- [SDK Go](https://docs.datagsm.kr/api/sdk/go): datagsm-openapi-sdk-go (go get, net/http 기반, 비공식 패키지). Go 1.21+
-- [OAuth 개요](https://docs.datagsm.kr/oauth): OAuth 2.0 Authorization Code Grant 개요, PKCE 도입 배경, 토큰 유효기간, 인증 플로우 다이어그램
+- [SDK Java/Kotlin](https://docs.datagsm.kr/api/sdk/java): io.github.themoment-team:datagsm-openapi-sdk-java:3.0.1 (Maven Central, Java 17). 조회·쓰기 API
+- [SDK JavaScript/TypeScript](https://docs.datagsm.kr/api/sdk/javascript): @themoment-team/datagsm-openapi 2.0.0 (npm, fetch 기반). Node.js 20+. 조회·쓰기 API
+- [SDK Python](https://docs.datagsm.kr/api/sdk/python): datagsm-openapi-sdk 2.0.0 (pip, httpx + Pydantic v2 기반). Python 3.9+. 조회·쓰기 API
+- [SDK .NET](https://docs.datagsm.kr/api/sdk/dotnet): 커뮤니티 관리 비공식 패키지(NuGet, HttpClient 기반). .NET 8.0+. 최신 서버 명세 미반영
+- [SDK Go](https://docs.datagsm.kr/api/sdk/go): 커뮤니티 관리 비공식 패키지(go get, net/http 기반). Go 1.21+. 최신 서버 명세 미반영
+- [OAuth 개요](https://docs.datagsm.kr/oauth): OAuth 2.0 Authorization Code Grant와 OIDC 개요, SSO·동의 흐름, PKCE, 토큰 유효기간, 인증 플로우 다이어그램
 - [인증 흐름 시작](https://docs.datagsm.kr/oauth/http/authorize): GET /v1/oauth/authorize — client_id, redirect_uri, state, code_challenge(PKCE) 파라미터
 - [토큰 교환](https://docs.datagsm.kr/oauth/http/token-exchange): POST /v1/oauth/token (grant_type=authorization_code) — PKCE(code_verifier) 및 client_secret 방식 모두 지원
 - [토큰 갱신](https://docs.datagsm.kr/oauth/http/token-refresh): POST /v1/oauth/token (grant_type=refresh_token) — Refresh Token으로 Access Token 갱신
+- [Client Credentials](https://docs.datagsm.kr/oauth/http/client-credentials): POST /v1/oauth/token (grant_type=client_credentials) — 서버 간 호출용 토큰 발급
 - [사용자 데이터 조회](https://docs.datagsm.kr/oauth/http/userinfo): GET /userinfo — Bearer Token으로 사용자 기본 정보 및 학생 상세 정보 조회
+- [권한 범위](https://docs.datagsm.kr/oauth/scopes): account_read·student_read·club_read·project_read·openid 레퍼런스와 self_read 전환 절차
+- [OIDC 가이드](https://docs.datagsm.kr/oauth/oidc): Discovery, id_token 발급·검증, nonce, sub, 표준 라이브러리 연동, 로그아웃
 - [PKCE 가이드](https://docs.datagsm.kr/oauth/pkce): RFC 7636 상세 설명, code_verifier/code_challenge 생성 방법, client_secret 방식과 비교
-- [OAuth 구현 예제](https://docs.datagsm.kr/oauth/examples): React+Spring Boot BFF(PKCE), Next.js+Spring Boot(PKCE), React+Spring Boot Kotlin(레거시), Vanilla JS+NestJS(레거시)
+- [OAuth 구현 예제](https://docs.datagsm.kr/oauth/examples): React+Spring Boot BFF(PKCE), Next.js+Spring Boot(PKCE), React+Spring Boot Kotlin(client_secret), Vanilla JS+NestJS(client_secret)
 - [OAuth SDK 개요](https://docs.datagsm.kr/oauth/sdk): OAuth SDK 사용 이점 비교
-- [OAuth SDK Java](https://docs.datagsm.kr/oauth/sdk/java): Java/Kotlin 환경용 OAuth 클라이언트 SDK
+- [OAuth SDK Java](https://docs.datagsm.kr/oauth/sdk/java): io.github.themoment-team:datagsm-oauth-sdk-java:2.1.0 (Maven Central). Java/Kotlin용 OAuth·OIDC 클라이언트 SDK
 - [서드파티 권한 범위](https://docs.datagsm.kr/oauth/thirdparty-scope): 서드파티 애플리케이션의 커스텀 OAuth 권한 범위 정의·등록·JWT 포함 흐름, JWK Set 기반 토큰 검증 방법
-- [OAuth SDK React](https://docs.datagsm.kr/oauth/sdk/react): React 환경용 OAuth 클라이언트 SDK
-- [Event 개요](https://docs.datagsm.kr/event): 학생·동아리·프로젝트 이벤트를 외부 서버로 실시간 전달하는 기능. 지원 이벤트 3종(student.updated·club.updated·project.updated), 전송·재시도 정책(1s→10s→100s), secret 1회 노출, 계정당 최대 10개 제한
+- [OAuth SDK React](https://docs.datagsm.kr/oauth/sdk/react): @themoment-team/datagsm-oauth-react 2.0.0 (npm). 기본 PKCE, state·nonce 처리를 제공하는 React SDK
+- [Event 개요](https://docs.datagsm.kr/event): 학생·동아리·프로젝트 이벤트를 외부 서버로 실시간 전달하는 기능. 지원 이벤트 3종(student.updated·club.updated·project.updated), 전송·재시도 정책(총 3회 시도, 1초·10초 대기), verification_status, secret 1회 노출, 계정당 최대 10개 제한
 - [이벤트 페이로드 명세](https://docs.datagsm.kr/event/payloads): 이벤트 페이로드 공통 봉투 구조(id·event·timestamp·data)와 data.old/data.new({index, object}) 구조, 생성·수정·삭제 판별 방법
 - [student.updated 명세](https://docs.datagsm.kr/event/payloads/student): 학생 이벤트 object 전체 필드, sex·major·role enum, 발행 시점, 수정·졸업·일괄 변경 예시
 - [club.updated 명세](https://docs.datagsm.kr/event/payloads/club): 동아리 이벤트 object 필드(type·status·leader·participants), 생성·수정·삭제 판별, 수정·삭제 예시
 - [project.updated 명세](https://docs.datagsm.kr/event/payloads/project): 프로젝트 이벤트 object 필드(status·club·participants·repositories·tech_stacks), 생성·수정·삭제 판별, 생성·수정 예시
 - [서명 검증 가이드](https://docs.datagsm.kr/event/signature): X-DataGSM-Signature(HMAC-SHA256) 서명 검증 절차, 상수 시간 비교, Node·Python·Java·Kotlin 검증 예제
+- [변경 사항 및 마이그레이션](https://docs.datagsm.kr/migration): 호환 유지 항목, 대응이 필요한 변경, SDK 버전과 Deprecated API
