@@ -1,0 +1,120 @@
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+
+export const metadata = createDocsPageMetadata({ title: "Client Credentials", pathname: "/oauth/http/client-credentials" })
+
+# Client Credentials
+
+### 엔드포인트
+
+```http
+POST /v1/oauth/token
+```
+
+**주의**: 이 엔드포인트는 토큰 교환과 동일한 통합 엔드포인트입니다. `grant_type` 파라미터로 구분됩니다.
+
+### 설명
+
+사용자 없이 클라이언트 자격으로 Access Token을 발급받습니다. 사용자 로그인이 없는 서버 간 호출에 사용합니다. `client_secret`이 필요하므로 백엔드에서만 호출하세요.
+
+Refresh Token은 발급되지 않습니다. 토큰이 만료되면(1시간 후) 같은 요청으로 다시 발급받습니다. `id_token`도 발급되지 않습니다.
+
+토큰에 사용자가 없으므로 [사용자 데이터 조회](/oauth/http/userinfo)에는 사용할 수 없습니다.
+
+### 요청 파라미터
+
+요청 본문은 `application/x-www-form-urlencoded` 또는 `application/json` 형식으로 보냅니다.
+
+| 파라미터 | 타입 | 필수 여부 | 설명 | 예시 |
+| --- | --- | --- | --- | --- |
+| `grant_type` | `String` | 필수 | 요청 타입 (`client_credentials` 고정) | `client_credentials` |
+| `client_id` | `String` | 필수 | 클라이언트 ID. Basic 헤더로 보낼 수 있습니다 | `your-client-id` |
+| `client_secret` | `String` | 필수 | 클라이언트 시크릿. Basic 헤더로 보낼 수 있습니다 | `your-client-secret` |
+| `scope` | `String` | 선택 | 요청할 권한 범위 (공백으로 구분) | `your-application-id:profile` |
+
+`scope`를 생략하거나 빈 값으로 보내면 클라이언트에 등록된 권한 범위 전체가 부여됩니다. 이때는 `club_read`, `project_read`도 포함됩니다.
+
+클라이언트에 등록되지 않은 값은 오류 없이 제외됩니다. `invalid_scope`로 거부되지 않으므로, 응답의 `scope`로 실제 부여된 범위를 확인하세요.
+
+### 응답
+
+#### 성공 응답 (200 OK)
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": null,
+  "scope": "your-application-id:profile",
+  "id_token": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `access_token` | `String` | JWT 형식의 Access Token (1시간 유효) |
+| `token_type` | `String` | 토큰 타입 (`Bearer` 고정) |
+| `expires_in` | `Int` | Access Token의 만료 시간 (초 단위, 3600 = 1시간) |
+| `refresh_token` | `null` | 발급되지 않음 |
+| `scope` | `String` | 실제 부여된 권한 범위 (공백으로 구분) |
+| `id_token` | `null` | 발급되지 않음 |
+
+응답에는 `Cache-Control: no-store`, `Pragma: no-cache` 헤더가 포함됩니다.
+
+#### Access Token 클레임
+
+```json
+{
+  "sub": "your-client-id",
+  "clientId": "your-client-id",
+  "scopes": ["your-application-id:profile"],
+  "grant_type": "client_credentials",
+  "iat": 1712000000,
+  "exp": 1712003600
+}
+```
+
+토큰의 `sub`는 사용자 이메일이 아니라 clientId입니다. `grant_type` 클레임으로 사용자 토큰과 구분할 수 있습니다. 서명 검증은 [서드파티 권한 범위](/oauth/thirdparty-scope)의 JWK Set 예제를 참고하세요.
+
+### 오류 응답
+
+| 상태 코드 | 오류 | 원인 |
+| --- | --- | --- |
+| `400 Bad Request` | `invalid_request` | `client_id`, `client_secret` 누락, 클라이언트 인증 방식 중복, 파라미터 중복 |
+| `401 Unauthorized` | `invalid_client` | 없는 클라이언트, `client_secret` 불일치, 디코딩할 수 없는 Basic 헤더 |
+| `429 Too Many Requests` | - | 클라이언트 요청 한도 초과 (분당 300회) |
+
+### 요청 예시
+
+#### cURL (Basic 헤더)
+
+```bash
+curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
+  -u "your-client-id:your-client-secret" \
+  -d "grant_type=client_credentials" \
+  -d "scope=your-application-id:profile"
+```
+
+#### cURL (본문 전달, JSON)
+
+```bash
+curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "your-client-id",
+    "client_secret": "your-client-secret",
+    "scope": "your-application-id:profile"
+  }'
+```
+
+### 보안 주의사항
+
+- `client_secret`은 백엔드의 환경 변수나 보안 볼트에 보관하고 프런트엔드 코드에 넣지 마세요.
+- 필요한 권한 범위만 `scope`로 요청하세요. 생략하면 등록된 범위 전체가 부여됩니다.
+- 만료 전까지 토큰을 재사용하고, 호출마다 새로 발급받지 마세요. 토큰 요청도 요청 한도에 포함됩니다.
+
+### 다음 단계
+
+- [OAuth HTTP API](/oauth/http) - 클라이언트 인증 방식과 오류 형식
+- [권한 범위](/oauth/scopes) - scope 표기와 의미

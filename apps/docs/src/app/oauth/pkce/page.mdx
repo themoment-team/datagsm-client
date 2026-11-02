@@ -8,46 +8,45 @@ export const metadata = createDocsPageMetadata({ title: "PKCE 가이드", pathna
 
 ## PKCE란?
 
-PKCE (Proof Key for Code Exchange, RFC 7636)는 OAuth 2.0 Authorization Code Flow의 보안을 강화하는 확장 표준입니다. 원래는 모바일 앱과 같은 Public Client를 보호하기 위해 설계되었지만, 현재는 많은 OAuth 클라이언트에서 선택적으로 사용되고 있습니다.
+PKCE (Proof Key for Code Exchange, RFC 7636)는 OAuth 2.0 Authorization Code Flow의 보안을 강화하는 확장 표준입니다. 원래는 모바일 앱과 같은 Public Client를 보호하기 위해 설계되었지만, 현재는 Public Client와 Confidential Client 모두에 권장됩니다.
 
 ### 도입 배경
 
-전통적인 Authorization Code Flow에서는 `client_secret`을 사용하여 클라이언트를 인증합니다. 그러나 이 방식은 다음과 같은 한계가 있습니다:
+Authorization Code Flow에서 `client_secret`은 백엔드가 있는 기밀 클라이언트의 정식 인증 수단입니다. 시크릿은 백엔드에만 두고 프런트엔드 코드에 넣지 않습니다. 다만 다음 상황은 `client_secret`만으로 해결되지 않습니다:
 
-#### client_secret 방식의 문제점
+1. **시크릿을 보관할 수 없는 클라이언트**
+   - 브라우저나 모바일 앱에 포함된 값은 디컴파일이나 소스 코드 분석으로 추출할 수 있음
 
-1. **클라이언트 사이드 노출 위험**
-   - 브라우저나 모바일 앱에서 `client_secret`을 안전하게 보관하기 어려움
-   - 디컴파일이나 소스 코드 분석으로 쉽게 추출 가능
-
-2. **Authorization Code Injection 공격**
-   - 악의적인 앱이 가로챈 Authorization Code를 자신의 `client_secret`으로 교환 가능
-   - 사용자 계정 탈취 위험
-
-3. **Public Client의 보안 취약성**
-   - SPA, 모바일 앱 등에서는 secret 관리가 사실상 불가능
-   - 모든 사용자가 동일한 `client_secret`을 공유하게 됨
+2. **Authorization Code 탈취**
+   - 리다이렉트 과정에서 code가 노출되면 공격자가 이를 토큰 교환에 사용하려 할 수 있음
 
 ### PKCE의 해결 방법
 
-PKCE는 `client_secret` 대신 **동적으로 생성되는 일회성 검증자**를 사용합니다:
+PKCE는 인가 요청마다 **동적으로 생성되는 일회성 검증자**를 추가합니다:
 
 - 각 인증 요청마다 새로운 `code_verifier` 생성
 - Authorization Code를 탈취하더라도 원본 `code_verifier` 없이는 토큰 교환 불가능
-- 클라이언트에 하드코딩된 secret이 없으므로 노출 위험 없음
+- PKCE로 발급된 코드는 `client_secret` 없이 교환할 수 있고, `client_secret`을 함께 보내면 서버가 둘 다 검증
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
     <Shield className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
     <div>
       <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-        PKCE vs client_secret
+        PKCE와 client_secret
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm space-y-2">
-        <div><strong>PKCE:</strong> 각 요청마다 새로운 검증자 생성 → 일회성, 동적, 안전</div>
-        <div><strong>client_secret:</strong> 모든 요청에 동일한 secret 사용 → 영구적, 정적, 노출 위험</div>
+        <div><strong>PKCE:</strong> 코드를 요청한 쪽과 교환하는 쪽이 같은지 요청마다 검증합니다.</div>
+        <div><strong>client_secret:</strong> 백엔드가 클라이언트 자신을 인증합니다. 둘은 대체 관계가 아니며 함께 사용할 수 있습니다.</div>
       </div>
     </div>
+  </div>
+</div>
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">토큰 교환은 백엔드에서</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    인가 서버의 CORS 허용 출처는 DataGSM 자사 서비스로 제한됩니다. PKCE를 사용해도 외부 서비스의 브라우저에서는 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">POST /v1/oauth/token</code>을 호출할 수 없으므로 토큰 교환은 앱의 백엔드가 수행합니다.
   </div>
 </div>
 
@@ -84,7 +83,7 @@ sequenceDiagram
     alt 검증 성공
         O-->>C: Access Token + Refresh Token
     else 검증 실패
-        O-->>C: Error (invalid_grant)
+        O-->>C: 400 invalid_grant
     end
 ```
 
@@ -121,21 +120,21 @@ async function generateCodeChallenge(verifier) {
 }
 ```
 
-**중요**: `code_challenge_method`는 반드시 `S256` (SHA-256)을 사용하세요. `plain` 방식은 보안상 취약합니다.
+**중요**: `code_challenge_method`는 반드시 `S256` (SHA-256)을 사용하세요. `code_challenge`를 보내면서 이 값을 생략하거나 지원하지 않는 값을 보내면 `invalid_request`로 거부됩니다.
 
 #### 3단계: Authorization 요청
 
 생성한 `code_challenge`를 포함하여 `/v1/oauth/authorize`로 리다이렉트합니다.
 
 ```http
-GET /v1/oauth/authorize?client_id=your-client-id&redirect_uri=https%3A%2F%2Fyour-app.com%2Fcallback&response_type=code&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256
+GET /v1/oauth/authorize?client_id=your-client-id&redirect_uri=https%3A%2F%2Fyour-app.com%2Fcallback&response_type=code&scope=datagsm%3Aaccount_read%20datagsm%3Astudent_read&state=random-state-value&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256
 ```
 
-서버는 사용자를 로그인 페이지로 리다이렉트하며, 로그인 성공 시 `redirect_uri`로 Authorization Code가 전달됩니다. 서버는 `code_challenge`를 Authorization Code와 함께 저장합니다.
+인가가 끝나면 `redirect_uri`로 Authorization Code가 전달됩니다. 사용자가 동의를 거부하면 `code` 대신 `error=access_denied`가 전달됩니다. 서버는 `code_challenge`를 Authorization Code와 함께 저장합니다.
 
 #### 4단계: Token 교환
 
-Authorization Code와 함께 원본 `code_verifier`를 전송합니다.
+앱의 백엔드가 Authorization Code와 함께 원본 `code_verifier`를 전송합니다.
 
 ```http
 POST /v1/oauth/token
@@ -156,18 +155,19 @@ Content-Type: application/json
 
 1. `code_verifier`를 SHA-256 해싱
 2. 결과를 저장된 `code_challenge`와 비교
-3. 일치하면 토큰 발급, 불일치하면 거부
+3. 일치하면 토큰 발급, 불일치하면 `invalid_grant`로 거부
+4. `code_verifier`가 없으면 `invalid_request`로 거부
 
 ```
 SHA256(code_verifier) == stored_code_challenge ?
-  → 토큰 발급 : 401 Unauthorized
+  → 토큰 발급 : 400 invalid_grant
 ```
 
 ## 구현 가이드
 
 ### JavaScript/TypeScript 구현
 
-완전한 PKCE 구현 예제입니다.
+브라우저가 인가 요청을 시작하고, 콜백에서 받은 값을 앱의 백엔드로 넘기는 예제입니다.
 
 ```typescript
 // Base64URL 인코딩 함수
@@ -200,86 +200,134 @@ async function initiateOAuthWithPKCE() {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-  // 안전한 저장소에 저장 (예: httpOnly 쿠키)
+  const state = crypto.randomUUID();
+
+  // 리다이렉트 후에도 남아 있어야 하므로 sessionStorage에 저장합니다.
   sessionStorage.setItem('oauth_code_verifier', codeVerifier);
+  sessionStorage.setItem('oauth_state', state);
 
   // 2. Authorization 요청 - /v1/oauth/authorize로 리다이렉트
   const params = new URLSearchParams({
     client_id: 'your-client-id',
     redirect_uri: 'https://your-app.com/callback',
     response_type: 'code',
+    scope: 'datagsm:account_read datagsm:student_read',
+    state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
   window.location.href = `https://oauth.authorization.datagsm.kr/v1/oauth/authorize?${params}`;
 
-  // 이후 사용자가 로그인하면 redirect_uri로 code가 전달됩니다.
-  // redirect_uri 페이지에서 아래 3, 4단계를 처리하세요.
+  // 인가가 끝나면 redirect_uri로 돌아옵니다.
+  // redirect_uri 페이지에서 아래 handleCallback을 호출하세요.
 }
 
-// redirect_uri 페이지에서 code를 받아 토큰 교환
+// redirect_uri 페이지에서 결과를 확인하고 백엔드로 전달
 async function handleCallback() {
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
+  const error = urlParams.get('error');
+  const state = urlParams.get('state');
 
-  // 3. Token 교환
-  const storedVerifier = sessionStorage.getItem('oauth_code_verifier');
-  const tokenResponse = await fetch('https://oauth.authorization.datagsm.kr/v1/oauth/token', {
+  const storedState = sessionStorage.getItem('oauth_state');
+  const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
+
+  // 3. 저장값은 결과와 관계없이 삭제 (일회성)
+  sessionStorage.removeItem('oauth_state');
+  sessionStorage.removeItem('oauth_code_verifier');
+
+  if (!state || state !== storedState) {
+    throw new Error('State mismatch - possible CSRF attack');
+  }
+
+  // 4. 사용자가 동의를 거부하면 code가 없습니다.
+  if (error === 'access_denied') {
+    return { denied: true };
+  }
+  if (error || !code) {
+    throw new Error(urlParams.get('error_description') ?? 'Authorization failed');
+  }
+
+  // 5. 토큰 교환은 앱의 백엔드가 수행합니다.
+  const response = await fetch('/api/auth/datagsm/callback', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify({ code, codeVerifier }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Token exchange failed');
+  }
+
+  return { denied: false };
+}
+```
+
+앱의 백엔드는 받은 값으로 [토큰 교환](/oauth/http/token-exchange)을 수행합니다.
+
+```typescript
+// 앱 백엔드 (Node.js)
+async function exchangeCode(code: string, codeVerifier: string) {
+  const response = await fetch('https://oauth.authorization.datagsm.kr/v1/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
       client_id: 'your-client-id',
       redirect_uri: 'https://your-app.com/callback',
-      code_verifier: storedVerifier,
+      code_verifier: codeVerifier,
     }),
   });
 
-  const tokens = await tokenResponse.json();
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error_description ?? 'Token exchange failed');
+  }
 
-  // 4. code_verifier 삭제 (일회성)
-  sessionStorage.removeItem('oauth_code_verifier');
-
-  return tokens;
+  return response.json();
 }
 ```
 
 ### Next.js Middleware 예제
 
-Next.js 환경에서 PKCE를 구현하는 방법입니다. 서버 측에서 `code_verifier`를 관리하여 보안을 강화합니다.
+Next.js 환경에서 PKCE를 구현하는 방법입니다. 서버 측에서 `code_verifier`를 관리하여 보안을 강화합니다. `generateCodeVerifier`와 `generateCodeChallenge`는 앞 예제의 함수를 사용합니다.
 
 ```typescript
 // app/api/auth/login/route.ts
 import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
-  const { email, password } = await request.json();
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax',
+  maxAge: 600, // 10분
+} as const;
 
-  // 1. code_verifier 생성
+export async function GET() {
+  // 1. code_verifier와 state 생성
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = crypto.randomUUID();
 
   // 2. httpOnly 쿠키에 저장 (XSS 방지)
-  cookies().set('oauth_code_verifier', codeVerifier, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'lax',
-    maxAge: 600, // 10분
-  });
+  const cookieStore = await cookies();
+  cookieStore.set('oauth_code_verifier', codeVerifier, COOKIE_OPTIONS);
+  cookieStore.set('oauth_state', state, COOKIE_OPTIONS);
 
-  // 3. /v1/oauth/authorize로 리다이렉트 URL 생성 후 반환
+  // 3. /v1/oauth/authorize로 리다이렉트
   const params = new URLSearchParams({
     client_id: process.env.OAUTH_CLIENT_ID!,
     redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`,
     response_type: 'code',
+    scope: 'datagsm:account_read datagsm:student_read',
+    state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
 
-  const authorizeUrl = `https://oauth.authorization.datagsm.kr/v1/oauth/authorize?${params}`;
-  return NextResponse.redirect(authorizeUrl);
+  return NextResponse.redirect(`https://oauth.authorization.datagsm.kr/v1/oauth/authorize?${params}`);
 }
 ```
 
@@ -289,45 +337,58 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get('code');
+  const { searchParams } = request.nextUrl;
+  const code = searchParams.get('code');
+  const error = searchParams.get('error');
+  const state = searchParams.get('state');
 
-  // 1. 저장된 code_verifier 가져오기
-  const codeVerifier = cookies().get('oauth_code_verifier')?.value;
+  // 1. 저장값을 읽고 바로 삭제 (일회성)
+  const cookieStore = await cookies();
+  const codeVerifier = cookieStore.get('oauth_code_verifier')?.value;
+  const savedState = cookieStore.get('oauth_state')?.value;
+  cookieStore.delete('oauth_code_verifier');
+  cookieStore.delete('oauth_state');
 
-  if (!codeVerifier) {
-    return NextResponse.json(
-      { error: 'code_verifier not found' },
-      { status: 400 }
-    );
+  if (!state || state !== savedState) {
+    return NextResponse.json({ error: 'invalid_state' }, { status: 400 });
   }
 
-  // 2. Token 교환
+  // 2. 사용자가 동의를 거부하면 code가 없습니다.
+  if (error === 'access_denied') {
+    return NextResponse.redirect(new URL('/login?denied=1', request.url));
+  }
+  if (error || !code || !codeVerifier) {
+    return NextResponse.redirect(new URL('/login?failed=1', request.url));
+  }
+
+  // 3. Token 교환
   const response = await fetch('https://oauth.authorization.datagsm.kr/v1/oauth/token', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      client_id: process.env.OAUTH_CLIENT_ID,
+      client_id: process.env.OAUTH_CLIENT_ID!,
       redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`,
       code_verifier: codeVerifier,
     }),
   });
 
+  if (!response.ok) {
+    return NextResponse.redirect(new URL('/login?failed=1', request.url));
+  }
+
   const tokens = await response.json();
 
-  // 3. code_verifier 삭제 (일회성)
-  cookies().delete('oauth_code_verifier');
-
   // 4. 토큰을 httpOnly 쿠키에 저장
-  cookies().set('access_token', tokens.access_token, {
+  cookieStore.set('access_token', tokens.access_token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     maxAge: 3600, // 1시간
   });
 
-  cookies().set('refresh_token', tokens.refresh_token, {
+  cookieStore.set('refresh_token', tokens.refresh_token, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
@@ -352,7 +413,7 @@ export async function GET(request: NextRequest) {
       <div className="text-blue-800 dark:text-blue-200 text-sm">
         <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">code_verifier</code>는 안전하게 저장되어야 합니다.
         브라우저 환경에서는 httpOnly 쿠키를 사용하시면 더 안전합니다.
-        localStorage나 sessionStorage는 XSS 공격에 취약합니다.
+        sessionStorage를 사용한다면 XSS에 주의하고 사용 직후 삭제하세요. localStorage는 사용하지 마세요.
       </div>
     </div>
   </div>
@@ -366,7 +427,7 @@ export async function GET(request: NextRequest) {
 | **서버 세션** | ⭐⭐⭐⭐⭐ | ✅ | ✅ 추천 | 서버 메모리/DB에 저장, 매우 안전 |
 | **sessionStorage** | ⭐⭐⭐ | ❌ | 💡 참고 | XSS 취약점 주의 필요 |
 | **localStorage** | ⭐⭐ | ❌ | 💡 참고 | XSS 취약점이 있어 주의 필요 |
-| **메모리** | ⭐⭐⭐⭐ | ✅ | ✅ 추천 | 새로고침 시 손실, SPA에 적합 |
+| **메모리** | - | - | 사용 불가 | 전체 페이지 리다이렉트로 값이 사라지므로 Authorization Code Flow에 사용할 수 없음 |
 
 #### BFF 패턴 권장
 
@@ -377,7 +438,7 @@ export async function GET(request: NextRequest) {
 3. `code_verifier`는 서버 세션에 저장
 4. 토큰도 httpOnly 쿠키로 관리
 
-자세한 구현 방법은 [React + Spring Boot 예제](/oauth/example/react-spring)를 참고하세요.
+자세한 구현 방법은 [React + Spring Boot 예제](/oauth/examples/react-spring-boot)를 참고하세요.
 
 ### code_challenge_method 설정
 
@@ -396,6 +457,13 @@ export async function GET(request: NextRequest) {
 ```
 
 `plain` 방식은 `code_verifier`를 그대로 전송하므로, 중간자 공격에 취약합니다. OAuth 2.0 스펙에서도 `S256` 사용을 제안하고 있습니다.
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">plain 호환 안내</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">plain</code>은 Discovery에서 광고되지 않지만 기존 연동을 위해 계속 수용되며, 서버가 사용 기록을 남깁니다. 제거 일정은 미정입니다. 새 연동에는 쓰지 말고, 기존 연동은 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">S256</code>으로 바꾸세요. 전체 목록은 <a href="/migration" className="underline font-medium">변경 사항 및 마이그레이션</a>을 참고하세요.
+  </div>
+</div>
 
 ### 일회성 사용 (Replay Attack 방지)
 
@@ -437,13 +505,11 @@ const codeVerifier = "short"; // 5자 → 예측 가능
 
 ### Q1. PKCE와 client_secret을 함께 사용할 수 있나요?
 
-**A.** 기술적으로는 가능합니다.
+**A.** 네, 가능하며 백엔드가 있는 기밀 클라이언트에 권장합니다.
 
-- PKCE만 사용하셔도 충분한 보안을 제공합니다
-- `client_secret`을 함께 사용하면 관리가 조금 복잡해질 수 있습니다
-- 대부분의 OAuth 제공자는 PKCE를 사용할 때 `client_secret`을 선택 사항으로 만듭니다
-
-**제안**: 꼭 필요하지 않다면 PKCE만 사용하시는 것이 관리가 편할 수 있습니다.
+- PKCE로 발급된 코드는 `client_secret` 없이 교환할 수 있습니다
+- `client_secret`을 함께 보내면 서버가 `code_verifier`와 시크릿을 모두 검증합니다
+- PKCE 없이 발급된 코드는 `client_secret`이 필수입니다
 
 ### Q2. 모바일 앱에서 PKCE를 사용하는 방법은?
 
@@ -505,37 +571,25 @@ fun generateCodeChallenge(verifier: String): String {
 
 **A.** SPA (Single Page Application)에서 PKCE를 안전하게 사용하려면:
 
-#### 1. BFF 패턴 사용 (강력 권장)
+#### 1. 토큰 교환은 백엔드에서 수행
 
 ```
 Browser → BFF (Next.js/Express) → OAuth Server
 ```
 
-BFF가 PKCE 플로우를 대신 수행하고, 토큰을 httpOnly 쿠키로 관리합니다.
+인가 서버의 CORS 정책 때문에 SPA는 토큰 엔드포인트를 직접 호출할 수 없습니다. BFF가 토큰을 교환하고 httpOnly 쿠키로 관리합니다.
 
 #### 2. code_verifier 저장 주의
 
-SPA에서 직접 PKCE를 구현하는 경우:
+SPA에서 `code_verifier`를 생성하는 경우 리다이렉트 후에도 값이 남아 있어야 합니다:
 
 ```javascript
 // ⚠️ sessionStorage 사용 시 (XSS 주의)
 sessionStorage.setItem('oauth_code_verifier', codeVerifier);
 
-// ✅ 더 안전한 방법: 메모리에만 저장
-class OAuthManager {
-  private codeVerifier: string | null = null;
-
-  async initiateOAuth() {
-    this.codeVerifier = generateCodeVerifier();
-    // ... PKCE 플로우 진행
-  }
-
-  async exchangeToken(code: string) {
-    if (!this.codeVerifier) throw new Error('No verifier');
-    await exchangeToken(code, this.codeVerifier);
-    this.codeVerifier = null; // 즉시 삭제
-  }
-}
+// 콜백에서 읽은 뒤 바로 삭제하고 백엔드로 전달
+const storedVerifier = sessionStorage.getItem('oauth_code_verifier');
+sessionStorage.removeItem('oauth_code_verifier');
 ```
 
 #### 3. CSP (Content Security Policy) 설정
@@ -616,7 +670,7 @@ async function verifySHA256(verifier, expectedChallenge) {
 ```json
 {
   "error": "invalid_grant",
-  "error_description": "PKCE verification failed: code_challenge mismatch"
+  "error_description": "PKCE 검증에 실패했습니다."
 }
 ```
 
@@ -636,7 +690,7 @@ async function verifySHA256(verifier, expectedChallenge) {
 
 PKCE에 대해 이해했다면, 실제 구현 예제를 참고하세요:
 
-- [React + Spring Boot 예제](/oauth/example/react-spring) - BFF 패턴 기반 PKCE 구현
+- [React + Spring Boot 예제](/oauth/examples/react-spring-boot) - BFF 패턴 기반 PKCE 구현
 - [HTTP API 기술 문서](/oauth/http/authorize) - PKCE 파라미터 상세 설명
 - [토큰 교환](/oauth/http/token-exchange) - code_verifier 사용 방법
 
