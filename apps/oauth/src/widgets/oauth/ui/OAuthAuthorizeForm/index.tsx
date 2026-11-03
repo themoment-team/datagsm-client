@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { ApiResponse, SignInFormType } from '@repo/shared/types';
 import { SignInForm } from '@repo/shared/ui';
+import { getSafeUrl } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
 import {
@@ -103,12 +104,14 @@ const OAuthAuthorizeForm = () => {
         const responseData = await response.json();
         localStorage.removeItem(STORAGE_KEY);
 
-        if (responseData.redirect_url) {
-          window.location.href = responseData.redirect_url;
+        // 서버가 준 주소라도 javascript: 같은 스킴이 섞이면 이동하지 않는다.
+        const redirectUrl = getSafeUrl(responseData.redirect_url);
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
           return;
         }
 
-        // 2xx인데 이동할 주소가 없으면 더 진행할 수 없다.
+        // 2xx인데 이동할 http(s) 주소가 없으면 더 진행할 수 없다.
         // 여기서 끝내지 않으면 isPending이 켜진 채로 폼이 영구히 잠긴다.
         setIsPending(false);
         toast.error('로그인 응답이 올바르지 않습니다. 다시 시도해주세요.');

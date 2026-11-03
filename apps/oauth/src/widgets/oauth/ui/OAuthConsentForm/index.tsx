@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { oauthUrl } from '@repo/shared/api';
 import { OAuthConsentRequest, OAuthConsentSuccessResponse } from '@repo/shared/types';
 import { AuthWindow, Button, Skeleton } from '@repo/shared/ui';
-import { cn } from '@repo/shared/utils';
+import { cn, getSafeUrl } from '@repo/shared/utils';
 import { toast } from 'sonner';
 
 import {
@@ -78,7 +78,10 @@ const OAuthConsentForm = () => {
       }
 
       if (response.ok) {
-        const { redirectUrl } = (await response.json()) as OAuthConsentSuccessResponse;
+        const { redirectUrl: responseRedirectUrl } =
+          (await response.json()) as OAuthConsentSuccessResponse;
+        // 서버가 준 주소라도 javascript: 같은 스킴이 섞이면 이동하지 않는다.
+        const redirectUrl = getSafeUrl(responseRedirectUrl);
 
         if (redirectUrl) {
           window.location.href = redirectUrl;
