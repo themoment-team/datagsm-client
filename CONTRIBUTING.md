@@ -19,10 +19,10 @@ CI는 PR마다 `lint → check-types → test → build` 순서로 실행한다.
 
 ### 구성
 
-| 패키지                | 역할                                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------- |
-| `@repo/vitest-config` | 공용 Vitest 설정. `node`(순수 로직·route handler·middleware), `react`(컴포넌트·훅, jsdom)             |
-| `@repo/test-utils`    | `renderWithProviders`, MSW 서버와 응답 도우미, 도메인 fixture, `next/navigation` mock, `selectOption` |
+| 패키지                | 역할                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@repo/vitest-config` | 공용 Vitest 설정. `node`(순수 로직·route handler·middleware), `react`(컴포넌트·훅, jsdom)                                    |
+| `@repo/test-utils`    | `renderWithProviders`, MSW 서버와 응답 도우미, 도메인 fixture, `next/navigation` mock, `selectOption`, `findControlledPopup` |
 
 새 패키지에 테스트를 붙일 때는 기존 패키지의 `vitest.config.mts`, `vitest.setup.ts`를 복사하고
 `test`, `test:watch` 스크립트와 `@repo/test-utils`, `@repo/vitest-config`, `vitest` devDependency를 추가한다.

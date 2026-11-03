@@ -6,6 +6,7 @@ import {
   apiSuccess,
   createClub,
   createStudent,
+  findControlledPopup,
   http,
   renderWithProviders,
   screen,
@@ -62,8 +63,10 @@ const dialog = () => screen.getByRole('dialog');
 const field = (label: string) => within(dialog()).getByLabelText(label);
 
 const pickStudent = async (user: User, comboboxLabel: string, optionText: string) => {
-  await user.click(field(comboboxLabel));
-  await user.click(await screen.findByRole('option', { name: optionText }));
+  const trigger = field(comboboxLabel);
+  await user.click(trigger);
+  const popup = await findControlledPopup(trigger);
+  await user.click(await within(popup).findByRole('option', { name: optionText }));
 };
 
 const openCreateDialog = async () => {

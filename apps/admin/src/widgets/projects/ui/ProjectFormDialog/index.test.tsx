@@ -7,6 +7,7 @@ import {
   createClub,
   createProject,
   createStudent,
+  findControlledPopup,
   http,
   renderWithProviders,
   screen,
@@ -95,8 +96,10 @@ const categoryCheckbox = (name: string) =>
   within(within(dialog()).getByRole('group', { name: '카테고리' })).getByRole('checkbox', { name });
 
 const addMember = async (user: User, optionText: string) => {
-  await user.click(within(dialog()).getByRole('combobox', { name: '' }));
-  await user.click(await screen.findByRole('option', { name: optionText }));
+  const trigger = within(dialog()).getByRole('combobox', { name: '' });
+  await user.click(trigger);
+  const popup = await findControlledPopup(trigger);
+  await user.click(await within(popup).findByRole('option', { name: optionText }));
 };
 
 describe('ProjectFormDialog 추가', () => {

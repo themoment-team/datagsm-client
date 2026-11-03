@@ -8,6 +8,7 @@ import {
   createParticipantCandidateListData,
   createPublicClubListData,
   createStudent,
+  findControlledPopup,
   http,
   renderWithProviders,
   screen,
@@ -177,11 +178,14 @@ const findSelectedParticipants = () =>
 
 /** 후보 목록을 열고(이미 열려 있으면 그대로) 검색어로 좁힌 뒤 고른다. 목록은 고른 뒤에도 열려 있다. */
 const pickParticipant = async (user: User, optionName: string, keyword?: string) => {
+  // 후보 목록(Popover)도 role이 dialog라, 목록이 열려 있으면 dialog()로 범위를 좁힐 수 없다.
+  const trigger = screen.getByRole('combobox', { name: '참여자 추가' });
   const search = screen.queryByPlaceholderText('이름 또는 학번 검색...');
-  if (!search) await user.click(within(dialog()).getByRole('combobox', { name: '참여자 추가' }));
+  if (!search) await user.click(trigger);
 
   if (keyword) await user.type(screen.getByPlaceholderText('이름 또는 학번 검색...'), keyword);
-  await user.click(await screen.findByRole('option', { name: optionName }));
+  const popup = await findControlledPopup(trigger);
+  await user.click(await within(popup).findByRole('option', { name: optionName }));
 };
 
 const categoryCheckbox = (name: string) =>
