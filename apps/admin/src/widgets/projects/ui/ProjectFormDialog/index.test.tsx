@@ -7,8 +7,8 @@ import {
   createClub,
   createProject,
   createStudent,
-  pickControlledOption,
   http,
+  pickControlledOption,
   renderWithProviders,
   screen,
   selectOption,
@@ -109,7 +109,7 @@ describe('ProjectFormDialog 추가', () => {
     return view;
   };
 
-  it('입력한 프로젝트를 동아리 없이 null로 보내 등록한다', { timeout: 15_000 }, async () => {
+  it('입력한 프로젝트를 동아리 없이 null로 보내 등록한다', async () => {
     const requests = mockProjectApi();
     const { user } = await openCreateDialog();
 
