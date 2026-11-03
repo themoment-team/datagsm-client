@@ -81,7 +81,7 @@ Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Re
 | 상태 코드 | 오류 | 원인 |
 | --- | --- | --- |
 | `400 Bad Request` | `invalid_request` | `refresh_token`, `client_id` 누락, 클라이언트 인증 방식 중복, 파라미터 중복 |
-| `400 Bad Request` | `invalid_grant` | Refresh Token이 유효하지 않거나 만료됨, 이미 사용한 토큰, 다른 클라이언트의 토큰 |
+| `400 Bad Request` | `invalid_grant` | Refresh Token이 유효하지 않거나 만료됨, 이미 사용한 토큰, 다른 클라이언트의 토큰, 비밀번호 변경이나 회원 탈퇴로 폐기된 토큰 |
 | `400 Bad Request` | `invalid_scope` | 요청한 `scope`가 저장된 범위를 넘음 |
 | `401 Unauthorized` | `invalid_client` | 없는 클라이언트, `client_secret` 불일치 |
 | `404 Not Found` | - | 토큰의 사용자 계정을 찾을 수 없음 |

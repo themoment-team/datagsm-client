@@ -117,6 +117,8 @@ GET /v1/students
 | `githubId`       | `String?`         | GitHub 아이디 (미설정 시 `null`)                                                                  | `octocat`                    |
 | `githubUrl`      | `String?`         | GitHub 프로필 URL (미설정 시 `null`)                                                              | `https://github.com/octocat` |
 
+관리자가 학생에게 정보 수정을 요청하면 재학생이어도 해당 값이 학생이 다시 입력할 때까지 `null`입니다. 대상은 학번(`grade`, `classNum`, `number`, `studentNumber`), 기숙사(`dormitoryFloor`, `dormitoryRoom`), `majorClub`, `autonomousClub`입니다.
+
 ### 동아리 객체 (ClubSummaryDto)
 
 학생 응답에 포함된 동아리 데이터는 다음 필드를 포함합니다.
