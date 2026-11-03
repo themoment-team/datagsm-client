@@ -37,7 +37,9 @@ jobs:
         run: pnpm check-types
 
       - name: Test
-        run: pnpm test
+        # 러너는 4 vCPU인데 패키지마다 vitest가 워커를 여러 개 띄우므로,
+        # 모든 패키지를 한꺼번에 돌리면 jsdom 워커끼리 CPU를 나눠 쓰다 테스트가 제한 시간을 넘긴다.
+        run: pnpm test --concurrency=2
 
       - name: Build
         run: pnpm build
