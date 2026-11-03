@@ -18,6 +18,9 @@ const Mermaid = ({ chart }: MermaidProps) => {
         mermaid.initialize({
           startOnLoad: false, // Changed to false as we render manually
           theme: 'default',
+          // v12부터 기본 레이아웃·모양이 바뀌어 기존 문서 다이어그램과 같게 고정한다.
+          layout: 'dagre',
+          look: 'classic',
           securityLevel: 'loose',
           fontFamily: 'inherit',
         });
