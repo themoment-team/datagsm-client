@@ -141,7 +141,7 @@ export default App;
 
 `handleOAuthCallback()`은 현재 URL에서 `code`, `state`, `error`를 읽고 `state`를 검증한 뒤 저장해 둔 `code_verifier`와 `nonce`를 돌려줍니다. 저장값은 성공과 실패에 관계없이 지웁니다.
 
-콜백은 한 번만 처리됩니다. 같은 URL을 다시 처리하면 `already_handled`를 돌려주므로, React StrictMode에서 effect가 두 번 실행되거나 뒤로 가기로 돌아와도 이미 쓴 code로 토큰 교환을 다시 시도하지 않습니다.
+콜백은 한 번만 처리됩니다. 같은 URL을 다시 처리하면 `already_handled`를 돌려주고, 아래 예제처럼 처리 후 주소에서 `code`를 지웠다면 `not_callback`을 돌려줍니다. 그래서 React StrictMode에서 effect가 두 번 실행되어도 이미 쓴 code로 토큰 교환을 다시 시도하지 않습니다.
 
 ```javascript
 // src/pages/OAuthCallbackPage.jsx
@@ -156,8 +156,8 @@ function OAuthCallbackPage() {
     const result = handleOAuthCallback();
 
     if (!result.ok) {
-      // StrictMode 재실행이나 뒤로 가기면 첫 처리 결과를 그대로 둡니다.
-      if (result.error === 'already_handled') return;
+      // StrictMode 재실행은 주소의 code를 지운 뒤라 not_callback이 됩니다. 첫 처리 결과를 그대로 둡니다.
+      if (result.error === 'already_handled' || result.error === 'not_callback') return;
 
       if (result.error === 'access_denied') {
         setMessage('권한 요청을 거부했습니다.');

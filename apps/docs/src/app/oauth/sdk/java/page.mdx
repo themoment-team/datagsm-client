@@ -777,7 +777,7 @@ SDK는 HTTP 상태 코드별로 구체적인 예외 타입을 제공합니다.
 |-------------------------|-----------------------------------------------------------------------------|
 | `getStatusCode()`       | HTTP 상태 코드. 응답이 없으면 `DataGsmException.NO_STATUS_CODE`(-1)                    |
 | `hasStatusCode()`       | HTTP 상태 코드가 있는지 여부                                                          |
-| `getErrorCode()`        | 토큰 요청은 `invalid_grant` 같은 `error` 값, `/userinfo`는 `UNAUTHORIZED` 같은 `status` 값 |
+| `getErrorCode()`        | 토큰 요청은 `invalid_grant` 같은 `error` 값, `/userinfo`는 `401 UNAUTHORIZED` 같은 `status` 값 |
 | `getErrorDescription()` | `error_description` 또는 `message` 값                                           |
 | `getResponseBody()`     | 원본 응답 본문                                                                    |
 
