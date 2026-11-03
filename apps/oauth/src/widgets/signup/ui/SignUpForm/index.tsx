@@ -52,6 +52,10 @@ const VERIFICATION_CODE_LENGTH = 8;
 const FIELD_CLASS =
   'border-foreground focus-visible:border-foreground aria-invalid:border-destructive aria-invalid:text-destructive rounded-none focus-visible:ring-0';
 
+/** `**굵게**` 표시만 <b>로 바꾸고 나머지는 텍스트로 그린다. 문구를 HTML로 해석하지 않아 서버에서 받아오게 바뀌어도 태그가 실행되지 않는다. */
+const renderBoldText = (text: string) =>
+  text.split('**').map((part, index) => (index % 2 === 1 ? <b key={index}>{part}</b> : part));
+
 interface SignUpFormProps {
   objectType?: SignUpObjectType;
 }
@@ -550,26 +554,23 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                     <h1
                       key={index}
                       className={cn('text-foreground mb-1 text-base font-semibold leading-[1.45]')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('# ', '') }}
-                    />
+                    >
+                      {renderBoldText(line.replace('# ', ''))}
+                    </h1>
                   );
                 }
                 if (line.startsWith('## ')) {
                   return (
-                    <h2
-                      key={index}
-                      className={cn('text-foreground mb-1 mt-4 text-sm font-medium')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('## ', '') }}
-                    />
+                    <h2 key={index} className={cn('text-foreground mb-1 mt-4 text-sm font-medium')}>
+                      {renderBoldText(line.replace('## ', ''))}
+                    </h2>
                   );
                 }
                 if (line.startsWith('### ')) {
                   return (
-                    <h3
-                      key={index}
-                      className={cn('text-foreground mt-2 text-sm font-medium')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('### ', '') }}
-                    />
+                    <h3 key={index} className={cn('text-foreground mt-2 text-sm font-medium')}>
+                      {renderBoldText(line.replace('### ', ''))}
+                    </h3>
                   );
                 }
                 const trimmedLine = line.trimStart();
@@ -579,25 +580,22 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                     <li
                       key={index}
                       className={cn('list-disc leading-[1.6]', isNested ? 'ml-10' : 'ml-5')}
-                      dangerouslySetInnerHTML={{ __html: trimmedLine.substring(2) }}
-                    />
+                    >
+                      {renderBoldText(trimmedLine.substring(2))}
+                    </li>
                   );
                 }
                 if (line.startsWith('  > ')) {
                   return (
-                    <li
-                      key={index}
-                      className={cn('ml-10 list-disc leading-[1.6]')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('  > ', '') }}
-                    />
+                    <li key={index} className={cn('ml-10 list-disc leading-[1.6]')}>
+                      {renderBoldText(line.replace('  > ', ''))}
+                    </li>
                   );
                 }
                 return (
-                  <p
-                    key={index}
-                    className={cn('leading-[1.6]')}
-                    dangerouslySetInnerHTML={{ __html: line }}
-                  />
+                  <p key={index} className={cn('leading-[1.6]')}>
+                    {renderBoldText(line)}
+                  </p>
                 );
               })}
             </div>
