@@ -21,7 +21,7 @@ const Mermaid = ({ chart }: MermaidProps) => {
           // v12부터 기본 레이아웃·모양이 바뀌어 기존 문서 다이어그램과 같게 고정한다.
           layout: 'dagre',
           look: 'classic',
-          securityLevel: 'loose',
+          securityLevel: 'strict',
           fontFamily: 'inherit',
         });
 
