@@ -6,7 +6,7 @@ import {
   apiSuccess,
   createClub,
   createStudent,
-  findControlledPopup,
+  pickControlledOption,
   http,
   renderWithProviders,
   screen,
@@ -65,8 +65,7 @@ const field = (label: string) => within(dialog()).getByLabelText(label);
 const pickStudent = async (user: User, comboboxLabel: string, optionText: string) => {
   const trigger = field(comboboxLabel);
   await user.click(trigger);
-  const popup = await findControlledPopup(trigger);
-  await user.click(await within(popup).findByRole('option', { name: optionText }));
+  await pickControlledOption(user, trigger, optionText);
 };
 
 const openCreateDialog = async () => {

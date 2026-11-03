@@ -10,6 +10,7 @@ import {
   createStudent,
   findControlledPopup,
   http,
+  pickControlledOption,
   renderWithProviders,
   screen,
   server,
@@ -180,12 +181,13 @@ const findSelectedParticipants = () =>
 const pickParticipant = async (user: User, optionName: string, keyword?: string) => {
   // 후보 목록(Popover)도 role이 dialog라, 목록이 열려 있으면 dialog()로 범위를 좁힐 수 없다.
   const trigger = screen.getByRole('combobox', { name: '참여자 추가' });
-  const search = screen.queryByPlaceholderText('이름 또는 학번 검색...');
-  if (!search) await user.click(trigger);
+  if (trigger.getAttribute('aria-expanded') !== 'true') await user.click(trigger);
 
-  if (keyword) await user.type(screen.getByPlaceholderText('이름 또는 학번 검색...'), keyword);
-  const popup = await findControlledPopup(trigger);
-  await user.click(await within(popup).findByRole('option', { name: optionName }));
+  if (keyword) {
+    const popup = await findControlledPopup(trigger);
+    await user.type(within(popup).getByPlaceholderText('이름 또는 학번 검색...'), keyword);
+  }
+  await pickControlledOption(user, trigger, optionName);
 };
 
 const categoryCheckbox = (name: string) =>
