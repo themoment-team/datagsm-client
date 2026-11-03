@@ -46,15 +46,12 @@ import {
 import { useEmailVerification, useSignUp } from '@/widgets/signup';
 
 import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
+import { renderBoldText } from '../../lib/renderBoldText';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
 const VERIFICATION_CODE_LENGTH = 8;
 const FIELD_CLASS =
   'border-foreground focus-visible:border-foreground aria-invalid:border-destructive aria-invalid:text-destructive rounded-none focus-visible:ring-0';
-
-/** `**굵게**` 표시만 <b>로 바꾸고 나머지는 텍스트로 그린다. 문구를 HTML로 해석하지 않아 서버에서 받아오게 바뀌어도 태그가 실행되지 않는다. */
-const renderBoldText = (text: string) =>
-  text.split('**').map((part, index) => (index % 2 === 1 ? <b key={index}>{part}</b> : part));
 
 interface SignUpFormProps {
   objectType?: SignUpObjectType;
