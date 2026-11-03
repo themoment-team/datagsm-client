@@ -270,13 +270,15 @@ created = client.projects.create_project(
     )
 )
 
-# 카테고리를 모두 해제
+# 카테고리를 모두 해제. 유지할 값은 함께 보냅니다
 client.projects.update_project(
     created.id,
     ProjectWriteRequest(
         name="DataGSM",
         description="설명 수정",
         start_year=2024,
+        club_id=1,
+        participant_ids=[1, 2],
         categories=[],
     ),
 )
@@ -293,7 +295,8 @@ client.projects.delete_project(created.id)
 
 | 필드 | 기본값일 때 | 비우는 방법 |
 |---|---|---|
-| `repositories`, `tech_stacks` | 빈 목록으로 덮어씁니다. 유지하려면 기존 값을 다시 보내야 합니다. | 기본값 그대로 둡니다. |
+| `club_id` | 무소속으로 바뀝니다. 유지하려면 기존 값을 다시 보내야 합니다. | 기본값 그대로 두거나 `0` |
+| `participant_ids`, `repositories`, `tech_stacks` | 빈 목록으로 덮어씁니다. 유지하려면 기존 값을 다시 보내야 합니다. | 기본값 그대로 둡니다. |
 | `categories` | 기존 값을 유지합니다. | `[]` |
 | `icon_key`, `deployment_url` | 기존 값을 유지합니다. | `""` |
 | `status`, `end_year` | 수정에 반영되지 않습니다. | `end_project`, `reactivate_project` 사용 |

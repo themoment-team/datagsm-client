@@ -422,9 +422,13 @@ ProjectResDto project = client.projects().createProject(
         .categories(ProjectCategory.TEAM, ProjectCategory.CLUB)
         .techStacks(List.of("Kotlin", "Spring Boot")));
 
-// 프로젝트 수정: 카테고리를 모두 해제
+// 프로젝트 수정: 카테고리를 모두 해제. 유지할 값은 함께 보냅니다
 client.projects().updateProject(project.getId(),
-    new ProjectReqDto("DataGSM", "설명 수정", 2024).clearCategories());
+    new ProjectReqDto("DataGSM", "설명 수정", 2024)
+        .clubId(club.getId())
+        .participantIds(List.of(1L, 2L))
+        .techStacks(List.of("Kotlin", "Spring Boot"))
+        .clearCategories());
 
 // 운영 상태 변경은 전용 API를 사용합니다
 client.projects().endProject(project.getId(), new EndProjectReqDto(2025));
@@ -461,9 +465,13 @@ val project = client.projects().createProject(
         .categories(ProjectCategory.TEAM, ProjectCategory.CLUB)
         .techStacks(listOf("Kotlin", "Spring Boot")))
 
-// 프로젝트 수정: 카테고리를 모두 해제
+// 프로젝트 수정: 카테고리를 모두 해제. 유지할 값은 함께 보냅니다
 client.projects().updateProject(project.id,
-    ProjectReqDto("DataGSM", "설명 수정", 2024).clearCategories())
+    ProjectReqDto("DataGSM", "설명 수정", 2024)
+        .clubId(club.id)
+        .participantIds(listOf(1L, 2L))
+        .techStacks(listOf("Kotlin", "Spring Boot"))
+        .clearCategories())
 
 // 운영 상태 변경은 전용 API를 사용합니다
 client.projects().endProject(project.id, EndProjectReqDto(2025))
@@ -476,7 +484,8 @@ client.projects().deleteProject(project.id)`} />
 
 | 필드 | 지정하지 않을 때 | 비우는 방법 |
 | --- | --- | --- |
-| `repositories`, `techStacks` | 빈 목록으로 덮어씁니다. 유지하려면 기존 값을 다시 보내야 합니다. | 지정하지 않습니다. |
+| `clubId` | 무소속으로 바뀝니다. 유지하려면 기존 값을 다시 보내야 합니다. | 지정하지 않거나 `0` |
+| `participantIds`, `repositories`, `techStacks` | 빈 목록으로 덮어씁니다. 유지하려면 기존 값을 다시 보내야 합니다. | 지정하지 않습니다. |
 | `categories` | 기존 값을 유지합니다. | `clearCategories()` 또는 빈 컬렉션 |
 | `deploymentUrl` | 기존 값을 유지합니다. | 빈 문자열 |
 | `status`, `endYear` | 수정 API에 반영되지 않습니다. | `endProject`, `reactivateProject` 사용 |
