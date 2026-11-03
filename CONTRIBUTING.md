@@ -19,10 +19,10 @@ CI는 PR마다 `lint → check-types → test → build` 순서로 실행한다.
 
 ### 구성
 
-| 패키지                | 역할                                                                                                                         |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `@repo/vitest-config` | 공용 Vitest 설정. `node`(순수 로직·route handler·middleware), `react`(컴포넌트·훅, jsdom)                                    |
-| `@repo/test-utils`    | `renderWithProviders`, MSW 서버와 응답 도우미, 도메인 fixture, `next/navigation` mock, `selectOption`, `findControlledPopup` |
+| 패키지                | 역할                                                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@repo/vitest-config` | 공용 Vitest 설정. `node`(순수 로직·route handler·middleware), `react`(컴포넌트·훅, jsdom)                                                            |
+| `@repo/test-utils`    | `renderWithProviders`, MSW 서버와 응답 도우미, 도메인 fixture, `next/navigation` mock, `selectOption`, `pickControlledOption`, `findControlledPopup` |
 
 새 패키지에 테스트를 붙일 때는 기존 패키지의 `vitest.config.mts`, `vitest.setup.ts`를 복사하고
 `test`, `test:watch` 스크립트와 `@repo/test-utils`, `@repo/vitest-config`, `vitest` devDependency를 추가한다.
@@ -41,6 +41,7 @@ CI는 PR마다 `lint → check-types → test → build` 순서로 실행한다.
    jsdom 한계로 MSW를 쓸 수 없는 경우(예: `FormData` 파일 업로드)만 예외로 하고, 이유를 주석으로 남긴다.
 4. **테스트 데이터는 `@repo/test-utils`의 fixture로 만든다.** 테스트에 중요한 값만 덮어쓴다.
 5. **Radix Select는 `selectOption`으로 고른다.** jsdom에서는 트리거를 클릭하면 목록이 바로 닫힐 수 있다.
+   Popover·Command 목록은 트리거를 클릭한 뒤 `pickControlledOption`으로 고르고, `screen.findByRole('option')`으로 문서 전체를 찾지 않는다.
 6. **이미 알고 있는 문제는 `it.fails`로 남긴다.** 이름 끝에 `(알려진 문제)`를 붙이고, 고치면 `it`으로 바꾼다.
 7. **현재 동작이 의도인지 불분명하면** 테스트는 현재 동작대로 쓰고 `현재 동작을 기록한다.` 주석을 남긴다.
 

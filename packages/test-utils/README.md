@@ -56,3 +56,16 @@ jsdom에서는 트리거를 클릭하면 목록이 바로 닫힐 수 있으므�
 ```ts
 await selectOption(user, screen.getByLabelText('전공 동아리'), '더모먼트');
 ```
+
+## Popover·Command 목록에서 항목 고르기
+
+트리거를 클릭해 연 뒤 `pickControlledOption`으로 고른다. 트리거의 `aria-controls`가 가리키는 열린 팝업 안에서만 찾으므로,
+`screen.findByRole('option')`처럼 문서 전체를 찾지 않는다. 문서 전체를 찾으면 큰 폼에서 느려지고 다른 목록의 항목을 잡을 수 있다.
+
+```ts
+const trigger = screen.getByRole('combobox', { name: '참여자 추가' });
+await user.click(trigger);
+await pickControlledOption(user, trigger, '2101 김팀원');
+```
+
+검색창처럼 팝업 안의 다른 요소가 필요하면 `findControlledPopup`으로 팝업을 받아 `within`으로 찾는다.
