@@ -118,7 +118,7 @@ MealResDto meals = client.neis().getMeals(mealRequest);
 
 ### 지원하는 언어별 SDK
 
-DataGSM OpenAPI는 Java/Kotlin, Python, JavaScript/TypeScript용 공식 SDK를 제공합니다. 각 SDK는 해당 언어의 관습과 패턴을 따르며, 학생, 동아리, 프로젝트의 조회와 쓰기, NEIS 조회를 지원합니다. .NET, Go는 비공식 패키지입니다.
+DataGSM OpenAPI는 Java/Kotlin, Python, JavaScript/TypeScript용 공식 SDK를 제공합니다. 각 SDK는 해당 언어의 관습과 패턴을 따르며, 학생, 동아리, 프로젝트의 조회와 쓰기, NEIS 조회를 지원합니다. .NET은 비공식 패키지이며 Go는 파트너 SDK입니다.
 
 | 언어                        | 최신 버전   | 최소 버전       | 빌드 도구           | 주요 특징                                 | 기술 문서                                       |
 |---------------------------|---------|-------------|-----------------|---------------------------------------|---------------------------------------------|
@@ -127,17 +127,17 @@ DataGSM OpenAPI는 Java/Kotlin, Python, JavaScript/TypeScript용 공식 SDK를 �
 | **Python**                | `2.0.0` | 3.9+        | pip, uv, Poetry | 타입 힌팅, Pydantic 모델, 컨텍스트 매니저 (동기 API) | [Python SDK 기술 문서](/api/sdk/python)         |
 | **JavaScript/TypeScript** | `2.0.0` | Node.js 20+ | npm, yarn, pnpm | 완전한 TypeScript 지원, Promise 기반         | [JavaScript SDK 기술 문서](/api/sdk/javascript) |
 | **.NET**                  | 비공식     | .NET 8.0+   | NuGet           | 타입 안전성, IDisposable, async/await 지원   | [.NET SDK 기술 문서](/api/sdk/dotnet)           |
-| **Go**                    | 비공식     | Go 1.21+    | go get          | 타입 안전성, context 지원, 함수형 옵션 패턴        | [Go SDK 기술 문서](/api/sdk/go)                 |
+| **Go**                    | `0.2.0` | Go 1.25+    | go get          | 파트너 SDK, 조회·쓰기, context 지원 | [Go SDK 기술 문서](/api/sdk/go)                 |
 
 <div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
   <div className="flex items-start gap-3">
     <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
     <div>
       <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
-        .NET SDK, Go SDK — 비공식 패키지
+        .NET SDK — 비공식 패키지
       </div>
       <div className="text-yellow-800 dark:text-yellow-200 text-sm">
-        .NET SDK와 Go SDK는 공식 지원 패키지가 아닌 커뮤니티 기여 비공식 패키지이며 최신 서버 명세가 반영되어 있지 않습니다. 기능 및 업데이트 지원이 공식 SDK와 다를 수 있으므로 사용 시 유의하시기 바랍니다.
+        .NET SDK는 커뮤니티가 관리하는 비공식 패키지이며 최신 서버 명세가 반영되어 있지 않습니다.
       </div>
     </div>
   </div>
@@ -158,7 +158,7 @@ DataGSM OpenAPI는 Java/Kotlin, Python, JavaScript/TypeScript용 공식 SDK를 �
 
 ### 주요 기능
 
-공식 SDK는 DataGSM OpenAPI의 조회와 쓰기 기능을 지원합니다. 아래 표기는 Java, JavaScript 기준이며 Python은 `client.students`처럼 속성으로 접근합니다.
+공식 SDK와 Go SDK는 DataGSM OpenAPI의 조회와 쓰기 기능을 지원합니다. 아래 표기는 Java, JavaScript 기준이며 Python은 `client.students`, Go는 `client.Students`처럼 필드로 접근합니다.
 
 | 기능               | 설명                                | 지원 API              |
 |------------------|-----------------------------------|---------------------|
@@ -199,5 +199,5 @@ SDK를 설치하고 시작하려면:
   - [Python SDK](https://github.com/themoment-team/datagsm-openapi-sdk-python)
   - [JavaScript SDK](https://github.com/themoment-team/datagsm-openapi-sdk-javascript)
   - [.NET SDK](https://github.com/Sean-mn/datagsm-openapi-sdk-dotnet)
-  - [Go SDK](https://github.com/jihoonwjj/datagsm-openapi-sdk-go)
+  - [Go SDK](https://github.com/tmp-it-play/datagsm-sdk-go)
 - **이슈 및 피드백**: 버그 리포트나 기능 요청은 각 SDK의 GitHub Issues를 이용해주세요.

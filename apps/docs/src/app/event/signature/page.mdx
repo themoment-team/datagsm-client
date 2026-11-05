@@ -47,6 +47,8 @@ X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>
 
 ### 검증 예제
 
+Go에서는 [Event SDK](/event/sdk/go)의 `event.Parse`로 서명 검증과 페이로드 해석을 함께 처리할 수 있습니다.
+
 <CodeTabs>
   <CodeTab label="Node.js / Express" language="javascript" code={`const express = require('express');
 const crypto = require('crypto');

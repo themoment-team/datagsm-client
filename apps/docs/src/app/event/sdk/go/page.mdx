@@ -1,0 +1,155 @@
+import { Handshake } from 'lucide-react';
+
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+
+export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/event/sdk/go" })
+
+# DataGSM Event SDK for Go
+
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
+  <div className="flex items-start gap-3">
+    <Handshake className="h-5 w-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
+    <div>
+      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+        파트너 SDK
+      </div>
+      <div className="text-blue-800 dark:text-blue-200 text-sm">
+        더모먼트팀에서 제공하거나 보장하는 SDK가 아닙니다. 관련 문의는 파트너 측에 해 주세요.
+      </div>
+    </div>
+  </div>
+</div>
+
+### 개요
+
+[DataGSM SDK for Go](https://github.com/tmp-it-play/datagsm-sdk-go)의 `event` 패키지는 이벤트 서명 검증과 학생·동아리·프로젝트 변경 데이터 처리를 제공합니다. 이 문서는 `v0.2.0` 기준입니다.
+
+Go **1.25 이상**이 필요하고 외부 런타임 의존성은 없습니다. 같은 모듈에서 [OpenAPI](/api/sdk/go)와 [OAuth·OIDC](/oauth/sdk/go)도 사용할 수 있습니다.
+
+## 설치와 구독 등록
+
+```bash
+go get github.com/tmp-it-play/datagsm-sdk-go@v0.2.0
+```
+
+[Event 콘솔](https://www.datagsm.kr/events)에서 수신 URL과 이벤트를 등록하고, 한 번만 표시되는 secret을 서버 환경 변수나 시크릿 저장소에 보관합니다. 구독이 활성 상태이며 `verification_status`가 `VERIFIED`여야 이벤트가 발송됩니다. 등록·수신 URL 검증은 콘솔에서 처리합니다.
+
+## HTTP 수신
+
+다음 핸들러는 본문 원문으로 서명을 검증하고 이벤트를 처리한 뒤 `204`를 반환합니다. `process`는 애플리케이션에서 구현하며, 실제 처리를 완료하거나 영속 큐에 저장한 경우에만 `nil`을 반환해야 합니다.
+
+```go
+package webhook
+
+import (
+    "errors"
+    "io"
+    "net/http"
+
+    "github.com/tmp-it-play/datagsm-sdk-go/event"
+)
+
+func Handler(secret string, process func(*event.Event) error) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.Method != http.MethodPost {
+            w.Header().Set("Allow", http.MethodPost)
+            w.WriteHeader(http.StatusMethodNotAllowed)
+            return
+        }
+        body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4<<20))
+        if err != nil {
+            http.Error(w, "invalid body", http.StatusBadRequest)
+            return
+        }
+        if len(r.Header.Values(event.SignatureHeader)) != 1 {
+            w.WriteHeader(http.StatusUnauthorized)
+            return
+        }
+        received, err := event.Parse(body, r.Header.Get(event.SignatureHeader), secret)
+        if err != nil {
+            status := http.StatusBadRequest
+            if errors.Is(err, event.ErrInvalidSignature) {
+                status = http.StatusUnauthorized
+            }
+            http.Error(w, "invalid event", status)
+            return
+        }
+        if err := process(received); err != nil {
+            http.Error(w, "processing failed", http.StatusInternalServerError)
+            return
+        }
+        w.WriteHeader(http.StatusNoContent)
+    })
+}
+```
+
+예제의 본문 제한은 4 MiB이며 서비스에서 허용할 크기로 조정할 수 있습니다. `Handler`를 서버의 수신 경로에 등록하세요. JSON 미들웨어가 본문을 먼저 파싱하거나 다시 인코딩하면 서명이 달라질 수 있습니다.
+
+secret은 hex로 디코딩하지 않고 **문자열 그대로** 전달합니다. 서명 헤더에는 `sha256=` 접두사도 포함합니다. `event.Parse`는 서명을 검증한 뒤 JSON, 이벤트 종류, 변경 데이터의 구조를 확인합니다. 서명 검증만 필요하면 `event.VerifySignature(body, signature, secret)`을 사용하세요.
+
+## 변경 데이터 읽기
+
+`received.Type`에 맞는 타입으로 `event.Changes`를 호출합니다.
+
+| 이벤트 상수 | 페이로드 타입 | 반환 값 |
+| --- | --- | --- |
+| `event.StudentUpdated` | `event.Student` | `[]event.Change[event.Student]` |
+| `event.ClubUpdated` | `event.Club` | `[]event.Change[event.Club]` |
+| `event.ProjectUpdated` | `event.Project` | `[]event.Change[event.Project]` |
+
+다음 코드는 `process`처럼 `error`를 반환하는 함수 안에서 사용합니다. 출력에는 표준 라이브러리 `fmt`가 필요합니다. 실제 서비스에서는 출력 대신 데이터를 저장하거나 큐에 넣으세요.
+
+```go
+if received.Type == event.ProjectUpdated {
+    changes, err := event.Changes[event.Project](received)
+    if err != nil {
+        return err
+    }
+    for _, change := range changes {
+        switch {
+        case change.Old == nil:
+            fmt.Println("생성:", change.New.ID)
+        case change.New == nil:
+            fmt.Println("삭제:", change.Old.ID)
+        default:
+            fmt.Println("수정:", change.New.ID)
+        }
+    }
+}
+```
+
+`Changes`는 배열 위치가 아니라 `index`가 같은 변경 전후 데이터를 짝짓습니다. 중복·누락된 index, 서로 다른 대상 ID, 이벤트 종류와 타입의 불일치는 오류로 반환합니다.
+
+| 변경 종류 | `Old` | `New` |
+| --- | --- | --- |
+| 생성 | `nil` | 생성된 객체 |
+| 수정 | 변경 전 객체 | 변경 후 객체 |
+| 삭제 | 삭제 전 객체 | `nil` |
+
+학생은 생성·수정만 발행하며 졸업·자퇴는 `Role` 변경입니다. 동아리·프로젝트에서만 `New == nil`인 삭제가 발생합니다. 실제 대상 식별에는 `change.Index`가 아닌 객체의 `ID`를 사용하세요.
+
+Event의 모델은 `event.Student`, `event.Club`, `event.Project`를 사용합니다. JSON의 `student_id`, `club_id`, `project_id`는 모두 Go의 `ID` 필드에 대응합니다. nullable 필드는 포인터이며, 알려지지 않은 열거형 값도 문자열로 보존됩니다. 전체 필드는 [페이로드 명세](/event/payloads)를 참고하세요.
+
+## 중복 수신과 처리 실패
+
+서명 검증만으로 재전송을 막을 수는 없습니다. 애플리케이션은 `received.ID`를 저장해 같은 이벤트를 여러 번 적용하지 않도록 해야 합니다. ID 기록과 데이터 반영을 같은 트랜잭션으로 처리하거나, ID로 중복을 걸러내는 영속 큐를 사용하세요.
+
+서버는 응답을 최대 5초 기다리며 실패 시 1초, 10초 간격으로 재시도해 총 3회 발송합니다. 처리가 오래 걸리면 영속 큐에 저장한 뒤 응답하고 별도 작업에서 처리하세요. 메모리에만 넣거나 고루틴을 시작한 직후 성공 응답을 보내면 프로세스 종료 시 이벤트를 잃을 수 있습니다.
+
+3회 시도가 모두 실패한 이벤트는 재발송되지 않습니다. 중요한 데이터는 [OpenAPI](/api/sdk/go)로 정합성을 확인하는 절차도 마련하세요. 구독·재시도 정책은 [Event 개요](/event)를 참고하세요.
+
+## 오류 처리
+
+- `errors.Is(err, event.ErrInvalidSignature)`: secret 또는 서명이 유효하지 않음
+- `event.Parse`의 나머지 오류: JSON, 이벤트 종류, ID·시각, 변경 데이터 구조 확인 실패
+- `event.Changes` 오류: 이벤트 종류와 타입 불일치 또는 변경 전후 데이터 불일치
+
+서명 검증이나 처리에 실패한 요청에는 성공 응답을 보내지 않습니다. 원문 본문에는 개인정보가 포함되므로 로그에 그대로 남기지 마세요.
+
+## 추가 리소스
+
+- [서명 검증 가이드](/event/signature)
+- [이벤트 페이로드 명세](/event/payloads)
+- [전체 타입 레퍼런스](https://pkg.go.dev/github.com/tmp-it-play/datagsm-sdk-go@v0.2.0/event)
+- [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)
+- [GitHub Issues](https://github.com/tmp-it-play/datagsm-sdk-go/issues)
