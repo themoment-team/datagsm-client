@@ -1,6 +1,7 @@
 import { Handshake } from 'lucide-react';
 
 import { createDocsPageMetadata } from '@/shared/lib/metadata';
+import { GoSDKContacts } from '@/widgets/docs/ui/GoSDKContacts';
 
 export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/api/sdk/go" })
 
@@ -16,6 +17,7 @@ export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/ap
       <div className="text-blue-800 dark:text-blue-200 text-sm">
         더모먼트팀에서 제공하거나 보장하는 SDK가 아닙니다. 관련 문의는 파트너 측에 해 주세요.
       </div>
+      <GoSDKContacts />
     </div>
   </div>
 </div>
