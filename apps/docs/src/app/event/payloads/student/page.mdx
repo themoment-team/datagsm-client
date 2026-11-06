@@ -4,7 +4,7 @@ export const metadata = createDocsPageMetadata({ title: "student.updated 명세"
 
 # `student.updated`
 
-학생 정보가 변경되면 발송됩니다. 정보 수정, 졸업, 자퇴, 역할 변경 등 **모든 학생 변경**이 이 하나의 이벤트로 전달됩니다.
+학생이 생성되거나 학생 정보가 변경되면 발송됩니다. 생성, 정보 수정, 졸업, 자퇴, 역할 변경 등 **모든 학생 변경**이 이 하나의 이벤트로 전달됩니다.
 
 봉투(`id`/`event`/`timestamp`/`data`)와 `data`의 `old`/`new` `{index, object}` 구조는 [페이로드 개요](/event/payloads)를 참고하세요. 이 페이지는 `object` 안에 담기는 학생 필드만 다룹니다.
 
@@ -64,6 +64,7 @@ export const metadata = createDocsPageMetadata({ title: "student.updated 명세"
 
 | 작업                                          | `old`/`new` 길이 | `role` 변화 예                          |
 |---------------------------------------------|----------------|-------------------------------------|
+| 학생 생성 (`old[0].object`가 `{}`)                 | 1              | 없음                                  |
 | 학생 정보 수정 (이름·이메일·학번·동아리·기숙사 등)              | 1              | 변화 없음 또는 일부 필드만                     |
 | 상태(소속) 변경                                   | 1              | `GENERAL_STUDENT` → `STUDENT_COUNCIL` |
 | 자퇴 처리                                       | 1              | `... → WITHDRAWN`                   |
@@ -71,7 +72,7 @@ export const metadata = createDocsPageMetadata({ title: "student.updated 명세"
 | 3학년 일괄 졸업                                   | N (학생 수)       | 다수 `... → GRADUATE`                 |
 | 엑셀 일괄 수정                                    | N (변경 학생 수)    | 변경 내용에 따라                          |
 
-> 학생 도메인은 현재 **수정만 발행**합니다. 졸업·자퇴해도 row가 남으므로 삭제(`object` 빈 `{}`)가 아니라 `role` 변화로 표현됩니다.
+> 학생 도메인은 **생성과 수정을 발행**합니다. 졸업·자퇴해도 row가 남으므로 삭제(`new[i].object`가 빈 `{}`)가 아니라 `role` 변화로 표현됩니다.
 
 ### 예시 A — 단일 학생 정보 수정 (이메일·기숙사만 변경)
 

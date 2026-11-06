@@ -26,10 +26,11 @@ sequenceDiagram
 
     A->>D: 1. 콘솔에서 수신 URL·구독 이벤트 등록
     D-->>A: 2. secret 1회 노출 (안전하게 보관)
-    Note over D: 3. 학생·동아리·프로젝트 이벤트 발생
-    D->>E: 4. HTTP POST + X-DataGSM-Signature
-    E->>E: 5. 서명 검증 후 페이로드 처리
-    E-->>D: 6. 2xx 응답
+    Note over D: 3. 수신 URL 검증 (VERIFIED)
+    Note over D: 4. 학생·동아리·프로젝트 이벤트 발생
+    D->>E: 5. HTTP POST + X-DataGSM-Signature
+    E->>E: 6. 서명 검증 후 페이로드 처리
+    E-->>D: 7. 2xx 응답
 ```
 
 ### 지원 이벤트
@@ -38,9 +39,9 @@ sequenceDiagram
 
 | 이벤트                | 트리거                                | 관련 도메인  |
 |--------------------|------------------------------------|---------|
-| `student.updated`  | 학생 정보 수정·졸업·자퇴·역할 변경 등 모든 학생 변경     | student |
+| `student.updated`  | 학생 생성, 정보 수정·졸업·자퇴·역할 변경 등 모든 학생 변경 | student |
 | `club.updated`     | 동아리 생성·수정·삭제                        | club    |
-| `project.updated`  | 프로젝트 생성·수정·삭제                       | project |
+| `project.updated`  | 프로젝트 생성·수정·삭제·종료·재개                 | project |
 
 세 이벤트 모두 변경 **전(`old`)** 과 **후(`new`)** 정보를 함께 담아 전송합니다. 생성·수정·삭제는 별도 이벤트가 아니라 `old`/`new` 값으로 구분합니다.
 
@@ -50,16 +51,37 @@ sequenceDiagram
 
 하나의 계정에는 최대 **10개**의 Event를 등록할 수 있습니다. 이미 10개를 등록한 경우 콘솔의 등록 버튼이 비활성화됩니다.
 
+### 수신 URL 검증
+
+Event를 등록하거나 수신 URL을 바꾸면 DataGSM이 URL을 비동기로 검증합니다. 이벤트는 `verification_status`가 `VERIFIED`인 구독으로만 발송됩니다.
+
+| `verification_status` | 의미      | 발송 여부 |
+|-----------------------|---------|-------|
+| `PENDING`             | 검증 대기 중 | 발송 안 됨 |
+| `VERIFIED`            | 검증 완료   | 발송됨   |
+| `FAILED`              | 검증 실패   | 발송 안 됨 |
+
+호스트의 DNS 조회에 실패하거나, 호스트가 사설망, 루프백, 링크 로컬 주소로 연결되면 `FAILED`가 됩니다. 검증은 주소만 확인하며 수신 서버로 요청을 보내지 않습니다. `FAILED` 상태에서는 URL을 고쳐 저장하거나 같은 URL을 다시 저장하면 다시 검증됩니다.
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">기존 구독 확인 필요</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    변경 전에는 활성 구독이면 모두 발송했습니다. 변경 후에는 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">VERIFIED</code> 구독만 발송합니다. 다른 상태의 구독은 이벤트를 받지 못하므로, 콘솔에서 검증 상태를 확인하고 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">FAILED</code>이면 URL을 다시 저장하십시오. 자세한 내용은 <a href="/migration">변경 사항 및 마이그레이션</a>을 참고하십시오.
+  </div>
+</div>
+
 ### 전송 정책
 
 | 항목               | 정책                                                           |
 |------------------|--------------------------------------------------------------|
+| **발송 대상**        | 활성 상태이고 `verification_status`가 `VERIFIED`인 구독                 |
 | **전송 방식**        | 비동기 HTTP POST 요청                                             |
-| **재시도**          | 최대 3회, 지수 백오프 (1s → 10s → 100s)                              |
+| **타임아웃**         | 연결 3초, 응답 5초                                                  |
+| **재시도**          | 총 3회 시도. 실패하면 1초, 10초를 기다린 뒤 다시 시도                           |
 | **서명 헤더**        | `X-DataGSM-Signature: sha256=<HMAC-SHA256(secret, payload)>` |
 | **Content-Type** | `application/json`                                           |
 
-3회 재시도 후에도 전달에 실패하면 해당 이벤트는 영구적으로 손실됩니다. 수신 서버가 일시적으로 다운된 상태에서 발생한 이벤트는 재발송되지 않으므로, 중요한 데이터는 별도의 정합성 점검 로직을 함께 운영하는 것을 권장합니다.
+3회 시도가 모두 실패하면 해당 이벤트는 영구적으로 손실됩니다. 수신 서버가 일시적으로 다운된 상태에서 발생한 이벤트는 재발송되지 않으므로, 중요한 데이터는 별도의 정합성 점검 로직을 함께 운영하는 것을 권장합니다.
 
 ### secret 관리
 
@@ -83,7 +105,8 @@ secret은 64자 hex 문자열이며, 수신 서버가 위조 요청을 식별하
 
 1. DataGSM 웹에 로그인한 뒤 [Event 콘솔](https://www.datagsm.kr/events)에서 수신 URL과 구독 이벤트를 등록합니다.
 2. 등록 완료 화면에 노출된 `secret`을 안전한 곳에 즉시 보관합니다.
-3. 수신 서버에서 `X-DataGSM-Signature` 헤더를 검증하여 요청의 진위를 확인합니다.
+3. 콘솔에서 검증 상태가 `VERIFIED`인지 확인합니다.
+4. 수신 서버에서 `X-DataGSM-Signature` 헤더를 검증하여 요청의 진위를 확인합니다.
 
 ### 다음 단계
 

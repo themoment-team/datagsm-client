@@ -19,9 +19,9 @@ export const metadata = createDocsPageMetadata({ title: "club.updated 명세", p
 | `status`         | `string(enum)`   | X        | 상태 (`ACTIVE` / `ABOLISHED`)               |
 | `abolished_year` | `integer`        | O        | 폐지 연도 (활성 동아리는 `null`)                    |
 | `leader`         | `object`         | O        | 동아리장 `{ student_number, name }` (없으면 `null`) |
-| `participants`   | `array<object>`  | X        | 부원 목록 `[{ student_number, name }]`         |
+| `participants`   | `array<object>`  | X        | 부원 목록 `[{ student_number, name }]`. 동아리장 제외 |
 
-`leader` / `participants`의 학생은 `{ student_number, name }`만 담습니다.
+`leader` / `participants`의 학생은 `{ student_number, name }`만 담습니다. 학번이 없는 학생의 `student_number`는 `null`입니다.
 
 **`type`**
 
@@ -80,9 +80,9 @@ export const metadata = createDocsPageMetadata({ title: "club.updated 명세", p
 
 → `index 0`의 `old.object`/`new.object`를 비교: 동아리장이 홍길동→김부원으로 바뀌고, 부원이 추가됨.
 
-### 예시 B — 삭제 (동아리 폐지)
+### 예시 B — 삭제
 
-`new[i].object`가 빈 `{}`이면 삭제입니다.
+`new[i].object`가 빈 `{}`이면 삭제입니다. 동아리 폐지는 삭제가 아니라 `status`가 `ABOLISHED`로 바뀌는 수정으로 전달됩니다.
 
 ```json
 {

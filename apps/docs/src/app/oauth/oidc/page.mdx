@@ -1,0 +1,251 @@
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+
+export const metadata = createDocsPageMetadata({ title: "OIDC 가이드", pathname: "/oauth/oidc" })
+
+# OIDC 가이드
+
+### 개요
+
+DataGSM OAuth는 OpenID Connect(OIDC)를 지원합니다. `scope`에 `openid`를 넣으면 토큰 응답에 사용자 인증 결과를 담은 `id_token`이 포함됩니다. Discovery 문서를 제공하므로 NextAuth, openid-client, Spring Security 같은 표준 라이브러리를 issuer 설정만으로 연동할 수 있습니다.
+
+| 항목 | 값 |
+|---|---|
+| Issuer | `https://oauth.authorization.datagsm.kr` |
+| Discovery | `https://oauth.authorization.datagsm.kr/.well-known/openid-configuration` |
+| JWKS | `https://oauth.authorization.datagsm.kr/v1/oauth/jwks` |
+| UserInfo | `https://oauth.resource.datagsm.kr/userinfo` |
+
+### Discovery
+
+```http
+GET /.well-known/openid-configuration
+```
+
+공통 응답 구조로 감싸지 않은 JSON을 반환합니다.
+
+```json
+{
+  "issuer": "https://oauth.authorization.datagsm.kr",
+  "authorization_endpoint": "https://oauth.authorization.datagsm.kr/v1/oauth/authorize",
+  "token_endpoint": "https://oauth.authorization.datagsm.kr/v1/oauth/token",
+  "jwks_uri": "https://oauth.authorization.datagsm.kr/v1/oauth/jwks",
+  "userinfo_endpoint": "https://oauth.resource.datagsm.kr/userinfo",
+  "response_types_supported": ["code"],
+  "grant_types_supported": ["authorization_code", "refresh_token", "client_credentials"],
+  "subject_types_supported": ["public"],
+  "id_token_signing_alg_values_supported": ["RS256"],
+  "code_challenge_methods_supported": ["S256"],
+  "scopes_supported": [
+    "openid",
+    "datagsm:account_read",
+    "datagsm:student_read",
+    "datagsm:club_read",
+    "datagsm:project_read"
+  ],
+  "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post", "none"],
+  "claims_supported": ["iss", "sub", "aud", "exp", "iat", "nonce", "email"]
+}
+```
+
+`end_session_endpoint`는 없습니다. 로그아웃은 이 문서의 로그아웃 절을 참고하세요.
+
+### id_token 발급
+
+인가 요청의 `scope`에 `openid`를 넣습니다. `openid`는 클라이언트에 등록하지 않아도 됩니다. 다만 동의 범위에는 포함되므로, 기존 연동에 `openid`를 추가하면 SSO 세션 사용자에게 동의 화면이 한 번 표시됩니다.
+
+```
+GET /v1/oauth/authorize?client_id=your-client-id
+  &redirect_uri=https%3A%2F%2Fyour-app.com%2Fcallback
+  &response_type=code
+  &scope=openid%20datagsm%3Aaccount_read%20datagsm%3Astudent_read
+  &state=random-state-value
+  &nonce=n-0S6_WzA2Mj
+  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM
+  &code_challenge_method=S256
+```
+
+`openid`만 요청하면 `account_read`, `student_read` 중 클라이언트가 가진 값이 함께 부여됩니다. 필요한 범위는 명시하는 것을 권장합니다. 자세한 규칙은 [권한 범위](/oauth/scopes)를 참고하세요.
+
+[토큰 교환](/oauth/http/token-exchange) 응답에 `id_token`이 포함됩니다. 토큰 교환에서 `scope`로 범위를 좁힐 때 `openid`를 빼면 `id_token`이 발급되지 않습니다. [토큰 갱신](/oauth/http/token-refresh) 응답에는 `id_token`이 없습니다.
+
+#### 클레임
+
+유효기간은 Access Token과 같은 1시간입니다.
+
+```json
+{
+  "iss": "https://oauth.authorization.datagsm.kr",
+  "sub": "student@gsm.hs.kr",
+  "aud": ["your-client-id"],
+  "email": "student@gsm.hs.kr",
+  "nonce": "n-0S6_WzA2Mj",
+  "iat": 1712000000,
+  "exp": 1712003600
+}
+```
+
+| 클레임 | 타입 | 설명 |
+|---|---|---|
+| `iss` | `String` | 발급자. Discovery의 `issuer`와 같은 값 |
+| `sub` | `String` | 사용자 식별자. 이메일과 같은 값 |
+| `aud` | `Array` | 토큰을 받는 클라이언트의 `client_id` |
+| `exp` | `Long` | 만료 시각 (Unix 초) |
+| `iat` | `Long` | 발급 시각 (Unix 초) |
+| `email` | `String` | 사용자 이메일 |
+| `nonce` | `String` | 인가 요청의 `nonce`. 요청했을 때만 포함 |
+
+### sub
+
+`sub`는 계정 이메일이며 `id_token`, Access Token, `/userinfo`에서 같은 값입니다. `/userinfo`의 `sub`를 `id_token`의 `sub`와 비교하면 같은 사용자인지 확인할 수 있습니다. 계정 이메일은 학교 계정에 묶여 변경되지 않으므로 사용자 식별자로 저장할 수 있습니다.
+
+### nonce
+
+`nonce`는 `id_token` 재전송을 막는 값입니다. 로그인 시작 때 임의 값을 만들어 서버 세션 등에 저장하고, 인가 요청에 함께 보낸 뒤 `id_token`의 `nonce`와 비교합니다. 값이 다르면 로그인을 거부하세요. `openid`를 요청할 때는 항상 사용하는 것을 권장합니다.
+
+### id_token 검증
+
+표준 라이브러리를 쓰면 대부분 자동으로 처리됩니다. 직접 검증한다면 다음을 모두 확인합니다.
+
+1. JWT 헤더의 `kid`로 JWKS에서 키를 찾아 RS256 서명을 검증합니다.
+2. `iss`가 `https://oauth.authorization.datagsm.kr`인지 확인합니다.
+3. `aud`에 자신의 `client_id`가 있는지 확인합니다.
+4. `exp`가 지나지 않았는지 확인합니다.
+5. `nonce`가 저장한 값과 같은지 확인합니다.
+
+```javascript
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+const jwks = createRemoteJWKSet(
+  new URL('https://oauth.authorization.datagsm.kr/v1/oauth/jwks')
+);
+
+const { payload } = await jwtVerify(idToken, jwks, {
+  issuer: 'https://oauth.authorization.datagsm.kr',
+  audience: 'your-client-id',
+  algorithms: ['RS256'],
+});
+
+if (payload.nonce !== session.nonce) {
+  throw new Error('nonce mismatch');
+}
+```
+
+JWKS의 키 항목에는 `use`, `alg`가 `null`로 내려옵니다. `use` 값으로 키를 거르는 라이브러리는 서명 키를 찾지 못할 수 있으므로 `kid`로 키를 찾으세요.
+
+### 표준 라이브러리 연동
+
+토큰 요청은 라이브러리가 form 형식으로 보내고, 클라이언트 인증 방식은 Discovery에서 결정됩니다. `client_secret`은 백엔드 환경 변수로 관리하세요. 동의를 거부한 사용자는 `error=access_denied`로 돌아오므로 각 라이브러리의 오류 화면이나 오류 처리도 구성합니다.
+
+#### NextAuth (Auth.js)
+
+```typescript
+// auth.ts
+import NextAuth from 'next-auth';
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  providers: [
+    {
+      id: 'datagsm',
+      name: 'DataGSM',
+      type: 'oidc',
+      issuer: 'https://oauth.authorization.datagsm.kr',
+      clientId: process.env.DATAGSM_CLIENT_ID,
+      clientSecret: process.env.DATAGSM_CLIENT_SECRET,
+      checks: ['pkce', 'state', 'nonce'],
+      authorization: {
+        params: { scope: 'openid datagsm:account_read datagsm:student_read' },
+      },
+    },
+  ],
+});
+```
+
+#### openid-client
+
+```typescript
+import * as client from 'openid-client';
+
+const config = await client.discovery(
+  new URL('https://oauth.authorization.datagsm.kr'),
+  process.env.DATAGSM_CLIENT_ID!,
+  process.env.DATAGSM_CLIENT_SECRET!,
+);
+
+// 로그인 시작: 세 값을 서버 세션에 저장합니다.
+const codeVerifier = client.randomPKCECodeVerifier();
+const state = client.randomState();
+const nonce = client.randomNonce();
+
+const authorizationUrl = client.buildAuthorizationUrl(config, {
+  redirect_uri: 'https://your-app.com/callback',
+  scope: 'openid datagsm:account_read datagsm:student_read',
+  code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
+  code_challenge_method: 'S256',
+  state,
+  nonce,
+});
+
+// 콜백 처리: currentUrl은 콜백 요청의 전체 URL입니다.
+const tokens = await client.authorizationCodeGrant(config, currentUrl, {
+  pkceCodeVerifier: codeVerifier,
+  expectedState: state,
+  expectedNonce: nonce,
+  idTokenExpected: true,
+});
+
+const claims = tokens.claims();
+const userInfo = await client.fetchUserInfo(config, tokens.access_token, claims!.sub);
+```
+
+#### Spring Security
+
+```yaml
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          datagsm:
+            issuer-uri: https://oauth.authorization.datagsm.kr
+        registration:
+          datagsm:
+            provider: datagsm
+            client-id: ${DATAGSM_CLIENT_ID}
+            client-secret: ${DATAGSM_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - datagsm:account_read
+              - datagsm:student_read
+```
+
+`redirect-uri`의 실제 주소를 클라이언트에 등록해야 합니다.
+
+### 로그아웃
+
+```http
+POST /v1/oauth/logout
+```
+
+SSO 세션을 삭제하고 세션 쿠키를 만료시킵니다. 세션이 없어도 `204 No Content`로 응답합니다.
+
+- 이미 발급된 Access Token은 만료될 때까지 유효합니다.
+- 브라우저 쿠키로 동작하며, OIDC RP-Initiated Logout이 아닙니다. Discovery에 `end_session_endpoint`가 없습니다.
+- 세션 쿠키는 `SameSite=Lax`이고 인가 서버의 CORS 허용 출처는 DataGSM 자사 서비스로 제한됩니다. 외부 서비스의 프런트엔드에서 호출하면 CORS 검사에서 거부됩니다.
+- 사용자가 비밀번호를 변경하거나 회원 탈퇴하면 해당 계정의 SSO 세션과 Refresh Token이 모두 삭제됩니다.
+
+외부 서비스의 로그아웃은 앱의 세션과 저장한 토큰을 지우는 것으로 처리하세요. SSO 세션이 남아 있으면 다음 인가 요청에서 로그인 화면 없이 코드가 발급될 수 있습니다.
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">end_session_endpoint 제거</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    변경 전에는 Discovery로 로그아웃 주소를 찾을 수 있었지만, 변경 후에는 이 값이 없습니다. 이 값을 읽는 연동은 주소를 찾지 못합니다. 로그아웃 처리를 위 안내대로 바꾸세요. 전체 목록은 <a href="/migration" className="underline font-medium">변경 사항 및 마이그레이션</a>을 참고하세요.
+  </div>
+</div>
+
+### 다음 단계
+
+- [권한 범위](/oauth/scopes) - `openid`와 함께 요청할 범위
+- [인증 흐름 시작](/oauth/http/authorize) - `nonce`를 포함한 파라미터
+- [토큰 교환](/oauth/http/token-exchange) - `id_token` 응답

@@ -7,7 +7,8 @@ export const metadata = createDocsPageMetadata({ title: "학생 데이터 OpenAP
 ### 개요
 
 학생 데이터 OpenAPI는 학생 데이터를 간단한 HTTP 요청을 통하여 서비스에 통합할 수
-있도록 돕습니다. 해당 REST API를 호출하여 기본적인 학생 데이터를 획득할 수 있습니다.
+있도록 돕습니다. 해당 REST API를 호출하여 기본적인 학생 데이터를 획득할 수 있습니다. 쓰기 권한 범위가 있는 API 키로는
+[학생을 생성](#학생-생성)하거나 [수정](#학생-수정)할 수 있습니다.
 
 ### 인증
 
@@ -27,29 +28,29 @@ GET /v1/students
 
 ### 권한 범위
 
-`STUDENT_READ` 권한 범위가 필요합니다.
+`student:read` 또는 `student:*` 권한 범위가 필요합니다.
 
 ### 요청 파라미터
 
 | 파라미터               | 타입              | 필수 여부 | 설명                                                                                                  | 예시                  |
 |--------------------|-----------------|-------|-----------------------------------------------------------------------------------------------------|---------------------|
 | `studentId`        | `Long`          | 선택    | 학생 ID                                                                                               | `1`                 |
-| `name`             | `String`        | 선택    | 이름                                                                                                  | `홍길동`               |
-| `email`            | `String`        | 선택    | 이메일                                                                                                 | `student@gsm.hs.kr` |
+| `name`             | `String`        | 선택    | 이름 (부분 일치)                                                                                          | `홍길동`               |
+| `email`            | `String`        | 선택    | 이메일 (부분 일치)                                                                                         | `student@gsm.hs.kr` |
 | `grade`            | `Int`           | 선택    | 학년 (1-3)                                                                                            | `1`                 |
 | `classNum`         | `Int`           | 선택    | 반 (1-4)                                                                                             | `1`                 |
 | `number`           | `Int`           | 선택    | 번호 (1-18)                                                                                           | `1`                 |
 | `sex`              | `Sex`           | 선택    | 성별 (`MAN`, `WOMAN`)                                                                                 | `MAN`               |
 | `role`             | `StudentRole`   | 선택    | 학생 역할 (`STUDENT_COUNCIL`, `DORMITORY_MANAGER`, `GENERAL_STUDENT`, `GRADUATE`, `WITHDRAWN`)          | `GENERAL_STUDENT`   |
-| `specialty`        | `String`        | 선택    | 전공                                                                                                  | `백엔드`               |
+| `specialty`        | `String`        | 선택    | 전공 (부분 일치)                                                                                          | `백엔드`               |
 | `major`            | `Major`         | 선택    | 학과 (`SW_DEVELOPMENT`, `SMART_IOT`, `AI`)                                                            | `SW_DEVELOPMENT`    |
-| `githubId`         | `String`        | 선택    | GitHub 아이디                                                                                          | `octocat`           |
+| `githubId`         | `String`        | 선택    | GitHub 아이디 (부분 일치)                                                                                  | `octocat`           |
 | `dormitoryRoom`    | `Int`           | 선택    | 기숙사 호실                                                                                              | `301`               |
 | `includeGraduates` | `Boolean`       | 선택    | 졸업생 포함 여부 (기본값: false)                                                                              | `false`             |
 | `includeWithdrawn` | `Boolean`       | 선택    | 자퇴생 포함 여부 (기본값: false)                                                                              | `false`             |
 | `onlyEnrolled`     | `Boolean`       | 선택    | 재학생만 조회 여부 — `true`이면 졸업생·자퇴생 모두 제외 (기본값: false)                                                    | `false`             |
-| `page`             | `Int`           | 선택    | 페이지 번호 (기본값: 0)                                                                                     | `0`                 |
-| `size`             | `Int`           | 선택    | 페이지 크기 (기본값: 300)                                                                                   | `300`               |
+| `page`             | `Int`           | 선택    | 페이지 번호 (0 이상, 기본값: 0)                                                                               | `0`                 |
+| `size`             | `Int`           | 선택    | 페이지 크기 (1-1000, 기본값: 300)                                                                           | `300`               |
 | `sortBy`           | `StudentSortBy` | 선택    | 정렬 기준 (ID, NAME, EMAIL, STUDENT_NUMBER, GRADE, CLASS_NUM, NUMBER, MAJOR, ROLE, SEX, DORMITORY_ROOM) | `STUDENT_NUMBER`    |
 | `sortDirection`    | `SortDirection` | 선택    | 정렬 방향 (ASC, DESC) (기본값: ASC)                                                                        | `ASC`               |
 
@@ -67,13 +68,17 @@ GET /v1/students
 > 기본값(`includeGraduates=false`, `includeWithdrawn=false`, `onlyEnrolled=false`)으로 호출하면
 > 졸업생·자퇴생이 모두 제외된 재학생 목록이 반환됩니다.
 
+`role=GRADUATE`로 졸업생을 조회하려면 `includeGraduates=true`도 함께 보내야 합니다. 자퇴생은 `role=WITHDRAWN`과 `includeWithdrawn=true`를 함께 보냅니다.
+
+조회 결과에는 DataGSM 계정이 있는 학생만 포함됩니다.
+
 ### 응답 형식
 
 모든 성공 응답은 다음과 같은 구조로 반환됩니다.
 
 | 필드        | 타입       | 설명          | 예시    |
 |-----------|----------|-------------|-------|
-| `status`  | `String` | HTTP 상태 메시지 | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지 | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드  | `200` |
 | `message` | `String` | 응답 메시지      | `OK`  |
 | `data`    | `Object` | 학생 데이터 목록   | -     |
@@ -112,6 +117,8 @@ GET /v1/students
 | `githubId`       | `String?`         | GitHub 아이디 (미설정 시 `null`)                                                                  | `octocat`                    |
 | `githubUrl`      | `String?`         | GitHub 프로필 URL (미설정 시 `null`)                                                              | `https://github.com/octocat` |
 
+관리자가 학생에게 정보 수정을 요청하면 재학생이어도 해당 값이 학생이 다시 입력할 때까지 `null`입니다. 대상은 학번(`grade`, `classNum`, `number`, `studentNumber`), 기숙사(`dormitoryFloor`, `dormitoryRoom`), `majorClub`, `autonomousClub`입니다.
+
 ### 동아리 객체 (ClubSummaryDto)
 
 학생 응답에 포함된 동아리 데이터는 다음 필드를 포함합니다.
@@ -145,7 +152,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/students?sortBy=NAME&sortDirection=DE
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -260,3 +267,138 @@ fun getStudents(studentId: Long): String {
     return response.body()
 }`} />
 </CodeTabs>
+
+### 학생 생성
+
+```http
+POST /v1/students
+```
+
+`student:write` 또는 `student:*` 권한 범위가 필요합니다. 이 권한 범위는 관리자 계정만 발급받을 수 있습니다.
+
+#### 요청 본문
+
+| 필드                    | 타입            | 필수 여부 | 검증              | 설명                                 |
+|-----------------------|---------------|-------|-----------------|------------------------------------|
+| `name`                | `String`      | 필수    | 공백 불가, 10자 이하   | 이름                                 |
+| `sex`                 | `Sex`         | 필수    | `MAN`, `WOMAN`  | 성별                                 |
+| `email`               | `String`      | 필수    | 이메일 형식, 25자 이하  | 이메일                                |
+| `grade`               | `Int`         | 조건부   | 1-3             | 학년. 재학생은 필수                        |
+| `classNum`            | `Int`         | 조건부   | 1-4             | 반. 재학생은 필수                         |
+| `number`              | `Int`         | 조건부   | 1-18            | 번호. 재학생은 필수                        |
+| `role`                | `StudentRole` | 선택    | 기본값 `GENERAL_STUDENT` | 학생 역할                         |
+| `dormitoryRoomNumber` | `Int`         | 선택    | 201-518         | 기숙사 호실                             |
+| `majorClubId`         | `Long`        | 선택    | 존재하는 동아리 ID     | 전공 동아리 ID                          |
+| `autonomousClubId`    | `Long`        | 선택    | 존재하는 동아리 ID     | 자율 동아리 ID                          |
+| `specialty`           | `String`      | 선택    | 50자 이하          | 전공                                 |
+
+`role`에 따라 보낼 수 있는 필드가 다릅니다.
+
+| `role`                                                  | 규칙                                     |
+|---------------------------------------------------------|----------------------------------------|
+| `GENERAL_STUDENT`, `STUDENT_COUNCIL`, `DORMITORY_MANAGER` | `grade`, `classNum`, `number`가 필수입니다.  |
+| `GRADUATE`                                              | 학번, 기숙사, 동아리 필드를 보낼 수 없습니다.            |
+| `WITHDRAWN`                                             | 기숙사, 동아리 필드를 보낼 수 없습니다.                |
+
+학과(`major`)는 요청으로 받지 않고 재학생의 반으로 정해집니다. 1, 2반은 `SW_DEVELOPMENT`, 3반은 `SMART_IOT`, 4반은 `AI`입니다. `githubId`는 생성 시 설정할 수 없으므로 [학생 수정](#학생-수정)으로 설정합니다.
+
+생성한 학생은 DataGSM 계정이 연결되기 전까지 `GET /v1/students` 결과에 나오지 않습니다.
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 생성된 [학생 객체](#학생-객체-studentresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                     |
+|--------------------|-------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, `role` 규칙 위반          |
+| `404 Not Found`    | `majorClubId` 또는 `autonomousClubId`의 동아리가 없음 |
+| `409 Conflict`     | 이미 존재하는 이메일 또는 학번                         |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X POST "https://openapi.datagsm.kr/v1/students" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "홍길동",
+    "sex": "MAN",
+    "email": "student@gsm.hs.kr",
+    "grade": 1,
+    "classNum": 1,
+    "number": 1,
+    "dormitoryRoomNumber": 301,
+    "majorClubId": 1,
+    "specialty": "백엔드"
+  }'
+```
+
+### 학생 수정
+
+```http
+PUT /v1/students/{studentId}
+```
+
+`student:write` 또는 `student:*` 권한 범위가 필요합니다.
+
+학생 정보를 전체 교체합니다. 선택 필드를 생략하면 기존 값이 유지되지 않고 비워집니다. 기존 값을 유지하려면 조회한 값을 함께 보내십시오.
+
+#### 요청 본문
+
+| 필드                    | 타입            | 필수 여부 | 검증                 | 설명        |
+|-----------------------|---------------|-------|--------------------|-----------|
+| `name`                | `String`      | 필수    | 공백 불가, 10자 이하      | 이름        |
+| `sex`                 | `Sex`         | 필수    | `MAN`, `WOMAN`     | 성별        |
+| `email`               | `String`      | 필수    | 이메일 형식, 25자 이하     | 이메일       |
+| `grade`               | `Int`         | 필수    | 1-3                | 학년        |
+| `classNum`            | `Int`         | 필수    | 1-4                | 반. 학과가 함께 바뀝니다 |
+| `number`              | `Int`         | 필수    | 1-18               | 번호        |
+| `role`                | `StudentRole` | 필수    | `GRADUATE`, `WITHDRAWN` 불가 | 학생 역할 |
+| `dormitoryRoomNumber` | `Int`         | 선택    | 201-518            | 기숙사 호실    |
+| `majorClubId`         | `Long`        | 선택    | 존재하는 동아리 ID        | 전공 동아리 ID |
+| `autonomousClubId`    | `Long`        | 선택    | 존재하는 동아리 ID        | 자율 동아리 ID |
+| `specialty`           | `String`      | 선택    | 50자 이하             | 전공        |
+| `githubId`            | `String`      | 선택    | 39자 이하, 영문·숫자·하이픈. 하이픈으로 시작하거나 끝날 수 없음 | GitHub 아이디 |
+
+졸업생과 자퇴생은 이 API로 수정할 수 없고, 재학생을 졸업생이나 자퇴생으로 바꿀 수도 없습니다.
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 수정된 [학생 객체](#학생-객체-studentresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                                       |
+|--------------------|-------------------------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, 대상이 졸업생·자퇴생, `role`이 `GRADUATE`·`WITHDRAWN` |
+| `404 Not Found`    | 학생이 없음, 지정한 동아리가 없음                                         |
+| `409 Conflict`     | 다른 학생이 쓰는 이메일 또는 학번                                         |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X PUT "https://openapi.datagsm.kr/v1/students/1" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "홍길동",
+    "sex": "MAN",
+    "email": "student@gsm.hs.kr",
+    "grade": 2,
+    "classNum": 3,
+    "number": 5,
+    "role": "STUDENT_COUNCIL",
+    "dormitoryRoomNumber": 402,
+    "majorClubId": 1,
+    "specialty": "백엔드",
+    "githubId": "octocat"
+  }'
+```
+
+학생을 생성하거나 수정하면 [`student.updated`](/event/payloads/student) 이벤트가 발송됩니다.

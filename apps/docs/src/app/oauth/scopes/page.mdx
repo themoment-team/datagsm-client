@@ -1,0 +1,110 @@
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+
+export const metadata = createDocsPageMetadata({ title: "권한 범위", pathname: "/oauth/scopes" })
+
+# 권한 범위
+
+### 개요
+
+권한 범위(scope)는 Access Token으로 읽을 수 있는 데이터를 정합니다. 표기는 `{appId}:{name}`이고, DataGSM 기본 권한 범위의 Application ID는 `datagsm`입니다. `openid`만 접두어가 없습니다.
+
+```
+openid datagsm:account_read datagsm:student_read
+```
+
+인가 요청에서는 필요한 권한 범위를 **명시**하세요. 클라이언트가 요청할 수 있는 값은 클라이언트 등록 화면에서 확인합니다. 직접 정의한 권한 범위는 [서드파티 권한 범위](/oauth/thirdparty-scope)를 참고하세요.
+
+### 권한 범위 목록
+
+| scope | 의미 | 비고 |
+|---|---|---|
+| `datagsm:account_read` | `/userinfo` 호출 권한, 계정 기본 정보 | |
+| `datagsm:student_read` | `student`, `teacher` 채움 | 단독으로는 `/userinfo`를 호출할 수 없음 |
+| `datagsm:club_read` | `clubs` 채움, `student.majorClub`, `student.autonomousClub` 공개 | opt-in |
+| `datagsm:project_read` | `projects` 채움 | opt-in |
+| `datagsm:self_read` | 계정, `student`/`teacher`, `student` 안의 동아리. `clubs`, `projects`는 빈 배열 | Deprecated, 제거 일정 미정 |
+| `openid` | 프로토콜 지시자. `id_token` 발급 | [OIDC 가이드](/oauth/oidc) |
+
+opt-in 권한 범위는 `scope`를 생략하면 부여되지 않으므로 필요하면 반드시 명시합니다.
+
+### 범위별 `/userinfo` 응답
+
+`/userinfo` 호출에는 `account_read` 또는 `self_read`가 필요합니다. 둘 다 없으면 `403 Forbidden`입니다.
+
+| 부여된 범위 | 계정 정보 | `student`, `teacher` | `student` 안의 동아리 | `clubs` | `projects` |
+|---|---|---|---|---|---|
+| `account_read` | 제공 | `null` | - | 빈 배열 | 빈 배열 |
+| `account_read student_read` | 제공 | 제공 | `null` | 빈 배열 | 빈 배열 |
+| `account_read student_read club_read` | 제공 | 제공 | 제공 | 제공 | 빈 배열 |
+| `account_read project_read` | 제공 | `null` | - | 빈 배열 | 제공 |
+| `self_read` | 제공 | 제공 | 제공 | 빈 배열 | 빈 배열 |
+| `student_read`만 | `403 Forbidden` | - | - | - | - |
+
+전체 필드는 [사용자 데이터 조회](/oauth/http/userinfo)를 참고하세요.
+
+### scope 결정 규칙
+
+| 요청 | 부여되는 범위 |
+|---|---|
+| 명시 | 요청한 값 그대로. `openid`는 등록 검사에서 제외됩니다 |
+| 생략 또는 빈 값 | 클라이언트 scope 전체에서 `club_read`, `project_read`를 뺀 값. 남는 값이 없으면 `invalid_scope` |
+| `openid`만 요청 | `account_read`, `student_read` 중 클라이언트가 가진 값. 둘 다 없으면 `self_read`, 그것도 없으면 `invalid_scope` |
+| 클라이언트에 없는 값 포함 | `invalid_scope` |
+
+토큰 교환과 갱신에서는 `scope`로 범위를 좁힐 수만 있고, 넘으면 `invalid_scope`입니다. [Client Credentials](/oauth/http/client-credentials)는 규칙이 다릅니다.
+
+### 동의
+
+요청 범위 전체에 대한 동의 기록이 있으면 SSO 세션 사용자에게 로그인 화면 없이 코드가 발급됩니다. 새 권한 범위가 하나라도 섞이면 동의 화면이 표시됩니다. 사용자가 거부하면 콜백으로 다음과 같이 돌아오므로 `code`가 없는 경우를 반드시 처리합니다.
+
+```
+https://your-app.com/callback?error=access_denied&error_description=...&state={state}
+```
+
+비밀번호로 로그인하면 요청 범위에 대한 동의가 함께 기록됩니다.
+
+### `self_read` 전환 가이드
+
+| 항목 | 내용 |
+|---|---|
+| 변경 전 | `datagsm:self_read` 하나로 계정, 학생 또는 선생님, 학생 안의 동아리를 조회 |
+| 변경 후 | `datagsm:account_read datagsm:student_read datagsm:club_read`로 나누어 요청 |
+| 기존 연동 영향 | `self_read`는 계속 동작합니다. 제거 일정은 미정입니다 |
+| 해야 할 일 | 아래 순서대로 전환 |
+
+`datagsm:account_read datagsm:student_read`만으로는 `student` 안의 동아리가 `null`이 되므로 `club_read`까지 포함해야 같은 응답을 받습니다. `clubs` 목록이 추가로 채워지는 점만 다릅니다.
+
+1. 콘솔에서 클라이언트 scope에 새 값을 등록합니다. 등록하지 않으면 `invalid_scope`로 거부됩니다.
+2. authorize 요청의 `scope`를 바꿉니다.
+
+```javascript
+const params = new URLSearchParams({
+  client_id: 'your-client-id',
+  redirect_uri: 'https://your-app.com/callback',
+  response_type: 'code',
+  scope: 'datagsm:account_read datagsm:student_read datagsm:club_read',
+  state,
+  code_challenge: codeChallenge,
+  code_challenge_method: 'S256',
+});
+```
+
+3. 요청 범위가 넓어지므로 SSO 세션 사용자에게 동의 화면이 한 번 표시됨을 안내합니다.
+4. 기존 Refresh Token은 이전 scope를 유지합니다. 새 범위를 받으려면 사용자가 다시 로그인해야 합니다.
+5. 콜백에서 `access_denied`를 처리합니다.
+
+```javascript
+const params = new URLSearchParams(window.location.search);
+
+if (params.get('error') === 'access_denied') {
+  showMessage('권한에 동의해야 로그인할 수 있습니다.');
+}
+```
+
+다른 호환 항목은 [변경 사항 및 마이그레이션](/migration)을 참고하세요.
+
+### 다음 단계
+
+- [인증 흐름 시작](/oauth/http/authorize) - `scope` 파라미터와 오류
+- [사용자 데이터 조회](/oauth/http/userinfo) - 응답 필드 전체
+- [OIDC 가이드](/oauth/oidc) - `openid`와 `id_token`

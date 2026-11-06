@@ -6,7 +6,7 @@ export const metadata = createDocsPageMetadata({ title: "프로젝트 데이터 
 
 ### 개요
 
-프로젝트 데이터 OpenAPI는 동아리에서 진행하는 프로젝트 데이터를 간단한 HTTP 요청을 통하여 서비스에 통합할 수 있도록 돕습니다. 해당 REST API를 호출하여 기본적인 프로젝트 데이터를 획득할 수 있습니다.
+프로젝트 데이터 OpenAPI는 동아리에서 진행하는 프로젝트 데이터를 간단한 HTTP 요청을 통하여 서비스에 통합할 수 있도록 돕습니다. 해당 REST API를 호출하여 기본적인 프로젝트 데이터를 획득할 수 있습니다. 쓰기 권한 범위가 있는 API 키로는 프로젝트를 [생성](#프로젝트-생성), [수정](#프로젝트-수정), [삭제](#프로젝트-삭제), [종료](#프로젝트-종료), [재개](#프로젝트-재개)할 수 있습니다.
 
 ### 인증
 
@@ -26,19 +26,19 @@ GET /v1/projects
 
 ### 권한 범위
 
-`PROJECT_READ` 권한 범위가 필요합니다.
+`project:read` 또는 `project:*` 권한 범위가 필요합니다.
 
 ### 요청 파라미터
 
 | 파라미터            | 타입              | 필수 여부 | 설명                                                    | 예시             |
 |-----------------|-----------------|-------|-------------------------------------------------------|----------------|
 | `projectId`     | `Long`          | 선택    | 프로젝트 ID                                               | `1`            |
-| `projectName`   | `String`        | 선택    | 프로젝트 이름                                               | `DataGSM 프로젝트` |
+| `projectName`   | `String`        | 선택    | 프로젝트 이름. 앞부분 일치로 찾고, 결과가 없으면 부분 일치로 다시 찾음            | `DataGSM 프로젝트` |
 | `clubId`        | `Long`          | 선택    | 동아리 ID                                                | `1`            |
 | `status`        | `ProjectStatus` | 선택    | 프로젝트 운영 상태 (`ACTIVE`, `ENDED`, 기본값: `ACTIVE`)        | `ACTIVE`       |
 | `category`      | `ProjectCategory` | 선택  | 프로젝트 카테고리 (`TOY_PROJECT`, `TEAM`, `CLUB`, `IDEA_FESTIVAL`, `NOT_DEPLOYED`). 해당 카테고리를 포함하는 프로젝트만 조회하며, 미입력 시 전체 조회 | `TEAM` |
-| `page`          | `Int`           | 선택    | 페이지 번호 (기본값: 0)                                       | `0`            |
-| `size`          | `Int`           | 선택    | 페이지 크기 (기본값: 100)                                     | `100`          |
+| `page`          | `Int`           | 선택    | 페이지 번호 (0 이상, 기본값: 0)                                 | `0`            |
+| `size`          | `Int`           | 선택    | 페이지 크기 (1-1000, 기본값: 100)                             | `100`          |
 | `sortBy`        | `ProjectSortBy` | 선택    | 정렬 기준 (ID, NAME)                                      | `NAME`         |
 | `sortDirection` | `SortDirection` | 선택    | 정렬 방향 (ASC, DESC) (기본값: ASC)                          | `ASC`          |
 
@@ -48,7 +48,7 @@ GET /v1/projects
 
 | 필드        | 타입       | 설명             | 예시    |
 |-----------|----------|----------------|-------|
-| `status`  | `String` | HTTP 상태 메시지    | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지    | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드     | `200` |
 | `message` | `String` | 응답 메시지         | `OK`  |
 | `data`    | `Object` | 프로젝트 데이터 목록 | -     |
@@ -148,7 +148,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/projects?category=TEAM&page=0&size=50
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -284,3 +284,220 @@ fun getProjects(projectId: Long): String {
 }
 `} />
 </CodeTabs>
+
+### 프로젝트 생성
+
+```http
+POST /v1/projects
+```
+
+`project:write` 또는 `project:*` 권한 범위가 필요합니다. 이 권한 범위는 관리자 계정만 발급받을 수 있습니다.
+
+#### 요청 본문
+
+| 필드               | 타입                 | 필수 여부 | 검증                          | 설명                                     |
+|------------------|--------------------|-------|-----------------------------|----------------------------------------|
+| `name`           | `String`           | 필수    | 공백 불가, 100자 이하, 중복 불가       | 프로젝트 이름                                |
+| `description`    | `String`           | 필수    | 공백 불가, 500자 이하              | 프로젝트 설명                                |
+| `startYear`      | `Int`              | 필수    | 양수                          | 시작 연도                                  |
+| `clubId`         | `Long`             | 선택    | 존재하는 동아리 ID                 | 소유 동아리 ID. 무소속이면 `0` 또는 `null`         |
+| `participantIds` | `List<Long>`       | 필수    | 존재하는 학생 ID                  | 참가자 학생 ID 목록. 없으면 빈 배열                 |
+| `status`         | `ProjectStatus`    | 선택    | `ACTIVE`, `ENDED`           | 운영 상태 (기본값: `ACTIVE`)                  |
+| `categories`     | `Set<ProjectCategory>` | 선택 | 카테고리 값                      | 프로젝트 카테고리 목록                           |
+| `endYear`        | `Int`              | 조건부   | 양수, `startYear` 이상          | 종료 연도. `status`가 `ENDED`이면 필수          |
+| `repositories`   | `List<String>`     | 선택    | 20개 이하, 각 300자 이하           | 리포지토리 URL 목록                           |
+| `techStacks`     | `List<String>`     | 선택    | 20개 이하, 각 50자 이하            | 기술 스택 목록                               |
+| `iconKey`        | `String`           | 선택    | 300자 이하, 서버가 발급한 키 형식       | 프로젝트 아이콘 오브젝트 키                        |
+| `deploymentUrl`  | `String`           | 선택    | 300자 이하, `http://` 또는 `https://`로 시작 | 프로젝트 배포 URL                  |
+
+`endYear`는 `status`가 `ACTIVE`여도 보낸 값이 저장되므로, 운영 중인 프로젝트를 만들 때는 보내지 마십시오.
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 생성된 [프로젝트 객체](#프로젝트-객체-projectresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                         |
+|--------------------|-----------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, 종료 연도 오류, 잘못된 아이콘 키       |
+| `404 Not Found`    | `clubId`의 동아리가 없음, `participantIds`의 학생이 없음   |
+| `409 Conflict`     | 이미 존재하는 프로젝트 이름                               |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X POST "https://openapi.datagsm.kr/v1/projects" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "DataGSM 프로젝트",
+    "description": "학교 데이터를 제공하는 API 서비스",
+    "startYear": 2024,
+    "clubId": 1,
+    "participantIds": [1, 2],
+    "categories": ["TEAM", "CLUB"],
+    "repositories": ["https://github.com/themoment-team/datagsm-server"],
+    "techStacks": ["Kotlin", "Spring Boot"],
+    "deploymentUrl": "https://datagsm.kr"
+  }'
+```
+
+### 프로젝트 수정
+
+```http
+PUT /v1/projects/{projectId}
+```
+
+`project:write` 또는 `project:*` 권한 범위가 필요합니다.
+
+요청 본문의 필드와 검증은 [프로젝트 생성](#프로젝트-생성)과 같습니다. 다만 필드를 생략했을 때의 동작이 필드마다 다릅니다.
+
+| 필드                                 | 생략했을 때                | 값을 비우려면              |
+|------------------------------------|-----------------------|----------------------|
+| `repositories`, `techStacks`       | 빈 값으로 덮어씁니다           | 생략하거나 빈 배열을 보냅니다     |
+| `clubId`                           | 무소속으로 바뀝니다            | 생략하거나 `0`을 보냅니다      |
+| `categories`                       | 기존 값을 유지합니다           | 빈 배열을 보냅니다           |
+| `iconKey`, `deploymentUrl`         | 기존 값을 유지합니다           | 빈 문자열을 보냅니다          |
+| `status`, `endYear`                | 보내도 반영되지 않습니다         | [종료](#프로젝트-종료), [재개](#프로젝트-재개) API를 사용합니다 |
+
+`name`, `description`, `startYear`, `participantIds`는 항상 보내야 합니다.
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">기존 연동 확인 필요</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    변경 전에는 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">iconKey</code>와 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">deploymentUrl</code>을 생략하면 값이 지워졌습니다. 변경 후에는 생략하면 유지되고 빈 문자열을 보내야 삭제됩니다. 생략으로 값을 지우던 연동은 값이 그대로 남으므로 빈 문자열을 보내도록 고치십시오. <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">repositories</code>와 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">techStacks</code>는 생략하면 비워지므로, 유지하려면 조회한 값을 함께 보내십시오. 자세한 내용은 <a href="/migration">변경 사항 및 마이그레이션</a>을 참고하십시오.
+  </div>
+</div>
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 수정된 [프로젝트 객체](#프로젝트-객체-projectresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                                |
+|--------------------|------------------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, 잘못된 아이콘 키                        |
+| `404 Not Found`    | 프로젝트가 없음, `clubId`의 동아리가 없음, `participantIds`의 학생이 없음 |
+| `409 Conflict`     | 다른 프로젝트가 쓰는 이름                                       |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X PUT "https://openapi.datagsm.kr/v1/projects/1" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "DataGSM 프로젝트",
+    "description": "학교 데이터를 제공하는 API 서비스",
+    "startYear": 2024,
+    "clubId": 1,
+    "participantIds": [1, 2, 3],
+    "repositories": ["https://github.com/themoment-team/datagsm-server"],
+    "techStacks": ["Kotlin", "Spring Boot"],
+    "deploymentUrl": ""
+  }'
+```
+
+### 프로젝트 삭제
+
+```http
+DELETE /v1/projects/{projectId}
+```
+
+`project:write` 또는 `project:*` 권한 범위가 필요합니다.
+
+프로젝트와 해당 프로젝트의 신청 이력을 삭제합니다. 되돌릴 수 없습니다.
+
+#### 응답
+
+성공하면 본문 없이 `204 No Content`로 응답합니다.
+
+#### 오류 응답
+
+| 상태 코드            | 발생 조건      |
+|------------------|------------|
+| `404 Not Found`  | 프로젝트가 없음   |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X DELETE "https://openapi.datagsm.kr/v1/projects/1" \
+  -H "X-API-KEY: your-api-key-here"
+```
+
+### 프로젝트 종료
+
+```http
+POST /v1/projects/{projectId}/end
+```
+
+`project:write` 또는 `project:*` 권한 범위가 필요합니다.
+
+프로젝트의 `status`를 `ENDED`로 바꾸고 `endYear`를 저장합니다.
+
+#### 요청 본문
+
+| 필드        | 타입    | 필수 여부 | 검증               | 설명    |
+|-----------|-------|-------|------------------|-------|
+| `endYear` | `Int` | 필수    | 양수, `startYear` 이상 | 종료 연도 |
+
+#### 응답
+
+성공하면 본문 없이 `204 No Content`로 응답합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                      |
+|--------------------|--------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, `endYear`가 `startYear`보다 작음 |
+| `404 Not Found`    | 프로젝트가 없음                                   |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X POST "https://openapi.datagsm.kr/v1/projects/1/end" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{ "endYear": 2025 }'
+```
+
+### 프로젝트 재개
+
+```http
+POST /v1/projects/{projectId}/reactivate
+```
+
+`project:write` 또는 `project:*` 권한 범위가 필요합니다.
+
+프로젝트의 `status`를 `ACTIVE`로 바꾸고 `endYear`를 비웁니다. 요청 본문은 없습니다.
+
+#### 응답
+
+성공하면 본문 없이 `204 No Content`로 응답합니다.
+
+#### 오류 응답
+
+| 상태 코드            | 발생 조건      |
+|------------------|------------|
+| `404 Not Found`  | 프로젝트가 없음   |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X POST "https://openapi.datagsm.kr/v1/projects/1/reactivate" \
+  -H "X-API-KEY: your-api-key-here"
+```
+
+프로젝트를 생성, 수정, 삭제, 종료, 재개하면 [`project.updated`](/event/payloads/project) 이벤트가 발송됩니다.

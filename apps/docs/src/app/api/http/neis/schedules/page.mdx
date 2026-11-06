@@ -24,7 +24,15 @@ GET /v1/neis/schedules
 
 - `date`: 특정 날짜의 학사일정 데이터만 조회
 - `fromDate`와 `toDate`: 기간 범위 내의 학사일정 데이터 조회
-- 파라미터를 생략하면 오늘 날짜 기준으로 조회
+- `fromDate`만 보내면 그 날짜부터 1년 뒤까지, `toDate`만 보내면 그 날짜의 1년 전부터 조회
+- `date`와 `fromDate`/`toDate`는 동시에 사용할 수 없습니다.
+- `fromDate`는 `toDate`보다 늦을 수 없고, 최대 조회 기간은 365일입니다.
+- 파라미터를 생략하면 저장된 전체 학사일정 데이터를 반환합니다.
+
+**같은 날 일정과 정렬:**
+
+- 같은 날에 일정이 여러 건이면 모두 반환됩니다. 날짜 하나로 일정 하나를 찾는 코드는 첫 건만 보게 되므로 배열 전체를 처리하십시오.
+- 결과는 날짜, 행사명, `scheduleId` 순으로 정렬됩니다.
 
 ## 응답 형식
 
@@ -32,7 +40,7 @@ GET /v1/neis/schedules
 
 | 필드        | 타입       | 설명          | 예시    |
 |-----------|----------|-------------|-------|
-| `status`  | `String` | HTTP 상태 메시지 | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지 | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드  | `200` |
 | `message` | `String` | 응답 메시지      | `OK`  |
 | `data`    | `Object` | 학사일정 응답 객체  | -     |
@@ -49,7 +57,7 @@ GET /v1/neis/schedules
 
 | 필드                 | 타입          | 설명                               | 예시                 |
 |--------------------|-------------|----------------------------------|--------------------|
-| `scheduleId`       | `String`    | 학사일정 ID                          | `7430310_20251215` |
+| `scheduleId`       | `String`    | 학사일정 ID. 형식은 `{학교코드}_{날짜}_{해시16자리}` | `7430310_20251215_3f9a1c2b7e4d8a06` |
 | `schoolCode`       | `String`    | 학교 코드                            | `7430310`          |
 | `schoolName`       | `String`    | 학교명                              | `광주소프트웨어마이스터고등학교`  |
 | `officeCode`       | `String`    | 시도교육청 코드                         | `G10`              |
@@ -61,7 +69,14 @@ GET /v1/neis/schedules
 | `dayCategory`      | `String?`   | 수업공제일명 (공휴일/휴업일 등, 없는 경우 `null`) | `휴업일`              |
 | `schoolCourseType` | `String?`   | 학교과정명 (없는 경우 `null`)             | `고등학교`             |
 | `dayNightType`     | `String?`   | 주야과정명 (없는 경우 `null`)             | `주간`               |
-| `targetGrades`     | `List<Int>` | 해당 학년 목록                         | `[1, 2, 3]`        |
+| `targetGrades`     | `List<Int>` | 해당 학년 목록 (없는 경우 빈 배열)            | `[1, 2, 3]`        |
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">scheduleId 형식 변경</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    변경 전 형식은 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">{'{학교코드}_{날짜}'}</code>이고, 변경 후 형식은 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">{'{학교코드}_{날짜}_{해시16자리}'}</code>입니다. 저장해 둔 이전 ID는 더 이상 조회 결과와 일치하지 않습니다. 저장한 ID를 다시 받아 교체하고, 하루에 일정이 여러 건 오는 경우를 처리하십시오. 자세한 내용은 <a href="/migration">변경 사항 및 마이그레이션</a>을 참고하십시오.
+  </div>
+</div>
 
 ## 요청 예시
 
@@ -79,13 +94,13 @@ curl -X GET "https://openapi.datagsm.kr/v1/neis/schedules?fromDate=2025-12-01&to
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
     "schedules": [
       {
-        "scheduleId": "7430310_20251215",
+        "scheduleId": "7430310_20251215_3f9a1c2b7e4d8a06",
         "schoolCode": "7430310",
         "schoolName": "광주소프트웨어마이스터고등학교",
         "officeCode": "G10",

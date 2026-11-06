@@ -13,7 +13,9 @@ GET /userinfo
 ### 설명
 
 Access Token을 사용하여 인증된 사용자의 데이터를 조회합니다.
-이 엔드포인트는 사용자의 기본 데이터와 연결된 대상(`objectType`)에 따라 학생 또는 선생님 상세 데이터를 반환합니다.
+이 엔드포인트는 사용자의 기본 데이터를 반환하고, 토큰의 권한 범위에 따라 학생 또는 선생님 상세 데이터, 동아리, 프로젝트를 채워 반환합니다.
+
+경로에 `/v1` 접두어가 없고, 응답은 공통 응답 구조로 감싸지 않은 JSON 객체입니다.
 
 ### 인증
 
@@ -27,12 +29,34 @@ Authorization: Bearer {accessToken}
 
 요청 파라미터는 없습니다. Access Token만 필요합니다.
 
+### 필요한 권한 범위
+
+호출에는 `account_read` 또는 Deprecated인 `self_read`가 필요합니다. `student_read`만 있으면 `403 Forbidden`입니다.
+
+| 응답 필드 | 값이 채워지는 조건 | 조건을 만족하지 않을 때 |
+|---|---|---|
+| 계정 기본 필드 | 호출 가능한 모든 토큰 | - |
+| `student`, `teacher` | `student_read` 또는 `self_read` | `null` |
+| `student.majorClub`, `student.autonomousClub` | `club_read` 또는 `self_read` | `null` |
+| `clubs` | `club_read` | 빈 배열 |
+| `projects` | `project_read` | 빈 배열 |
+
+범위별 설명과 `self_read` 전환 방법은 [권한 범위](/oauth/scopes)를 참고하세요.
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">기존 연동 확인</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">student_read</code>만 가진 토큰은 이제 이 엔드포인트에서 403을 받고, <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">club_read</code>나 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">self_read</code>가 없으면 학생의 동아리 필드는 null입니다. 해당 범위에 의존한다면 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">account_read</code>와 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">club_read</code>를 추가로 요청하세요. 전체 목록은 <a href="/migration" className="underline font-medium">변경 사항 및 마이그레이션</a>을 참고하세요.
+  </div>
+</div>
+
 ### 응답
 
 #### 성공 응답 (200 OK)
 
 ```json
 {
+  "sub": "student@gsm.hs.kr",
   "id": 1,
   "email": "student@gsm.hs.kr",
   "role": "USER",
@@ -43,18 +67,33 @@ Authorization: Bearer {accessToken}
     "id": 1,
     "name": "홍길동",
     "sex": "MAN",
+    "email": "student@gsm.hs.kr",
     "grade": 1,
     "classNum": 1,
     "number": 1,
     "studentNumber": 1101,
     "major": "SW_DEVELOPMENT",
     "specialty": "백엔드",
+    "role": "GENERAL_STUDENT",
     "dormitoryFloor": 3,
     "dormitoryRoom": 301,
-    "role": "GENERAL_STUDENT",
-    "isLeaveSchool": false
+    "majorClub": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" },
+    "autonomousClub": null,
+    "githubId": "torvalds",
+    "githubUrl": "https://github.com/torvalds"
   },
-  "teacher": null
+  "teacher": null,
+  "clubs": [
+    { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "name": "DataGSM",
+      "status": "ACTIVE",
+      "club": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" }
+    }
+  ]
 }
 ```
 
@@ -62,40 +101,66 @@ Authorization: Bearer {accessToken}
 
 #### 사용자 기본 데이터
 
-| 필드          | 타입        | 설명                                                              | 예시                  |
-|-------------|-----------|-------------------------------------------------------------------|---------------------|
-| `id`        | `Long`    | 사용자 고유 ID                                                       | `1`                 |
-| `email`     | `String`  | 사용자 이메일 주소                                                     | `student@gsm.hs.kr` |
-| `role`      | `String`  | 사용자 역할 (`USER`, `ADMIN`)                                        | `USER`              |
-| `status`    | `String`  | 계정 상태 (`PENDING`, `ACTIVE`). 선생님 계정은 어드민 승인 전까지 `PENDING`으로 유지됩니다 | `ACTIVE`             |
-| `objectType`| `String?` | 연결된 대상 종류 (`STUDENT`, `TEACHER`, nullable)                      | `STUDENT`            |
-| `isStudent` | `Boolean` | **(Deprecated)** 학생 계정 여부. `objectType == STUDENT`의 파생값으로, 하위 호환을 위해 유지됩니다. 신규 연동은 `objectType`을 사용하세요 | `true`              |
-| `student`   | `Object?` | 학생 상세 데이터 (`objectType`이 `STUDENT`인 경우만 제공, nullable)          | -                   |
-| `teacher`   | `Object?` | 선생님 상세 데이터 (`objectType`이 `TEACHER`인 경우만 제공, nullable)         | -                   |
+| 필드 | 타입 | 설명 | 예시 |
+|---|---|---|---|
+| `sub` | `String` | OIDC 사용자 식별자. `email`과 같은 값이며 `id_token`의 `sub`와 일치합니다 | `student@gsm.hs.kr` |
+| `id` | `Long` | 사용자 고유 ID | `1` |
+| `email` | `String` | 사용자 이메일 주소 | `student@gsm.hs.kr` |
+| `role` | `String` | 사용자 역할 (`ROOT`, `ADMIN`, `USER`) | `USER` |
+| `status` | `String` | 계정 상태 (`PENDING`, `ACTIVE`). 선생님 계정은 어드민 승인 전까지 `PENDING`으로 유지됩니다 | `ACTIVE` |
+| `objectType` | `String?` | 연결된 대상 종류 (`STUDENT`, `TEACHER`). 연결된 대상이 없으면 `null` | `STUDENT` |
+| `isStudent` | `Boolean` | **(Deprecated)** 학생 계정 여부. `objectType == STUDENT`의 파생값입니다. 제거 일정은 미정이며, 신규 연동은 `objectType`을 사용하세요 | `true` |
+| `student` | `Object?` | 학생 상세 데이터. `student_read` 또는 `self_read`가 있고 학생 계정일 때만 제공 | - |
+| `teacher` | `Object?` | 선생님 상세 데이터. `student_read` 또는 `self_read`가 있고 선생님 계정일 때만 제공 | - |
+| `clubs` | `Array` | 소속 동아리 목록. `club_read`가 없으면 빈 배열 | - |
+| `projects` | `Array` | 참여 프로젝트 목록. `project_read`가 없으면 빈 배열 | - |
 
 #### 학생 상세 데이터 (student 객체)
 
-`objectType`이 `STUDENT`인 경우 다음 필드를 포함합니다.
+`objectType`이 `STUDENT`이고 `student_read` 또는 `self_read`가 있으면 다음 필드를 포함합니다.
 
-| 필드               | 타입        | 설명                                                                                         | 예시                |
-|------------------|-----------|--------------------------------------------------------------------------------------------|-------------------|
-| `id`             | `Long`    | 학생 고유 ID                                                                                   | `1`               |
-| `name`           | `String`  | 학생 이름                                                                                      | `홍길동`             |
-| `sex`            | `String`  | 성별 (`MAN`, `WOMAN`)                                                                        | `MAN`             |
-| `grade`          | `Int`     | 학년 (1-3)                                                                                   | `1`               |
-| `classNum`       | `Int`     | 반 (1-4)                                                                                    | `1`               |
-| `number`         | `Int`     | 번호 (1-18)                                                                                  | `1`               |
-| `studentNumber`  | `Int`     | 학번 (4자리)                                                                                   | `1101`            |
-| `major`          | `String`  | 학과 (`SW_DEVELOPMENT`, `SMART_IOT`, `AI`)                                                   | `SW_DEVELOPMENT`  |
-| `specialty`      | `String?` | 전공 (미설정 시 `null`)                                                                          | `백엔드`             |
-| `dormitoryFloor` | `Int?`    | 기숙사 층 (nullable)                                                                           | `3`               |
-| `dormitoryRoom`  | `Int?`    | 기숙사 호실 (nullable)                                                                          | `301`             |
-| `role`           | `String`  | 학생 역할 (`STUDENT_COUNCIL`, `DORMITORY_MANAGER`, `GENERAL_STUDENT`, `GRADUATE`, `WITHDRAWN`) | `GENERAL_STUDENT` |
-| `isLeaveSchool`  | `Boolean` | 자퇴 여부                                                                                      | `false`           |
+| 필드 | 타입 | 설명 | 예시 |
+|---|---|---|---|
+| `id` | `Long` | 학생 고유 ID | `1` |
+| `name` | `String` | 학생 이름 | `홍길동` |
+| `sex` | `String` | 성별 (`MAN`, `WOMAN`) | `MAN` |
+| `email` | `String` | 학생 이메일 주소 | `student@gsm.hs.kr` |
+| `grade` | `Int?` | 학년 (1-3) | `1` |
+| `classNum` | `Int?` | 반 (1-4) | `1` |
+| `number` | `Int?` | 번호 (1-18) | `1` |
+| `studentNumber` | `Int?` | 학번 (4자리) | `1101` |
+| `major` | `String?` | 학과 (`SW_DEVELOPMENT`, `SMART_IOT`, `AI`) | `SW_DEVELOPMENT` |
+| `specialty` | `String?` | 전공 (미설정 시 `null`) | `백엔드` |
+| `role` | `String` | 학생 역할 (`STUDENT_COUNCIL`, `DORMITORY_MANAGER`, `GENERAL_STUDENT`, `GRADUATE`, `WITHDRAWN`). 자퇴 여부는 `role == WITHDRAWN`으로 확인합니다 | `GENERAL_STUDENT` |
+| `dormitoryFloor` | `Int?` | 기숙사 층 | `3` |
+| `dormitoryRoom` | `Int?` | 기숙사 호실 | `301` |
+| `majorClub` | `Object?` | 전공 동아리. `club_read` 또는 `self_read`가 없으면 `null` | - |
+| `autonomousClub` | `Object?` | 자율 동아리. `club_read` 또는 `self_read`가 없으면 `null` | - |
+| `githubId` | `String?` | GitHub 아이디 | `torvalds` |
+| `githubUrl` | `String?` | GitHub 프로필 URL | `https://github.com/torvalds` |
+
+관리자가 정보 수정을 요청한 학생은 다시 입력할 때까지 학번, 기숙사, 동아리 값이 `null`일 수 있습니다.
+
+#### 동아리 데이터 (clubs, majorClub, autonomousClub)
+
+| 필드 | 타입 | 설명 | 예시 |
+|---|---|---|---|
+| `id` | `Long` | 동아리 ID | `1` |
+| `name` | `String` | 동아리 이름 | `SW개발동아리` |
+| `type` | `String` | 동아리 종류 (`MAJOR_CLUB`, `AUTONOMOUS_CLUB`) | `MAJOR_CLUB` |
+
+#### 프로젝트 데이터 (projects)
+
+| 필드 | 타입 | 설명 | 예시 |
+|---|---|---|---|
+| `id` | `Long` | 프로젝트 ID | `1` |
+| `name` | `String` | 프로젝트 이름 | `DataGSM` |
+| `status` | `String` | 프로젝트 상태 (`ACTIVE`, `ENDED`) | `ACTIVE` |
+| `club` | `Object?` | 소속 동아리 | - |
 
 #### 선생님 상세 데이터 (teacher 객체)
 
-`objectType`이 `TEACHER`인 경우 다음 필드를 포함합니다.
+`objectType`이 `TEACHER`이고 `student_read` 또는 `self_read`가 있으면 다음 필드를 포함합니다.
 
 | 필드            | 타입        | 설명                                                                    | 예시                 |
 |---------------|-----------|-----------------------------------------------------------------------|--------------------|
@@ -107,11 +172,12 @@ Authorization: Bearer {accessToken}
 
 ### 오류 응답
 
-| 상태 코드              | 설명           | 원인                                          |
-|--------------------|--------------|---------------------------------------------|
-| `401 Unauthorized` | 인증 실패        | Access Token이 유효하지 않거나 만료됨                    |
-| `403 Forbidden`    | 권한 범위 부족     | 요청한 리소스에 대한 권한 범위 부족, 또는 선생님 계정이 어드민 승인 대기(`PENDING`) 상태 |
-| `404 Not Found`    | 리소스를 찾을 수 없음 | 사용자 데이터를 찾을 수 없음                             |
+| 상태 코드 | 설명 | 원인 |
+|---|---|---|
+| `401 Unauthorized` | 인증 실패 | 토큰 없음, 잘못된 `Authorization` 헤더, 형식이나 서명이 잘못된 토큰, 만료된 토큰 |
+| `403 Forbidden` | 권한 범위 부족 | 토큰에 `account_read`와 `self_read`가 모두 없음 |
+| `404 Not Found` | 리소스를 찾을 수 없음 | 토큰의 사용자 계정을 찾을 수 없음. Client Credentials 토큰은 사용자가 없어 이 엔드포인트에 사용할 수 없습니다 |
+| `429 Too Many Requests` | 요청 한도 초과 | 클라이언트 기준 분당 300회 초과. `Retry-After` 헤더의 초만큼 기다린 뒤 다시 시도하세요 |
 
 ### 요청 예시
 
@@ -119,7 +185,7 @@ Authorization: Bearer {accessToken}
 
 ```bash
 curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
 ```
 
 ### 응답 예시
@@ -128,6 +194,7 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
 
 ```json
 {
+  "sub": "student@gsm.hs.kr",
   "id": 1,
   "email": "student@gsm.hs.kr",
   "role": "USER",
@@ -138,18 +205,33 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
     "id": 1,
     "name": "홍길동",
     "sex": "MAN",
+    "email": "student@gsm.hs.kr",
     "grade": 1,
     "classNum": 1,
     "number": 1,
     "studentNumber": 1101,
     "major": "SW_DEVELOPMENT",
     "specialty": "백엔드",
+    "role": "GENERAL_STUDENT",
     "dormitoryFloor": 3,
     "dormitoryRoom": 301,
-    "role": "GENERAL_STUDENT",
-    "isLeaveSchool": false
+    "majorClub": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" },
+    "autonomousClub": null,
+    "githubId": "torvalds",
+    "githubUrl": "https://github.com/torvalds"
   },
-  "teacher": null
+  "teacher": null,
+  "clubs": [
+    { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" }
+  ],
+  "projects": [
+    {
+      "id": 1,
+      "name": "DataGSM",
+      "status": "ACTIVE",
+      "club": { "id": 1, "name": "SW개발동아리", "type": "MAJOR_CLUB" }
+    }
+  ]
 }
 ```
 
@@ -157,6 +239,7 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
 
 ```json
 {
+  "sub": "teacher@gsm.hs.kr",
   "id": 2,
   "email": "teacher@gsm.hs.kr",
   "role": "USER",
@@ -170,7 +253,9 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
     "email": "teacher@gsm.hs.kr",
     "department": "GRADE",
     "description": "3학년 1반 담임선생님"
-  }
+  },
+  "clubs": [],
+  "projects": []
 }
 ```
 
@@ -180,10 +265,13 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
 
 ```json
 {
-  "error": "unauthorized",
-  "error_description": "Access token expired or invalid"
+  "status": "401 UNAUTHORIZED",
+  "code": 401,
+  "message": "만료된 토큰입니다."
 }
 ```
+
+`message`는 원인에 따라 달라지므로 분기에는 HTTP 상태 코드를 사용하세요.
 
 ### 사용 예제
 
@@ -200,8 +288,10 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error_description || 'Failed to get user info');
+      const body = await response.json();
+      const error = new Error(body.message || 'Failed to get user info');
+      error.status = response.status;
+      throw error;
     }
 
     const userInfo = await response.json();
@@ -213,18 +303,17 @@ curl -X GET "https://oauth.resource.datagsm.kr/userinfo" \
 }
 
 // 사용 예시
-const accessToken = sessionStorage.getItem('accessToken');
 const userInfo = await getUserInfo(accessToken);
 
 console.log('User ID:', userInfo.id);
 console.log('Email:', userInfo.email);
 
 // isStudent는 Deprecated이며 objectType == 'STUDENT'의 파생값입니다. 신규 연동은 objectType을 사용하세요.
-if (userInfo.objectType === 'STUDENT') {
+if (userInfo.objectType === 'STUDENT' && userInfo.student) {
   console.log('Student Name:', userInfo.student.name);
   console.log('Grade:', userInfo.student.grade);
   console.log('Class:', userInfo.student.classNum);
-} else if (userInfo.objectType === 'TEACHER') {
+} else if (userInfo.objectType === 'TEACHER' && userInfo.teacher) {
   console.log('Teacher Name:', userInfo.teacher.name);
   console.log('Department:', userInfo.teacher.department);
 }`} />
@@ -253,19 +342,19 @@ def get_user_info(access_token):
         raise
 
 # 사용 예시
-access_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+access_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
 user_info = get_user_info(access_token)
 
 print(f'User ID: {user_info["id"]}')
 print(f'Email: {user_info["email"]}')
 
 # isStudent는 Deprecated이며 objectType == 'STUDENT'의 파생값입니다. 신규 연동은 objectType을 사용하세요.
-if user_info['objectType'] == 'STUDENT':
+if user_info['objectType'] == 'STUDENT' and user_info['student']:
     student = user_info['student']
     print(f'Student Name: {student["name"]}')
     print(f'Grade: {student["grade"]}')
     print(f'Class: {student["classNum"]}')
-elif user_info['objectType'] == 'TEACHER':
+elif user_info['objectType'] == 'TEACHER' and user_info['teacher']:
     teacher = user_info['teacher']
     print(f'Teacher Name: {teacher["name"]}')
     print(f'Department: {teacher["department"]}')`} />
@@ -273,7 +362,7 @@ elif user_info['objectType'] == 'TEACHER':
   <CodeTab label="Java" language="java" code={`import java.net.http.*;
 import java.net.URI;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 public class UserInfoService {
     private static final HttpClient client = HttpClient.newHttpClient();
@@ -302,6 +391,7 @@ public class UserInfoService {
     }
 
     public static class UserInfo {
+        public String sub;
         public Long id;
         public String email;
         public String role;
@@ -311,22 +401,41 @@ public class UserInfoService {
         public Boolean isStudent;
         public Student student;
         public Teacher teacher;
+        public List<Club> clubs;
+        public List<Project> projects;
     }
 
     public static class Student {
         public Long id;
         public String name;
         public String sex;
+        public String email;
         public Integer grade;
         public Integer classNum;
         public Integer number;
         public Integer studentNumber;
         public String major;
         public String specialty;
+        public String role;
         public Integer dormitoryFloor;
         public Integer dormitoryRoom;
-        public String role;
-        public Boolean isLeaveSchool;
+        public Club majorClub;
+        public Club autonomousClub;
+        public String githubId;
+        public String githubUrl;
+    }
+
+    public static class Club {
+        public Long id;
+        public String name;
+        public String type;
+    }
+
+    public static class Project {
+        public Long id;
+        public String name;
+        public String status;
+        public Club club;
     }
 
     public static class Teacher {
@@ -338,7 +447,7 @@ public class UserInfoService {
     }
 
     public static void main(String[] args) throws Exception {
-        String accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+        String accessToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...";
         UserInfo userInfo = getUserInfo(accessToken);
 
         System.out.println("User ID: " + userInfo.id);
@@ -362,31 +471,51 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 
 data class UserInfo(
+    val sub: String,
     val id: Long,
     val email: String,
     val role: String,
     val status: String,
     val objectType: String?,
-    @Deprecated("objectType == \\"STUDENT\\" 으로 대체 예정, 하위 호환을 위해 임시 유지")
+    @Deprecated("objectType == \\"STUDENT\\" 으로 대체합니다.")
     val isStudent: Boolean,
     val student: Student?,
-    val teacher: Teacher?
+    val teacher: Teacher?,
+    val clubs: List<Club> = emptyList(),
+    val projects: List<Project> = emptyList()
 )
 
 data class Student(
     val id: Long,
     val name: String,
     val sex: String,
-    val grade: Int,
-    val classNum: Int,
-    val number: Int,
-    val studentNumber: Int,
-    val major: String,
+    val email: String,
+    val grade: Int?,
+    val classNum: Int?,
+    val number: Int?,
+    val studentNumber: Int?,
+    val major: String?,
     val specialty: String?,
+    val role: String,
     val dormitoryFloor: Int?,
     val dormitoryRoom: Int?,
-    val role: String,
-    val isLeaveSchool: Boolean
+    val majorClub: Club?,
+    val autonomousClub: Club?,
+    val githubId: String?,
+    val githubUrl: String?
+)
+
+data class Club(
+    val id: Long,
+    val name: String,
+    val type: String
+)
+
+data class Project(
+    val id: Long,
+    val name: String,
+    val status: String,
+    val club: Club?
 )
 
 data class Teacher(
@@ -404,7 +533,7 @@ class UserInfoService {
     fun getUserInfo(accessToken: String): UserInfo {
         val request = HttpRequest.newBuilder()
             .uri(URI.create("https://oauth.resource.datagsm.kr/userinfo"))
-            .header("Authorization", "Bearer $accessToken")
+            .header("Authorization", "Bearer \${accessToken}")
             .GET()
             .build()
 
@@ -421,7 +550,7 @@ class UserInfoService {
 // 사용 예시
 fun main() {
     val service = UserInfoService()
-    val accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    val accessToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
     val userInfo = service.getUserInfo(accessToken)
 
     println("User ID: \${userInfo.id}")
@@ -457,7 +586,7 @@ fun main() {
 | --- | --- |
 | `GENERAL_STUDENT` | 일반 학생 |
 | `STUDENT_COUNCIL` | 학생회 |
-| `DORMITORY_MANAGER` | 기숙사 사감 |
+| `DORMITORY_MANAGER` | 기숙사자치위원회 |
 | `GRADUATE` | 졸업생 |
 | `WITHDRAWN` | 자퇴생 |
 
@@ -490,8 +619,10 @@ fun main() {
 
 | 코드 | 설명 |
 | --- | --- |
-| `STUDENT` | 학생 계정. `student` 필드에 상세 데이터가 포함됩니다 |
-| `TEACHER` | 선생님 계정. `teacher` 필드에 상세 데이터가 포함됩니다 |
+| `STUDENT` | 학생 계정. 권한 범위가 있으면 `student` 필드에 상세 데이터가 포함됩니다 |
+| `TEACHER` | 선생님 계정. 권한 범위가 있으면 `teacher` 필드에 상세 데이터가 포함됩니다 |
+
+연결된 대상이 없는 계정은 `objectType`이 `null`입니다.
 
 ### 보안 주의사항
 
@@ -511,9 +642,9 @@ async function getUserInfoWithRetry(accessToken, refreshToken) {
   try {
     return await getUserInfo(accessToken);
   } catch (error) {
-    if (error.message.includes('expired')) {
+    if (error.status === 401) {
       // Access Token 갱신
-      const tokens = await refreshAccessToken(refreshToken);
+      const tokens = await refreshAccessToken(refreshToken, 'your-client-id');
       // 새 토큰으로 재시도
       return await getUserInfo(tokens.accessToken);
     }

@@ -6,7 +6,7 @@ export const metadata = createDocsPageMetadata({ title: "동아리 데이터 Ope
 
 ### 개요
 
-동아리 데이터 OpenAPI는 재학생들이 소속된 동아리 데이터를 간단한 HTTP 요청을 통하여 서비스에 통합할 수 있도록 돕습니다. 해당 REST API를 호출하여 기본적인 동아리 데이터를 획득할 수 있습니다.
+동아리 데이터 OpenAPI는 재학생들이 소속된 동아리 데이터를 간단한 HTTP 요청을 통하여 서비스에 통합할 수 있도록 돕습니다. 해당 REST API를 호출하여 기본적인 동아리 데이터를 획득할 수 있습니다. 쓰기 권한 범위가 있는 API 키로는 동아리를 [생성](#동아리-생성), [수정](#동아리-수정), [삭제](#동아리-삭제)할 수 있습니다.
 
 ### 인증
 
@@ -26,22 +26,24 @@ GET /v1/clubs
 
 ### 권한 범위
 
-`CLUB_READ` 권한 범위가 필요합니다.
+`club:read` 또는 `club:*` 권한 범위가 필요합니다.
 
 ### 요청 파라미터
 
 | 파라미터                          | 타입              | 필수 여부 | 설명                                                                       | 예시           |
 |-------------------------------|-----------------|-------|--------------------------------------------------------------------------|--------------|
 | `clubId`                      | `Long`          | 선택    | 동아리 ID                                                                   | `1`          |
-| `clubName`                    | `String`        | 선택    | 동아리 이름                                                                   | `SW개발동아리`    |
+| `clubName`                    | `String`        | 선택    | 동아리 이름. 앞부분 일치로 찾고, 결과가 없으면 부분 일치로 다시 찾음                                 | `SW개발동아리`    |
 | `clubType`                    | `ClubType`      | 선택    | 동아리 종류 (`MAJOR_CLUB`, `AUTONOMOUS_CLUB`)                                 | `MAJOR_CLUB` |
-| `status`                      | `ClubStatus`    | 선택    | 동아리 운영 상태 (`ACTIVE`, `ABOLISHED`)                                        | `ACTIVE`     |
-| `foundedYear`                 | `Int`           | 선택    | 설립연도 필터                                                                  | `2020`       |
-| `page`                        | `Int`           | 선택    | 페이지 번호 (기본값: 0)                                                          | `0`          |
-| `size`                        | `Int`           | 선택    | 페이지 크기 (기본값: 100)                                                        | `100`        |
-| `includeLeaderInParticipants` | `Boolean`       | 선택    | 부장을 부원 목록에 포함할지 여부                                                       | `false`      |
-| `sortBy`                      | `ClubSortBy`    | 선택    | 정렬 기준 (`ID`, `NAME`, `TYPE`, `FOUNDED_YEAR`, `ABOLISHED_YEAR`, `STATUS`) | `NAME`       |
+| `clubStatus`                  | `ClubStatus`    | 선택    | 동아리 운영 상태 (`ACTIVE`, `ABOLISHED`)                                        | `ACTIVE`     |
+| `foundedYear`                 | `Int`           | 선택    | 설립연도 필터 (양수)                                                             | `2020`       |
+| `page`                        | `Int`           | 선택    | 페이지 번호 (0 이상, 기본값: 0)                                                    | `0`          |
+| `size`                        | `Int`           | 선택    | 페이지 크기 (1-1000, 기본값: 100)                                                | `100`        |
+| `includeLeaderInParticipants` | `Boolean`       | 선택    | 부장을 부원 목록에 포함할지 여부 (기본값: false)                                           | `false`      |
+| `sortBy`                      | `ClubSortBy`    | 선택    | 정렬 기준 (`ID`, `NAME`, `TYPE`, `FOUNDED_YEAR`, `STATUS`)                   | `NAME`       |
 | `sortDirection`               | `SortDirection` | 선택    | 정렬 방향 (ASC, DESC) (기본값: ASC)                                             | `ASC`        |
+
+운영 상태 필터의 파라미터 이름은 `clubStatus`입니다. `status`를 보내면 무시되어 전체 동아리가 조회되므로 주의하십시오.
 
 ### 응답 형식
 
@@ -49,7 +51,7 @@ GET /v1/clubs
 
 | 필드        | 타입       | 설명          | 예시    |
 |-----------|----------|-------------|-------|
-| `status`  | `String` | HTTP 상태 메시지 | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지 | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드  | `200` |
 | `message` | `String` | 응답 메시지      | `OK`  |
 | `data`    | `Object` | 동아리 데이터 목록  | -     |
@@ -111,7 +113,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/clubs?sortBy=NAME&sortDirection=ASC&p
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -155,7 +157,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/clubs?sortBy=NAME&sortDirection=ASC&p
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -261,3 +263,132 @@ fun getClubs(clubId: Long): String {
 }
 `} />
 </CodeTabs>
+
+### 동아리 생성
+
+```http
+POST /v1/clubs
+```
+
+`club:write` 또는 `club:*` 권한 범위가 필요합니다. 이 권한 범위는 관리자 계정만 발급받을 수 있습니다.
+
+#### 요청 본문
+
+| 필드               | 타입           | 필수 여부 | 검증                               | 설명                                  |
+|------------------|--------------|-------|----------------------------------|-------------------------------------|
+| `name`           | `String`     | 필수    | 공백 불가, 30자 이하, 중복 불가              | 동아리 이름                              |
+| `type`           | `ClubType`   | 필수    | `MAJOR_CLUB`, `AUTONOMOUS_CLUB`  | 동아리 종류                              |
+| `leaderId`       | `Long`       | 선택    | 존재하는 학생 ID                       | 부장 학생 ID. `ABOLISHED`이면 보낼 수 없음      |
+| `participantIds` | `List<Long>` | 필수    | 100개 이하                          | 부원 학생 ID 목록. `ABOLISHED`이면 빈 배열      |
+| `foundedYear`    | `Int`        | 필수    | 양수                               | 창설 학년도                              |
+| `status`         | `ClubStatus` | 필수    | `ACTIVE`, `ABOLISHED`            | 운영 상태                               |
+| `abolishedYear`  | `Int`        | 선택    | 양수                               | 폐지 학년도. `ABOLISHED`일 때만 저장됨         |
+
+- `ACTIVE` 동아리는 `leaderId`와 `participantIds` 중 하나 이상이 있어야 합니다.
+- `participantIds`에서 존재하지 않는 학생 ID는 오류 없이 제외됩니다. 응답의 `participants`로 반영 결과를 확인하십시오.
+- `leaderId`를 `participantIds`에 함께 넣어도 응답의 `participants`에는 부장이 포함되지 않습니다.
+- 지정한 학생의 같은 종류 동아리는 이 동아리로 바뀝니다. 그 학생이 같은 종류의 다른 동아리 부장이었다면 해당 동아리의 부장은 비워집니다.
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 생성된 [동아리 객체](#동아리-객체-clubresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                        |
+|--------------------|----------------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, 운영 상태 규칙 위반               |
+| `404 Not Found`    | `leaderId`의 학생이 없음                            |
+| `409 Conflict`     | 이미 존재하는 동아리 이름                               |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X POST "https://openapi.datagsm.kr/v1/clubs" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SW개발동아리",
+    "type": "MAJOR_CLUB",
+    "leaderId": 1,
+    "participantIds": [2, 3, 4],
+    "foundedYear": 2022,
+    "status": "ACTIVE"
+  }'
+```
+
+### 동아리 수정
+
+```http
+PUT /v1/clubs/{clubId}
+```
+
+`club:write` 또는 `club:*` 권한 범위가 필요합니다.
+
+동아리 정보를 전체 교체합니다. 요청 본문과 규칙은 [동아리 생성](#동아리-생성)과 같습니다. 기존 구성원 소속은 해제되고 `leaderId`와 `participantIds`로 다시 지정되므로, 유지할 구성원도 모두 보내야 합니다. `leaderId`를 생략하면 부장이 비워집니다.
+
+`status`를 `ABOLISHED`로 바꾸면 구성원의 소속이 모두 해제됩니다. `ACTIVE`로 바꾸면 `abolishedYear`는 비워집니다.
+
+#### 응답
+
+성공하면 `200 OK`와 함께 `data`에 수정된 [동아리 객체](#동아리-객체-clubresdto)를 반환합니다.
+
+#### 오류 응답
+
+| 상태 코드              | 발생 조건                                  |
+|--------------------|----------------------------------------|
+| `400 Bad Request`  | 필드 검증 실패, 본문 형식 오류, 운영 상태 규칙 위반         |
+| `404 Not Found`    | 동아리가 없음, `leaderId`의 학생이 없음            |
+| `409 Conflict`     | 다른 동아리가 쓰는 이름                          |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X PUT "https://openapi.datagsm.kr/v1/clubs/1" \
+  -H "X-API-KEY: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "SW개발동아리",
+    "type": "MAJOR_CLUB",
+    "leaderId": null,
+    "participantIds": [],
+    "foundedYear": 2022,
+    "status": "ABOLISHED",
+    "abolishedYear": 2026
+  }'
+```
+
+### 동아리 삭제
+
+```http
+DELETE /v1/clubs/{clubId}
+```
+
+`club:write` 또는 `club:*` 권한 범위가 필요합니다.
+
+동아리를 삭제하고 소속 학생의 동아리 정보를 비웁니다. 되돌릴 수 없습니다. 기록을 남기려면 삭제 대신 `status`를 `ABOLISHED`로 수정하십시오.
+
+#### 응답
+
+성공하면 본문 없이 `204 No Content`로 응답합니다.
+
+#### 오류 응답
+
+| 상태 코드            | 발생 조건     |
+|------------------|-----------|
+| `404 Not Found`  | 동아리가 없음   |
+
+공통 오류(`401`, `403`, `429`)는 조회 API와 같습니다.
+
+#### 호출 예시
+
+```bash
+curl -X DELETE "https://openapi.datagsm.kr/v1/clubs/1" \
+  -H "X-API-KEY: your-api-key-here"
+```
+
+동아리를 생성, 수정, 삭제하면 [`club.updated`](/event/payloads/club) 이벤트가 발송됩니다.

@@ -14,13 +14,14 @@ POST /v1/oauth/token
 
 ### 설명
 
-Authorization Code를 Access Token과 Refresh Token으로 교환합니다. 보안을 더 강화하고 싶으시다면 **PKCE (Proof Key for Code Exchange) 방식**을 사용하여 `code_verifier`로 인증하는 것도 좋습니다.
+Authorization Code를 Access Token과 Refresh Token으로 교환합니다. 이 요청은 앱의 백엔드에서 보냅니다. 인가 서버의 CORS 허용 출처는 DataGSM 자사 서비스로 제한되어 있어 외부 서비스의 브라우저에서는 직접 호출할 수 없습니다.
 
 발급되는 토큰은 다음과 같은 용도로 사용됩니다:
 - **Access Token**: 사용자 리소스 접근 (1시간 유효)
 - **Refresh Token**: Access Token 갱신 (30일 유효)
+- **ID Token**: `openid`로 인가된 경우 사용자 인증 결과 확인 ([OIDC 가이드](/oauth/oidc))
 
-이 엔드포인트는 `grant_type` 파라미터로 토큰 교환과 토큰 갱신을 모두 처리합니다. Authorization Code 교환 시에는 `grant_type`을 `authorization_code`로 설정하세요.
+이 엔드포인트는 `grant_type` 파라미터로 토큰 교환과 토큰 갱신을 모두 처리합니다. Authorization Code 교환 시에는 `grant_type`을 `authorization_code`로 설정하세요. 사용자 없이 토큰을 발급받으려면 [Client Credentials](/oauth/http/client-credentials)를 사용합니다.
 
 ### 요청 파라미터
 
@@ -32,49 +33,41 @@ Authorization Code를 Access Token과 Refresh Token으로 교환합니다. 보�
         인증 방식 안내
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm">
-        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">code_verifier</code>를 사용하는 PKCE 방식과 <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">client_secret</code> 방식 중 선택하실 수 있습니다.
-        PKCE 방식이 몇 가지 장점이 있어 가능하시다면 사용해보시는 것도 좋습니다.
+        필요한 값은 인가 요청에서 PKCE를 사용했는지에 따라 달라집니다. 백엔드가 있는 기밀 클라이언트는
+        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">client_secret</code>을 정식 인증 방식으로 사용할 수 있고, PKCE는 공개 클라이언트와 기밀 클라이언트 모두에 권장합니다.
       </div>
     </div>
   </div>
 </div>
 
-모든 파라미터는 JSON 형식으로 요청 본문(body)에 포함되어야 합니다.
+요청 본문은 `application/x-www-form-urlencoded` 또는 `application/json` 형식으로 보냅니다. 클라이언트 인증 방식은 [OAuth HTTP API](/oauth/http)를 참고하세요.
 
-#### PKCE 방식 (권장)
+#### PKCE로 발급된 코드
 
 | 파라미터 | 타입 | 필수 여부 | 설명 | 예시 |
 | --- | --- | --- | --- | --- |
 | `grant_type` | `String` | 필수 | 요청 타입 (`authorization_code` 고정) | `authorization_code` |
 | `code` | `String` | 필수 | `/v1/oauth/authorize` 플로우에서 발급받은 Authorization Code | `abc123def456` |
 | `client_id` | `String` | 필수 | DataGSM에서 발급받은 클라이언트 ID | `your-client-id` |
-| `redirect_uri` | `String` | 필수 | Authorization Code 발급 시 사용한 리다이렉트 URI | `https://your-app.com/callback` |
-| `code_verifier` | `String` | 필수 | PKCE Code Verifier (Authorization Code 발급 시 생성한 원본 값) | `dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` |
+| `redirect_uri` | `String` | 필수 | 인가 요청에 사용한 값과 같은 리다이렉트 URI | `https://your-app.com/callback` |
+| `code_verifier` | `String` | 필수 | 인가 요청 전에 생성한 원본 PKCE Code Verifier | `dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` |
+| `client_secret` | `String` | 선택 | 생략할 수 있습니다. 보내면 서버가 함께 검증합니다 | `your-client-secret` |
+| `scope` | `String` | 선택 | 인가된 범위 안에서 좁힐 때 사용 (공백으로 구분) | `datagsm:account_read` |
 
-#### 레거시 방식 (client_secret)
-
-<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
-  <div className="flex items-start gap-3">
-    <Shield className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-    <div>
-      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-        client_secret 방식
-      </div>
-      <div className="text-blue-800 dark:text-blue-200 text-sm">
-        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">client_secret</code> 방식도 계속 사용 가능합니다.
-        클라이언트 환경에 따라 PKCE 방식을 선택하실 수도 있습니다.
-      </div>
-    </div>
-  </div>
-</div>
+#### PKCE 없이 발급된 코드
 
 | 파라미터 | 타입 | 필수 여부 | 설명 | 예시 |
 | --- | --- | --- | --- | --- |
 | `grant_type` | `String` | 필수 | 요청 타입 (`authorization_code` 고정) | `authorization_code` |
 | `code` | `String` | 필수 | `/v1/oauth/authorize` 플로우에서 발급받은 Authorization Code | `abc123def456` |
 | `client_id` | `String` | 필수 | DataGSM에서 발급받은 클라이언트 ID | `your-client-id` |
-| `client_secret` | `String` | 필수 | DataGSM에서 발급받은 클라이언트 시크릿 (**반드시 서버에서만 사용**) | `your-client-secret` |
-| `redirect_uri` | `String` | 필수 | Authorization Code 발급 시 사용한 리다이렉트 URI | `https://your-app.com/callback` |
+| `client_secret` | `String` | 필수 | 클라이언트 시크릿. Basic 헤더로 보낼 수도 있습니다 (**백엔드에서만 사용**) | `your-client-secret` |
+| `redirect_uri` | `String` | 필수 | 인가 요청에 사용한 값과 같은 리다이렉트 URI | `https://your-app.com/callback` |
+| `scope` | `String` | 선택 | 인가된 범위 안에서 좁힐 때 사용 (공백으로 구분) | `datagsm:account_read` |
+
+`scope`를 생략하거나 빈 값으로 보내면 인가된 범위 전체가 발급됩니다. 인가된 범위를 넘으면 `invalid_scope`입니다. 범위를 좁히면서 `openid`를 빼면 `id_token`이 발급되지 않습니다.
+
+Authorization Code는 한 번만 사용할 수 있습니다. 재사용이 감지되면 `invalid_grant`로 거부되고 코드도 삭제됩니다.
 
 ### 응답
 
@@ -82,11 +75,12 @@ Authorization Code를 Access Token과 Refresh Token으로 교환합니다. 보�
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "scope": "datagsm:self_read"
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
+  "scope": "openid datagsm:account_read datagsm:student_read",
+  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
 }
 ```
 
@@ -97,17 +91,48 @@ Authorization Code를 Access Token과 Refresh Token으로 교환합니다. 보�
 | `expires_in`    | `Int`    | Access Token의 만료 시간 (초 단위, 3600 = 1시간) |
 | `refresh_token` | `String` | Refresh Token (30일 유효)                        |
 | `scope`         | `String` | 발급된 권한 범위 (공백으로 구분)                 |
+| `id_token`      | `String?` | `openid`가 포함되면 발급되는 ID Token. 그 외에는 `null` |
+
+응답에는 `Cache-Control: no-store`, `Pragma: no-cache` 헤더가 포함됩니다.
 
 ### 오류 응답
 
-| 상태 코드          | 설명        | 원인                                                                             |
-|--------------------|-------------|----------------------------------------------------------------------------------|
-| `400 Bad Request`  | 잘못된 요청 | 필수 파라미터 누락, 잘못된 형식, Authorization Code가 만료되었거나 유효하지 않음 |
-| `401 Unauthorized` | 인증 실패   | Client ID가 존재하지 않거나 Client Secret이 올바르지 않음                        |
+| 상태 코드 | 오류 | 원인 |
+|---|---|---|
+| `400 Bad Request` | `invalid_request` | `grant_type`, `code`, `client_id`, `redirect_uri` 누락, PKCE 코드의 `code_verifier` 누락, PKCE 없는 코드의 `client_secret` 누락, 등록되지 않은 `redirect_uri`, 클라이언트 인증 방식 중복, 파라미터 중복 |
+| `400 Bad Request` | `invalid_grant` | 코드가 없거나 만료됨, 이미 사용된 코드, 다른 클라이언트의 코드, `redirect_uri` 불일치, PKCE 검증 실패 |
+| `400 Bad Request` | `invalid_scope` | 요청한 `scope`가 인가된 범위를 넘음 |
+| `400 Bad Request` | `unsupported_grant_type` | 지원하지 않는 `grant_type` |
+| `401 Unauthorized` | `invalid_client` | 없는 클라이언트, `client_secret` 불일치, 디코딩할 수 없는 Basic 헤더 |
+| `404 Not Found` | - | 코드의 사용자 계정을 찾을 수 없음 |
+| `429 Too Many Requests` | - | 클라이언트 요청 한도 초과 |
+
+오류 코드가 없는 `404`, `429`는 `status`, `code`, `message` 필드를 가진 공통 응답 형식입니다.
 
 ### 요청 예시
 
-#### cURL (PKCE 방식)
+#### cURL (PKCE, form)
+
+```bash
+curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
+  -d "grant_type=authorization_code" \
+  -d "code=abc123def456" \
+  -d "client_id=your-client-id" \
+  --data-urlencode "redirect_uri=https://your-app.com/callback" \
+  -d "code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+```
+
+#### cURL (client_secret, Basic 헤더)
+
+```bash
+curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
+  -u "your-client-id:your-client-secret" \
+  -d "grant_type=authorization_code" \
+  -d "code=abc123def456" \
+  --data-urlencode "redirect_uri=https://your-app.com/callback"
+```
+
+#### cURL (PKCE, JSON)
 
 ```bash
 curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
@@ -127,11 +152,12 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-  "scope": "datagsm:self_read"
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
+  "scope": "datagsm:account_read datagsm:student_read",
+  "id_token": null
 }
 ```
 
@@ -155,7 +181,7 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
 
 ### 사용 예제
 
-다음은 여러 언어에서 토큰을 교환하는 예제입니다.
+다음은 앱의 백엔드에서 PKCE로 발급된 코드를 교환하는 예제입니다. `codeVerifier`는 인가 요청을 시작할 때 서버 세션 등에 저장해 둔 값입니다.
 
 <CodeTabs>
   <CodeTab label="JavaScript" language="javascript" code={`async function exchangeToken(code, codeVerifier, clientId, redirectUri) {
@@ -191,16 +217,13 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
   }
 }
 
-// 사용 예시 (PKCE)
-const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
+// 사용 예시 (Node.js 백엔드)
 const tokens = await exchangeToken(
   'abc123def456',
-  codeVerifier,
+  session.codeVerifier,
   'your-client-id',
   'https://your-app.com/callback'
 );
-console.log('Access Token:', tokens.accessToken);
-console.log('Refresh Token:', tokens.refreshToken);
 console.log('Expires In:', tokens.expiresIn, 'seconds');`} />
 
   <CodeTab label="Python" language="python" code={`import requests
@@ -243,8 +266,6 @@ tokens = exchange_token(
     client_id='your-client-id',
     redirect_uri='https://your-app.com/callback'
 )
-print(f'Access Token: {tokens["access_token"]}')
-print(f'Refresh Token: {tokens["refresh_token"]}')
 print(f'Expires In: {tokens["expires_in"]} seconds')`} />
 
   <CodeTab label="Java" language="java" code={`import java.net.http.*;
@@ -314,7 +335,7 @@ public class OAuthTokenService {
 
     public static void main(String[] args) throws Exception {
         String clientId = "your-client-id";
-        String codeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // authorize/page.mdx에서 저장한 값
+        String codeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"; // 인가 요청 시 저장한 값
 
         TokenResponse tokens = exchangeToken(
             "abc123def456",
@@ -322,8 +343,6 @@ public class OAuthTokenService {
             clientId,
             "https://your-app.com/callback"
         );
-        System.out.println("Access Token: " + tokens.accessToken);
-        System.out.println("Refresh Token: " + tokens.refreshToken);
         System.out.println("Expires In: " + tokens.expiresIn + " seconds");
     }
 }`} />
@@ -332,6 +351,7 @@ public class OAuthTokenService {
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URI
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -344,6 +364,7 @@ data class TokenRequest(
     val code_verifier: String
 )
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class TokenResponse(
     @JsonProperty("access_token")
     val accessToken: String,
@@ -392,7 +413,7 @@ class OAuthTokenService {
 fun main() {
     val service = OAuthTokenService()
     val clientId = "your-client-id"
-    val codeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" // authorize/page.mdx에서 저장한 값
+    val codeVerifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk" // 인가 요청 시 저장한 값
 
     val tokens = service.exchangeToken(
         code = "abc123def456",
@@ -401,8 +422,6 @@ fun main() {
         redirectUri = "https://your-app.com/callback"
     )
 
-    println("Access Token: \${tokens.accessToken}")
-    println("Refresh Token: \${tokens.refreshToken}")
     println("Expires In: \${tokens.expiresIn} seconds")
 }`} />
 </CodeTabs>
@@ -418,6 +437,8 @@ PKCE 방식을 사용할 때는 `code_verifier`를 안전하게 관리해야 합
 - ⚠️ **주의**: sessionStorage 사용 시 XSS 취약점에 주의
 - ❌ **금지**: localStorage는 XSS 공격에 매우 취약
 
+브라우저에서 생성해 sessionStorage에 보관한 경우에도 토큰 교환은 백엔드가 수행하므로, 콜백에서 `code`와 `code_verifier`를 앱의 백엔드로 보내세요.
+
 `code_verifier`는 일회성으로 사용되며, 토큰 교환 후 즉시 삭제해야 합니다.
 
 #### HTTPS 필수
@@ -430,9 +451,9 @@ PKCE 방식을 사용할 때는 `code_verifier`를 안전하게 관리해야 합
 - **Refresh Token**: HttpOnly 쿠키 또는 서버 세션에 저장 (30일 후 만료)
 - localStorage는 XSS 공격에 취약하므로 사용을 지양하세요.
 
-### 레거시 방식 (client_secret) 보안 주의사항
+### client_secret 보안 주의사항
 
-레거시 `client_secret` 방식을 사용해야 하는 경우, 다음 사항을 **반드시** 준수하세요:
+`client_secret`은 백엔드가 있는 기밀 클라이언트의 정식 인증 수단입니다. 시크릿은 백엔드에만 두고 프런트엔드 코드에 넣지 마세요.
 
 **Client Secret 보호** (가장 중요):
 
@@ -450,7 +471,7 @@ export DATAGSM_CLIENT_SECRET=your-client-secret
 DATAGSM_CLIENT_SECRET=your-client-secret
 ```
 
-**참고**: `client_secret` 방식을 사용하시는 경우, 여유가 되시면 PKCE 방식으로 전환해보시는 것도 고려해보세요.
+PKCE는 `client_secret`을 쓰는 기밀 클라이언트에도 권장합니다. 함께 사용하면 서버가 두 값을 모두 검증합니다.
 
 ### 다음 단계
 

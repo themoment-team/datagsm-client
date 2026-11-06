@@ -8,7 +8,7 @@ export const metadata = createDocsPageMetadata({ title: "DataGSM OAuth SDK Overv
 
 **DataGSM OAuth SDK**는 DataGSM OAuth 인증 서비스를 더 쉽고 안전하게 애플리케이션에 통합할 수 있도록 설계된 공식 클라이언트 SDK입니다.
 
-OAuth 2.0 프로토콜의 복잡한 인증 플로우(Authorization Code Grant)를 직접 구현하는 대신 SDK를 사용하면 보안성 강화, 개발 생산성 향상, 유지보수 용이성 등의 이점을 얻을 수 있습니다.
+OAuth 2.0과 OpenID Connect의 복잡한 인증 플로우(Authorization Code Grant)를 직접 구현하는 대신 SDK를 사용하면 보안성 강화, 개발 생산성 향상, 유지보수 용이성 등의 이점을 얻을 수 있습니다.
 
 ### SDK 사용의 이점
 
@@ -31,8 +31,8 @@ SDK는 응답 데이터 구조를 명확한 클래스로 정의하여 제공합�
 // ✅ SDK 사용 - 타입 안전하며 자동완성 지원
 UserInfo userInfo = client.getUserInfo(accessToken);
 String email = userInfo.getEmail();
-if (userInfo.getObjectType() == AccountObjectType.STUDENT) {
-    String major = userInfo.getStudent().getMajor(); // 컴파일 타임에 타입 체크
+if (userInfo.getObjectType() == AccountObjectType.STUDENT && userInfo.getStudent() != null) {
+    Major major = userInfo.getStudent().getMajor(); // 컴파일 타임에 타입 체크
 }
 
 // ❌ 직접 HTTP 호출 - 데이터 구조 변경 시 런타임 에러 위험
@@ -46,7 +46,11 @@ React SDK는 컴포넌트 기반으로 인증 UI를 구성할 수 있게 해줍�
 
 ```jsx
 // ✅ SDK 사용 - 선언적으로 로그인 구현
-<OAuthProvider clientId="..." redirectUri="...">
+<OAuthProvider
+  clientId="..."
+  redirectUri="..."
+  scope={['datagsm:account_read', 'datagsm:student_read']}
+>
   <OAuthLoginButton />
 </OAuthProvider>
 
@@ -63,11 +67,12 @@ SDK는 인증 과정에서 발생할 수 있는 다양한 에러 상황을 구�
 
 ```java
 try {
-    TokenResponse tokens = client.exchangeToken(code);
+    TokenResponse tokens = client.exchangeCodeForToken(code, redirectUri);
 } catch (UnauthorizedException e) {
-    // 401 - 잘못된 인증 코드이거나 만료됨
+    // 401 - 클라이언트 인증 실패 (invalid_client)
 } catch (BadRequestException e) {
-    // 400 - 잘못된 파라미터 요청
+    // 400 - 잘못됐거나 만료된 인증 코드 (invalid_grant), 잘못된 파라미터
+    String errorCode = e.getErrorCode(); // 예: invalid_grant
 } catch (DataGsmException e) {
     // 기타 API 오류
 }
@@ -77,11 +82,11 @@ try {
 
 DataGSM OAuth는 프론트엔드와 백엔드 환경 모두를 지원하기 위해 다음과 같은 SDK를 제공합니다.
 
-| 환경/언어             | 최소 버전     | 빌드 도구           | 주요 특징                             | 기술 문서                               |
-|-------------------|-----------|-----------------|-----------------------------------|-------------------------------------|
-| **React (JS/TS)** | React 18+ | npm, yarn, pnpm | Hook 기반 로직, 로그인 버튼 컴포넌트 제공, TS 지원 | [React SDK 기술 문서](/oauth/sdk/react) |
-| **Java**          | JDK 13+   | Gradle, Maven   | 타입 안전성, 빌더 패턴, AutoCloseable      | [Java SDK 기술 문서](/oauth/sdk/java)   |
-| **Kotlin**        | 1.3.72+   | Gradle, Maven   | Java SDK와 완벽 호환, 확장 함수 지원         | [Java SDK 기술 문서](/oauth/sdk/java)   |
+| 환경/언어             | 최신 버전   | 최소 버전     | 빌드 도구           | 주요 특징                             | 기술 문서                               |
+|-------------------|---------|-----------|-----------------|-----------------------------------|-------------------------------------|
+| **React (JS/TS)** | `2.0.0` | React 18+ | npm, yarn, pnpm | 기본 PKCE, 콜백 검증, 로그인 버튼 컴포넌트, TS 지원 | [React SDK 기술 문서](/oauth/sdk/react) |
+| **Java**          | `2.1.0` | JDK 13+   | Gradle, Maven   | 타입 안전성, 빌더 패턴, AutoCloseable, OIDC 지원 | [Java SDK 기술 문서](/oauth/sdk/java)   |
+| **Kotlin**        | `2.1.0` | 1.3.72+   | Gradle, Maven   | Java SDK를 그대로 사용                  | [Java SDK 기술 문서](/oauth/sdk/java)   |
 
 ### SDK vs 직접 구현 비교
 
@@ -97,13 +102,18 @@ DataGSM OAuth는 프론트엔드와 백엔드 환경 모두를 지원하기 위�
 
 SDK는 DataGSM OAuth의 핵심 기능을 모두 포함하고 있습니다:
 
-| 기능             | 설명                                         | 지원 SDK       |
-|----------------|--------------------------------------------|--------------|
-| **인증 코드 교환**   | Authorization Code를 Access/Refresh 토큰으로 교환 | Java, Kotlin |
-| **토큰 갱신**      | Refresh Token을 사용하여 Access Token 재발급       | Java, Kotlin |
-| **사용자 데이터 조회** | 인증된 사용자의 기본 프로필 및 학생/선생님 상세 데이터 조회        | Java, Kotlin |
-| **로그인 UI 제공**  | 표준화된 디자인의 "DataGSM 로그인" 버튼 제공              | React        |
-| **인증 상태 관리**   | 애플리케이션 전역의 인증 컨텍스트 관리                      | React        |
+| 기능                   | 설명                                                 | 지원 SDK       |
+|----------------------|----------------------------------------------------|--------------|
+| **인증 코드 교환**         | Authorization Code를 Access/Refresh 토큰으로 교환         | Java, Kotlin |
+| **토큰 갱신**            | Refresh Token을 사용하여 Access Token 재발급               | Java, Kotlin |
+| **Client Credentials** | 사용자 없이 클라이언트 자격증명으로 토큰 발급                        | Java, Kotlin |
+| **사용자 데이터 조회**       | 권한 범위에 따라 계정, 학생/선생님, 동아리, 프로젝트 데이터 조회            | Java, Kotlin |
+| **OpenID Connect**   | Discovery, JWKS 조회, `id_token` 수신 (서명 검증은 앱에서 수행) | Java, Kotlin |
+| **로그인 요청 생성**        | `state`, PKCE, `nonce`를 만들어 인가 페이지로 이동             | React, Java, Kotlin |
+| **콜백 검증**            | 콜백의 `state`를 검증하고 `code_verifier`, `nonce` 반환      | React        |
+| **로그인 UI 제공**        | 표준화된 디자인의 "Data GSM 로그인" 버튼 제공                     | React        |
+
+React SDK는 토큰 교환 함수를 제공하지 않습니다. 인가 서버의 CORS 허용 출처가 DataGSM 자사 서비스로 제한되므로 토큰 교환은 앱의 백엔드가 처리합니다.
 
 ### 시작하기
 
@@ -116,6 +126,9 @@ SDK는 DataGSM OAuth의 핵심 기능을 모두 포함하고 있습니다:
 
 - **OAuth 개념 이해**: SDK 사용 전 OAuth 플로우가 궁금하다면 [OAuth 개요](/oauth/)를 읽어보세요.
 - **REST API 명세**: SDK 없이 직접 연동하려면 [OAuth HTTP API](/oauth/http) 기술 문서를 참고하세요.
+- **권한 범위**: 요청할 값은 [권한 범위 레퍼런스](/oauth/scopes)를 참고하세요.
+- **OIDC**: `id_token` 검증 방법은 [OIDC 가이드](/oauth/oidc)를 참고하세요.
+- **버전 변경**: SDK를 올릴 때 필요한 작업은 [변경 사항 및 마이그레이션](/migration)을 참고하세요.
 - **GitHub 저장소**:
   - [React SDK](https://github.com/themoment-team/datagsm-oauth-sdk-react)
   - [Java SDK](https://github.com/themoment-team/datagsm-oauth-sdk-java)
