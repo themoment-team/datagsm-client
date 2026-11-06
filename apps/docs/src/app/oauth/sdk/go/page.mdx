@@ -1,0 +1,225 @@
+import { Handshake } from 'lucide-react';
+
+import { createDocsPageMetadata } from '@/shared/lib/metadata';
+import { GoSDKContacts } from '@/widgets/docs/ui/GoSDKContacts';
+
+export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/oauth/sdk/go" })
+
+# DataGSM OAuth SDK for Go
+
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
+  <div className="flex items-start gap-3">
+    <Handshake className="h-5 w-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
+    <div>
+      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+        파트너 SDK
+      </div>
+      <div className="text-blue-800 dark:text-blue-200 text-sm">
+        더모먼트팀에서 제공하거나 보장하는 SDK가 아닙니다. 관련 문의는 파트너 측에 해 주세요.
+      </div>
+      <GoSDKContacts />
+    </div>
+  </div>
+</div>
+
+### 개요
+
+[DataGSM SDK for Go](https://github.com/tmp-it-play/datagsm-sdk-go)의 `oauth` 패키지는 PKCE, 인증 코드 교환, 토큰 갱신, Client Credentials, UserInfo, OIDC 토큰 검증을 제공합니다. 이 문서는 `v0.2.0` 기준입니다.
+
+Go **1.25 이상**이 필요합니다. 같은 모듈의 [OpenAPI](/api/sdk/go)와 [Event](/event/sdk/go)를 함께 사용할 수 있고, 외부 런타임 의존성은 없습니다.
+
+## 설치
+
+```bash
+go get github.com/tmp-it-play/datagsm-sdk-go@v0.2.0
+```
+
+## 빠른 시작
+
+[클라이언트 콘솔](https://www.datagsm.kr/clients)에서 클라이언트와 콜백 URL, 사용할 권한 범위를 등록합니다. Client Secret은 서버 환경 변수에 보관합니다.
+
+### 클라이언트 설정
+
+다음 코드는 오류를 반환하는 서버 초기화 함수 안에서 사용합니다.
+
+```go
+client, err := oauth.NewClient(oauth.Config{
+    ClientID: os.Getenv("DATAGSM_CLIENT_ID"),
+    ClientSecret: os.Getenv("DATAGSM_CLIENT_SECRET"),
+    RedirectURI: "https://your-app.example/callback",
+})
+if err != nil {
+    return err
+}
+defer client.Close()
+```
+
+`os`와 `github.com/tmp-it-play/datagsm-sdk-go/oauth`를 import합니다. 클라이언트는 애플리케이션에서 재사용하고 종료할 때 `Close()`를 호출하세요.
+
+| `oauth.Config` 필드 | 설명 |
+| --- | --- |
+| `ClientID` | 필수. 콘솔에서 발급한 클라이언트 ID |
+| `ClientSecret` | 기밀 클라이언트의 시크릿. 공개 클라이언트는 생략 |
+| `RedirectURI` | 로그인에 사용할 등록된 콜백 URL |
+| `AuthMethod` | `oauth.AuthSecretPost`, `oauth.AuthSecretBasic`, `oauth.AuthNone` |
+| `AuthorizationBaseURL` | 기본값 `https://oauth.authorization.datagsm.kr` |
+| `ResourceBaseURL` | 기본값 `https://oauth.resource.datagsm.kr` |
+| `HTTPClient` | 선택적 `*http.Client`. 생략하면 제한 시간 30초 |
+
+인증 방식은 시크릿이 있으면 `client_secret_post`, 없으면 `none`이 기본값입니다. `AuthSecretBasic`은 HTTP Basic으로 인증합니다. 토큰 요청 본문은 form 형식이며, HTTP 리다이렉트와 자동 재시도는 수행하지 않습니다.
+
+### 로그인 시작
+
+```go
+attempt, err := client.NewAuthorization(
+    oauth.ScopeOpenID,
+    oauth.ScopeAccountRead,
+    oauth.ScopeStudentRead,
+)
+if err != nil {
+    return err
+}
+```
+
+`NewAuthorization`은 매번 임의의 `State`, `Nonce`, `CodeVerifier`와 S256 PKCE를 적용한 `URL`을 생성합니다. `attempt`를 만료 시간이 있는 **사용자별 서버 세션**에 저장한 다음 브라우저를 `attempt.URL`로 이동시키세요. `CodeVerifier`와 Client Secret은 브라우저로 보내지 않습니다.
+
+콜백에서는 해당 사용자의 세션에서 `attempt`를 한 번만 꺼내 사용합니다. 누락되거나 만료된 시도는 거부하고, 전역 변수 하나에 모든 사용자의 값을 저장하지 마세요.
+
+### 콜백 처리와 ID 토큰 검증
+
+아래 함수는 세션에서 꺼낸 로그인 시도와 콜백 요청의 `r.URL.Query()`를 받습니다. `clientID`는 콜백 값이 아니라 서버에 설정한 Client ID입니다. 예제는 기본 DataGSM 인가 서버를 사용합니다.
+
+```go
+package login
+
+import (
+    "context"
+    "errors"
+    "net/url"
+    "time"
+
+    "github.com/tmp-it-play/datagsm-sdk-go/oauth"
+)
+
+func Complete(ctx context.Context, client *oauth.Client, clientID string,
+    attempt oauth.Authorization, callback url.Values,
+) (*oauth.Token, *oauth.UserInfo, error) {
+    code, err := attempt.Code(callback)
+    if err != nil {
+        return nil, nil, err
+    }
+    token, err := client.Exchange(ctx, oauth.CodeExchange{
+        Code: code,
+        CodeVerifier: attempt.CodeVerifier,
+    })
+    if err != nil {
+        return nil, nil, err
+    }
+    if token.IDToken == nil {
+        return nil, nil, errors.New("missing ID token")
+    }
+    keys, err := client.JWKS(ctx)
+    if err != nil {
+        return nil, nil, err
+    }
+    claims, err := keys.VerifyIDToken(
+        *token.IDToken, oauth.DefaultAuthorizationURL,
+        clientID, attempt.Nonce, time.Now(),
+    )
+    if err != nil {
+        return nil, nil, err
+    }
+    user, err := client.UserInfo(ctx, token.AccessToken)
+    if err != nil {
+        return nil, nil, err
+    }
+    if user.Subject != claims.Subject {
+        return nil, nil, errors.New("UserInfo subject does not match ID token")
+    }
+    return token, user, nil
+}
+```
+
+`attempt.Code`는 `state`를 검증하고 `access_denied` 등 공급자 오류를 반환합니다. `VerifyIDToken`은 RS256 서명, issuer, audience, 유효 시간, `nonce` 등을 검증합니다. 검증과 UserInfo의 `Subject` 비교가 모두 성공한 뒤 자체 로그인 세션을 만드세요.
+
+인가 서버 주소를 바꾸었다면 기대하는 issuer도 신뢰하는 서버 설정으로 지정합니다. JWKS 캐시와 키 갱신은 애플리케이션에서 관리합니다. 키를 찾지 못했다고 서명 검증을 생략하면 안 됩니다.
+
+## 권한 범위와 사용자 데이터
+
+필요한 범위를 명시하고 콘솔에도 등록하세요. `openid`는 별도 등록 없이 사용할 수 있습니다.
+
+| 상수 | 전송 값 | 용도 |
+| --- | --- | --- |
+| `oauth.ScopeOpenID` | `openid` | ID 토큰 발급 |
+| `oauth.ScopeAccountRead` | `datagsm:account_read` | UserInfo 호출과 계정 정보 |
+| `oauth.ScopeStudentRead` | `datagsm:student_read` | 학생·선생님 상세 정보 |
+| `oauth.ScopeClubRead` | `datagsm:club_read` | 동아리 목록과 학생의 소속 동아리 |
+| `oauth.ScopeProjectRead` | `datagsm:project_read` | 프로젝트 목록 |
+
+`ScopeStudentRead`만으로는 UserInfo를 호출할 수 없으므로 `ScopeAccountRead`를 함께 요청합니다. `ScopeClubRead`가 없으면 학생의 소속 동아리는 `nil`입니다. 커스텀 권한 범위는 `"your-application-id:profile"` 같은 문자열로 전달합니다. 범위를 생략했을 때의 동작은 [권한 범위 레퍼런스](/oauth/scopes)를 참고하세요.
+
+`oauth.UserInfo`에는 `Subject`, `ID`, `Email`, `Role`, `Status`, `ObjectType`, `Student`, `Teacher`, `Clubs`, `Projects`가 있습니다. `ObjectType`, `Student`, `Teacher` 등 포인터 필드는 `nil`을 확인한 뒤 사용합니다. `Subject`는 응답의 `sub`에 해당하며 ID 토큰과 같은 사용자 식별자입니다.
+
+## 토큰 갱신
+
+```go
+renewed, err := client.Refresh(ctx, savedRefreshToken)
+if err != nil {
+    return err
+}
+```
+
+같은 세션의 갱신 요청은 한 번에 하나씩 처리합니다. 성공하면 새 Access Token과 Refresh Token을 저장하고, 다음 갱신에는 새 Refresh Token을 사용하세요. 이전 Refresh Token을 다시 사용하면 저장된 Refresh Token도 삭제되므로 다시 로그인해야 합니다.
+
+`oauth.Token`의 `RefreshToken`, `IDToken`은 `*string`입니다. 사용 전에 `nil`을 확인하세요. `ExpiresIn`은 초 단위이고 `Scope`는 실제 부여된 범위를 공백으로 구분한 문자열입니다. 저장·만료 처리와 갱신 시점은 애플리케이션이 관리하며 SDK는 자동으로 갱신하지 않습니다.
+
+`Refresh(ctx, token, scopes...)`와 `Exchange`의 `Scopes`로 범위를 좁힐 수 있습니다. 새 범위를 추가하려면 다시 로그인해야 합니다.
+
+## Client Credentials
+
+```go
+serviceToken, err := client.ClientCredentials(ctx, "your-application-id:profile")
+if err != nil {
+    return err
+}
+```
+
+Client Secret이 필요합니다. 사용자 없는 서버 간 호출에 사용하며 Refresh Token과 ID 토큰은 발급되지 않습니다. 이 토큰으로 UserInfo를 조회할 수 없습니다. 등록되지 않은 범위는 서버가 제외하므로 `serviceToken.Scope`에서 실제 부여된 범위를 확인하세요. 자세한 규칙은 [Client Credentials](/oauth/http/client-credentials)를 참고하세요.
+
+## JWT 검증과 Discovery
+
+`client.Discovery(ctx)`로 OIDC 설정을, `client.JWKS(ctx)`로 서명 검증 키를 조회합니다. 키는 신뢰하는 인가 서버에서 가져와야 합니다.
+
+| 메서드 | 반환 타입 | 검증 내용 |
+| --- | --- | --- |
+| `keys.VerifyIDToken(token, issuer, clientID, nonce, now)` | `(*oauth.IDTokenClaims, error)` | RS256 서명, 발급자, 수신 클라이언트, 유효 시간, nonce |
+| `keys.VerifyAccessToken(token, clientID, requiredScopes, now)` | `(*oauth.AccessTokenClaims, error)` | RS256 서명, `clientId`, 유효 시간, 필수 권한 범위 |
+
+DataGSM Access Token에는 `iss`·`aud`가 없습니다. 기대하는 `clientID`와 필요한 권한 범위를 서버 설정으로 전달하세요. 사용자 토큰과 Client Credentials 토큰을 구분해야 한다면 검증된 클레임의 `GrantType`도 확인합니다. ID 토큰을 API 접근 토큰으로 사용하지 마세요.
+
+## 로그아웃
+
+외부 서비스의 로그아웃은 자체 세션과 저장한 토큰을 삭제해서 처리합니다.
+
+`client.Logout(ctx)`는 주입한 HTTP 클라이언트의 쿠키 저장소에 있는 DataGSM SSO 세션에만 적용됩니다. 사용자 브라우저의 쿠키를 지우거나 발급된 토큰을 폐기하지 않습니다. 자세한 서버 동작은 [OIDC 가이드](/oauth/oidc)를 참고하세요.
+
+## 오류 처리
+
+`errors.As`로 `*datagsm.APIError`를 확인할 수 있습니다. `datagsm`은 모듈 루트 패키지입니다.
+
+| 필드 | 용도 |
+| --- | --- |
+| `StatusCode` | HTTP 상태 코드. 콜백의 공급자 오류는 HTTP 요청이 아니므로 `0` |
+| `Code` | `access_denied`, `invalid_grant`, `invalid_client` 등 OAuth 오류 코드 |
+| `Message` | 서버 오류 메시지 |
+| `RetryAfter` | `Retry-After` 헤더 원문 |
+
+UserInfo의 공통 오류는 `StatusCode`와 `Message`로 확인합니다. `state` 불일치, 잘못된 설정, JWT 검증 실패, 네트워크 오류는 일반 `error`입니다. 토큰·시크릿·인증 코드는 로그에 남기지 마세요.
+
+## 추가 리소스
+
+- [OAuth HTTP API](/oauth/http)
+- [OIDC 가이드](/oauth/oidc)
+- [전체 타입 레퍼런스](https://pkg.go.dev/github.com/tmp-it-play/datagsm-sdk-go@v0.2.0/oauth)
+- [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)
+- [GitHub Issues](https://github.com/tmp-it-play/datagsm-sdk-go/issues)

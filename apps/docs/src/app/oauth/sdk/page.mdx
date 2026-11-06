@@ -6,7 +6,7 @@ export const metadata = createDocsPageMetadata({ title: "DataGSM OAuth SDK Overv
 
 ### 개요
 
-**DataGSM OAuth SDK**는 DataGSM OAuth 인증 서비스를 더 쉽고 안전하게 애플리케이션에 통합할 수 있도록 설계된 공식 클라이언트 SDK입니다.
+**DataGSM OAuth SDK**는 DataGSM OAuth 인증을 애플리케이션에 통합하는 클라이언트 SDK입니다. React, Java/Kotlin용 공식 SDK와 Go 파트너 SDK가 있습니다.
 
 OAuth 2.0과 OpenID Connect의 복잡한 인증 플로우(Authorization Code Grant)를 직접 구현하는 대신 SDK를 사용하면 보안성 강화, 개발 생산성 향상, 유지보수 용이성 등의 이점을 얻을 수 있습니다.
 
@@ -87,6 +87,7 @@ DataGSM OAuth는 프론트엔드와 백엔드 환경 모두를 지원하기 위�
 | **React (JS/TS)** | `2.0.0` | React 18+ | npm, yarn, pnpm | 기본 PKCE, 콜백 검증, 로그인 버튼 컴포넌트, TS 지원 | [React SDK 기술 문서](/oauth/sdk/react) |
 | **Java**          | `2.1.0` | JDK 13+   | Gradle, Maven   | 타입 안전성, 빌더 패턴, AutoCloseable, OIDC 지원 | [Java SDK 기술 문서](/oauth/sdk/java)   |
 | **Kotlin**        | `2.1.0` | 1.3.72+   | Gradle, Maven   | Java SDK를 그대로 사용                  | [Java SDK 기술 문서](/oauth/sdk/java)   |
+| **Go**            | `0.2.0` | Go 1.25+  | go get          | PKCE, 콜백 검증, OAuth·OIDC, JWT 검증 (파트너 SDK) | [Go SDK 기술 문서](/oauth/sdk/go) |
 
 ### SDK vs 직접 구현 비교
 
@@ -104,16 +105,19 @@ SDK는 DataGSM OAuth의 핵심 기능을 모두 포함하고 있습니다:
 
 | 기능                   | 설명                                                 | 지원 SDK       |
 |----------------------|----------------------------------------------------|--------------|
-| **인증 코드 교환**         | Authorization Code를 Access/Refresh 토큰으로 교환         | Java, Kotlin |
-| **토큰 갱신**            | Refresh Token을 사용하여 Access Token 재발급               | Java, Kotlin |
-| **Client Credentials** | 사용자 없이 클라이언트 자격증명으로 토큰 발급                        | Java, Kotlin |
-| **사용자 데이터 조회**       | 권한 범위에 따라 계정, 학생/선생님, 동아리, 프로젝트 데이터 조회            | Java, Kotlin |
-| **OpenID Connect**   | Discovery, JWKS 조회, `id_token` 수신 (서명 검증은 앱에서 수행) | Java, Kotlin |
-| **로그인 요청 생성**        | `state`, PKCE, `nonce`를 만들어 인가 페이지로 이동             | React, Java, Kotlin |
-| **콜백 검증**            | 콜백의 `state`를 검증하고 `code_verifier`, `nonce` 반환      | React        |
+| **인증 코드 교환**         | Authorization Code를 Access/Refresh 토큰으로 교환         | Java, Kotlin, Go |
+| **토큰 갱신**            | Refresh Token을 사용하여 Access Token 재발급               | Java, Kotlin, Go |
+| **Client Credentials** | 사용자 없이 클라이언트 자격증명으로 토큰 발급                        | Java, Kotlin, Go |
+| **사용자 데이터 조회**       | 권한 범위에 따라 계정, 학생/선생님, 동아리, 프로젝트 데이터 조회            | Java, Kotlin, Go |
+| **OpenID Connect**   | Discovery, JWKS 조회, `id_token` 수신 | Java, Kotlin, Go |
+| **JWT 검증**            | ID 토큰·Access Token의 RS256 서명과 클레임 검증 | Go |
+| **로그인 요청 생성**        | `state`, PKCE, `nonce`를 포함한 인가 URL 생성             | React, Java, Kotlin, Go |
+| **콜백 검증**            | 콜백의 `state`와 공급자 오류 확인      | React, Go |
 | **로그인 UI 제공**        | 표준화된 디자인의 "Data GSM 로그인" 버튼 제공                     | React        |
 
 React SDK는 토큰 교환 함수를 제공하지 않습니다. 인가 서버의 CORS 허용 출처가 DataGSM 자사 서비스로 제한되므로 토큰 교환은 앱의 백엔드가 처리합니다.
+
+Java/Kotlin SDK의 ID 토큰 서명 검증은 애플리케이션에서 구현합니다. Go SDK는 JWKS의 `VerifyIDToken`을 제공하며, 애플리케이션에서 기대하는 issuer·Client ID·nonce를 전달해 호출합니다.
 
 ### 시작하기
 
@@ -121,6 +125,7 @@ React SDK는 토큰 교환 함수를 제공하지 않습니다. 인가 서버의
 
 1. **프론트엔드 (React)**: [React SDK 기술 문서](/oauth/sdk/react)에서 설치 및 버튼 연동 방법을 확인하세요.
 2. **백엔드 (Java/Kotlin)**: [Java SDK 기술 문서](/oauth/sdk/java)에서 서버 측 토큰 처리 및 데이터 조회 방법을 확인하세요.
+3. **백엔드 (Go)**: [Go SDK 기술 문서](/oauth/sdk/go)에서 PKCE 로그인, 콜백·토큰 검증, 갱신 방법을 확인하세요.
 
 ### 추가 리소스
 
@@ -132,3 +137,4 @@ React SDK는 토큰 교환 함수를 제공하지 않습니다. 인가 서버의
 - **GitHub 저장소**:
   - [React SDK](https://github.com/themoment-team/datagsm-oauth-sdk-react)
   - [Java SDK](https://github.com/themoment-team/datagsm-oauth-sdk-java)
+  - [Go SDK](https://github.com/tmp-it-play/datagsm-sdk-go)

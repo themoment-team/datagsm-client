@@ -18,7 +18,7 @@
 - [SDK JavaScript/TypeScript](https://docs.datagsm.kr/api/sdk/javascript): @themoment-team/datagsm-openapi 2.0.0 (npm, fetch 기반). Node.js 20+. 조회·쓰기 API
 - [SDK Python](https://docs.datagsm.kr/api/sdk/python): datagsm-openapi-sdk 2.0.0 (pip, httpx + Pydantic v2 기반). Python 3.9+. 조회·쓰기 API
 - [SDK .NET](https://docs.datagsm.kr/api/sdk/dotnet): 커뮤니티 관리 비공식 패키지(NuGet, HttpClient 기반). .NET 8.0+. 최신 서버 명세 미반영
-- [SDK Go](https://docs.datagsm.kr/api/sdk/go): 커뮤니티 관리 비공식 패키지(go get, net/http 기반). Go 1.21+. 최신 서버 명세 미반영
+- [SDK Go](https://docs.datagsm.kr/api/sdk/go): github.com/tmp-it-play/datagsm-sdk-go v0.2.0. Go 1.25+, 외부 런타임 의존성 없는 파트너 SDK. OpenAPI 조회·쓰기, ID 필터, nullable 응답, NEIS 날짜 조회
 - [OAuth 개요](https://docs.datagsm.kr/oauth): OAuth 2.0 Authorization Code Grant와 OIDC 개요, SSO·동의 흐름, PKCE, 토큰 유효기간, 인증 플로우 다이어그램
 - [인증 흐름 시작](https://docs.datagsm.kr/oauth/http/authorize): GET /v1/oauth/authorize — client_id, redirect_uri, state, code_challenge(PKCE) 파라미터
 - [토큰 교환](https://docs.datagsm.kr/oauth/http/token-exchange): POST /v1/oauth/token (grant_type=authorization_code) — PKCE(code_verifier) 및 client_secret 방식 모두 지원
@@ -31,6 +31,7 @@
 - [OAuth 구현 예제](https://docs.datagsm.kr/oauth/examples): React+Spring Boot BFF(PKCE), Next.js+Spring Boot(PKCE), React+Spring Boot Kotlin(client_secret), Vanilla JS+NestJS(client_secret)
 - [OAuth SDK 개요](https://docs.datagsm.kr/oauth/sdk): OAuth SDK 사용 이점 비교
 - [OAuth SDK Java](https://docs.datagsm.kr/oauth/sdk/java): io.github.themoment-team:datagsm-oauth-sdk-java:2.1.0 (Maven Central). Java/Kotlin용 OAuth·OIDC 클라이언트 SDK
+- [OAuth SDK Go](https://docs.datagsm.kr/oauth/sdk/go): Go 파트너 SDK datagsm-sdk-go v0.2.0의 oauth 패키지. PKCE, state·nonce, 토큰 교환·갱신, Client Credentials, UserInfo, RS256 JWT 검증
 - [서드파티 권한 범위](https://docs.datagsm.kr/oauth/thirdparty-scope): 서드파티 애플리케이션의 커스텀 OAuth 권한 범위 정의·등록·JWT 포함 흐름, JWK Set 기반 토큰 검증 방법
 - [OAuth SDK React](https://docs.datagsm.kr/oauth/sdk/react): @themoment-team/datagsm-oauth-react 2.0.0 (npm). 기본 PKCE, state·nonce 처리를 제공하는 React SDK
 - [Event 개요](https://docs.datagsm.kr/event): 학생·동아리·프로젝트 이벤트를 외부 서버로 실시간 전달하는 기능. 지원 이벤트 3종(student.updated·club.updated·project.updated), 전송·재시도 정책(총 3회 시도, 1초·10초 대기), verification_status, secret 1회 노출, 계정당 최대 10개 제한
@@ -39,4 +40,5 @@
 - [club.updated 명세](https://docs.datagsm.kr/event/payloads/club): 동아리 이벤트 object 필드(type·status·leader·participants), 생성·수정·삭제 판별, 수정·삭제 예시
 - [project.updated 명세](https://docs.datagsm.kr/event/payloads/project): 프로젝트 이벤트 object 필드(status·club·participants·repositories·tech_stacks), 생성·수정·삭제 판별, 생성·수정 예시
 - [서명 검증 가이드](https://docs.datagsm.kr/event/signature): X-DataGSM-Signature(HMAC-SHA256) 서명 검증 절차, 상수 시간 비교, Node·Python·Java·Kotlin 검증 예제
+- [Event SDK Go](https://docs.datagsm.kr/event/sdk/go): Go 파트너 SDK datagsm-sdk-go v0.2.0의 event 패키지. 원문 서명 검증, index 기반 변경 전후 매칭, 생성·수정·삭제 처리, 중복 수신 방지 안내
 - [변경 사항 및 마이그레이션](https://docs.datagsm.kr/migration): 호환 유지 항목, 대응이 필요한 변경, SDK 버전과 Deprecated API
