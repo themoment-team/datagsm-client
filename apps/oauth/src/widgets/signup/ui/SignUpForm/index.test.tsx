@@ -227,6 +227,17 @@ describe('SignUpForm', () => {
       expect(screen.getByRole('checkbox')).toBeChecked();
     });
 
+    it('개인정보 처리방침의 강조 표시는 HTML이 아니라 굵은 글씨로 그린다', async () => {
+      mockAccountApi();
+      const { user } = setup();
+
+      await user.click(screen.getByText('개인정보 처리방침'));
+      const dialog = await screen.findByRole('dialog');
+
+      expect(within(dialog).getByText('더모먼트팀(The Moment Team)').tagName).toBe('B');
+      expect(dialog).not.toHaveTextContent('**');
+    });
+
     it('개인정보 처리방침에 동의하지 않으면 요청하지 않고 에러를 보여준다', async () => {
       const requests = mockAccountApi();
       const { user } = setup();
