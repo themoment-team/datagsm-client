@@ -4,7 +4,7 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
 
 # `project.updated`
 
-프로젝트가 생성·수정·삭제되면 발송됩니다. 세 종류 모두 이 하나의 이벤트로 전달되며, 종류는 `old`/`new`의 `object`가 비었는지로 구분합니다.
+프로젝트가 생성·수정·삭제되면 발송됩니다. 세 종류 모두 이 하나의 이벤트로 전달되며, 종류는 `old`/`new`의 `object`가 비었는지로 구분합니다. 프로젝트 종료와 재개는 `status`와 `end_year`가 바뀌는 수정으로 전달됩니다.
 
 봉투(`id`/`event`/`timestamp`/`data`)와 `data`의 `old`/`new` `{index, object}` 구조는 [페이로드 개요](/event/payloads)를 참고하세요. 이 페이지는 `object` 안에 담기는 프로젝트 필드만 다룹니다.
 
@@ -14,7 +14,7 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
 |----------------|------------------|:--------:|----------------------------------------|
 | `project_id`   | `integer`        | X        | DataGSM 내부 프로젝트 식별자                    |
 | `name`         | `string`         | X        | 프로젝트 이름                                |
-| `description`  | `string`         | O        | 프로젝트 설명                                |
+| `description`  | `string`         | X        | 프로젝트 설명                                |
 | `start_year`   | `integer`        | X        | 시작 연도                                  |
 | `end_year`     | `integer`        | O        | 종료 연도 (진행 중이면 `null`)                  |
 | `status`       | `string(enum)`   | X        | 상태 (`ACTIVE` / `ENDED`)                |
@@ -25,7 +25,7 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
 | `repositories` | `array<string>`  | X        | 리포지토리 URL 목록 (없으면 `[]`)                 |
 | `tech_stacks`  | `array<string>`  | X        | 기술 스택 목록 (없으면 `[]`)                     |
 
-`club`은 `{ club_id, name }`, `participants`의 학생은 `{ student_number, name }`만 담습니다.
+`club`은 `{ club_id, name }`, `participants`의 학생은 `{ student_number, name }`만 담습니다. 학번이 없는 학생의 `student_number`는 `null`입니다.
 `categories`, `repositories`, `tech_stacks`는 문자열 배열이며, 등록된 값이 없으면 빈 배열로 옵니다.
 
 **`status`**
@@ -90,7 +90,7 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
 
 ### 예시 B — 수정 (프로젝트 종료)
 
-소속 동아리 해제와 함께 카테고리에서 `CLUB`이 빠지고, `end_year` 부여, 상태가 `ENDED`로 변경된 예시입니다.
+`end_year`가 부여되고 상태가 `ENDED`로 변경된 예시입니다.
 
 ```json
 {
@@ -114,9 +114,9 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
       { "index": 0, "object": {
         "project_id": 3, "name": "구 포털", "description": "구 학사 포털",
         "start_year": 2023, "end_year": 2025, "status": "ENDED",
-        "categories": [ "TEAM" ],
+        "categories": [ "TEAM", "CLUB" ],
         "deployment_url": null,
-        "club": null,
+        "club": { "club_id": 1, "name": "더모먼트" },
         "participants": [ { "student_number": 2108, "name": "박참여" } ],
         "repositories": [ "https://github.com/themoment-team/old-portal" ],
         "tech_stacks": [ "Java" ]
@@ -126,4 +126,4 @@ export const metadata = createDocsPageMetadata({ title: "project.updated 명세"
 }
 ```
 
-→ `index 0`의 `old.object`/`new.object`를 비교: `end_year`(null→2025), `status`(ACTIVE→ENDED), `categories`([TEAM, CLUB]→[TEAM]), `club`(해제)이 변경됨.
+→ `index 0`의 `old.object`/`new.object`를 비교: `end_year`(null→2025), `status`(ACTIVE→ENDED)가 변경됨.

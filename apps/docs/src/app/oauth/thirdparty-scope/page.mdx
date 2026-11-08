@@ -8,7 +8,7 @@ export const metadata = createDocsPageMetadata({ title: "서드파티 권한 범
 
 ### 개요
 
-서드파티 권한 범위(ThirdPartyScope)는 서드파티 애플리케이션이 자체적인 OAuth 권한 범위를 정의할 수 있는 기능입니다. 애플리케이션은 고유한 권한 범위를 생성하고, OAuth Client가 해당 권한 범위를 허용 목록에 등록하면 OAuth 인증 플로우에서 해당 권한 범위를 요청할 수 있습니다. 발급된 JWT Access Token에는 인증 시 요청된 권한 범위가 포함되어, 외부 서비스가 토큰을 검증하고 권한을 판단할 수 있습니다.
+서드파티 권한 범위(ThirdPartyScope)는 서드파티 애플리케이션이 자체적인 OAuth 권한 범위를 정의할 수 있는 기능입니다. 애플리케이션은 고유한 권한 범위를 생성하고, OAuth Client가 해당 권한 범위를 허용 목록에 등록하면 OAuth 인증 플로우에서 해당 권한 범위를 요청할 수 있습니다. 발급된 JWT Access Token에는 인증 시 요청된 권한 범위가 포함되어, 외부 서비스가 토큰을 검증하고 권한을 판단할 수 있습니다. DataGSM 기본 권한 범위는 [권한 범위](/oauth/scopes)를 참고하세요.
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
@@ -18,8 +18,8 @@ export const metadata = createDocsPageMetadata({ title: "서드파티 권한 범
         JWT 서명 검증
       </div>
       <div className="text-blue-800 dark:text-blue-200 text-sm">
-        DataGSM OAuth의 JWT는 RSA으로 서명됩니다. 외부 서비스는
-        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">/v1/oauth/jwk-set</code>
+        DataGSM OAuth의 JWT는 RS256으로 서명됩니다. 외부 서비스는
+        <code className="mx-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800 rounded">/v1/oauth/jwks</code>
         엔드포인트에서 공개 키를 가져와 토큰의 서명과 권한 범위를 직접 검증할 수 있습니다.
       </div>
     </div>
@@ -28,7 +28,7 @@ export const metadata = createDocsPageMetadata({ title: "서드파티 권한 범
 
 ### 권한 범위 형식
 
-**모든 권한 범위는 `{applicationId}:{scopeName}` 형식의 문자열입니다.** DataGSM 기본 권한 범위도 예외가 아닙니다.
+**권한 범위는 `{applicationId}:{scopeName}` 형식의 문자열입니다.** DataGSM 기본 권한 범위도 같은 형식이며, 프로토콜 지시자인 `openid`만 접두어가 없습니다.
 
 ```
 a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile
@@ -38,7 +38,7 @@ a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile
 
 | 구분               | 형식                               | 사용 목적                                         |
 |--------------------|------------------------------------|---------------------------------------------------|
-| DataGSM 기본 scope | `datagsm:self_read` | DataGSM 사용자 기본 정보 및 학생 상세 데이터 조회 |
+| DataGSM 기본 scope | `datagsm:account_read` 등 | DataGSM 계정, 학생, 동아리, 프로젝트 데이터 조회 ([권한 범위](/oauth/scopes)) |
 | 서드파티 scope     | `{applicationId}:{scopeName}`      | 외부 애플리케이션이 직접 정의한 권한 범위 요청    |
 
 #### scopeName 제약 조건
@@ -75,7 +75,7 @@ sequenceDiagram
     S-->>C: Client 등록 완료
 
     U->>S: 3. OAuth 인증 요청<br/>(GET /v1/oauth/authorize?scope=appId:scopeName)
-    S-->>U: 로그인 및 권한 범위 동의
+    S-->>U: 로그인 또는 권한 범위 동의
     U->>S: 인증 완료
 
     S-->>C: 4. Authorization Code 발급
@@ -102,44 +102,30 @@ GET /v1/oauth/authorize?client_id=your-client-id&redirect_uri=https://your-app.c
 GET /v1/oauth/authorize?client_id=your-client-id&redirect_uri=https://your-app.com/callback&scope=a1b2c3d4:profile%20a1b2c3d4:email
 ```
 
-- DataGSM 사용자 본인 정보만 필요하다면 `scope` 파라미터를 생략하는 것을 권장합니다. 클라이언트에 등록된 권한 범위 전체가 부여됩니다.
-- 권한 범위를 명시할 때는 DataGSM 기본 권한 범위를 포함해 모두 `{applicationId}:{scopeName}` 형식을 사용합니다.
-- 요청한 권한범위가  Client의 허용 목록에 포함되지 않으면 `400 Bad Request` 오류가 발생합니다.
+- 필요한 권한 범위를 항상 명시하세요. 서드파티 권한 범위는 opt-in이 아니므로 `scope`를 생략해도 클라이언트에 등록되어 있으면 함께 부여되지만, 요청 범위를 코드에서 확인할 수 있도록 명시를 권장합니다.
+- 권한 범위를 명시할 때는 DataGSM 기본 권한 범위를 포함해 `{applicationId}:{scopeName}` 형식을 사용합니다. `openid`만 예외입니다.
+- 요청한 권한 범위가 Client의 허용 목록에 포함되지 않으면 `400 invalid_scope` 오류가 발생합니다.
+- 요청 범위가 넓어지면 SSO 세션이 있는 사용자에게 동의 화면이 다시 표시되고, 거부하면 콜백으로 `error=access_denied`가 전달됩니다.
 - 권한 범위 정보는 Authorization Code → Access Token까지 전파되며, Refresh Token 갱신 시에도 원래 권한 범위가 유지됩니다.
-
-#### 인증 세션 응답
-
-인증 세션 조회(`GET /v1/oauth/authorize/session`) 시 요청된 권한 범위 정보가 함께 반환됩니다.
-
-```json
-{
-  "serviceName": "My Service",
-  "expiresAt": 1712000000,
-  "requestedScopes": [
-    {
-      "scope": "a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile",
-      "description": "사용자 프로필 정보 조회",
-      "applicationName": "My Application"
-    }
-  ]
-}
-```
 
 #### JWT Access Token의 권한 범위
 
-발급된 JWT Access Token에는 `scopes` 클레임에 인증 시 요청된 권한 범위 목록이 포함됩니다.
+발급된 JWT Access Token에는 `scopes` 클레임에 인증 시 요청된 권한 범위 목록이 포함됩니다. `kid`는 페이로드가 아니라 JWT 헤더에 있고, `openid`는 `scopes`에 포함되지 않습니다.
 
 ```json
 {
-  "sub": "user@example.com",
+  "sub": "user@gsm.hs.kr",
   "role": "USER",
   "clientId": "your-client-id",
   "scopes": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile"],
-  "kid": "key-id"
+  "iat": 1712000000,
+  "exp": 1712003600
 }
 ```
 
-외부 서비스는 `/v1/oauth/jwk-set` 엔드포인트에서 공개 키를 가져와 JWT 서명을 검증한 뒤, `scopes` 클레임을 확인하여 접근 권한을 판단할 수 있습니다.
+Access Token에는 `iss`, `aud` 클레임이 없습니다. 발급 대상은 `clientId` 클레임으로 확인합니다. [Client Credentials](/oauth/http/client-credentials) 토큰은 사용자가 없으므로 `sub`가 clientId이고, `role` 대신 `grant_type` 클레임이 있습니다.
+
+외부 서비스는 `/v1/oauth/jwks` 엔드포인트에서 공개 키를 가져와 JWT 서명을 검증한 뒤, `scopes` 클레임을 확인하여 접근 권한을 판단할 수 있습니다.
 
 ### 오류 응답
 
@@ -227,55 +213,50 @@ auth_url = f'https://oauth.authorization.datagsm.kr/v1/oauth/authorize?{params}'
 
 #### 발급되는 JWT Access Token 예시
 
-인증이 완료되면 발급되는 JWT Access Token의 페이로드에는 요청한 권한 범위가 포함됩니다.
+인증이 완료되면 발급되는 JWT Access Token의 헤더와 페이로드는 다음과 같습니다.
 
 ```json
 {
-  "sub": "user@example.com",
+  "kid": "key-id",
+  "alg": "RS256"
+}
+```
+
+```json
+{
+  "sub": "user@gsm.hs.kr",
   "role": "USER",
   "clientId": "your-client-id",
   "scopes": ["a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile"],
   "iat": 1712000000,
-  "exp": 1712003600,
-  "kid": "key-id"
+  "exp": 1712003600
 }
 ```
 
 #### JWK Set을 사용한 JWT 검증
 
-외부 서비스는 `/v1/oauth/jwk-set` 엔드포인트에서 공개 키를 가져와 JWT 서명을 검증하고, `scopes` 클레임을 확인하여 접근 권한을 판단할 수 있습니다.
+외부 서비스는 `/v1/oauth/jwks` 엔드포인트에서 공개 키를 가져와 JWT 서명을 검증하고, `scopes` 클레임을 확인하여 접근 권한을 판단할 수 있습니다. JWK 항목의 `use`, `alg` 값은 `null`로 내려오므로 `kid`로 키를 찾습니다.
 
 <CodeTabs>
-  <CodeTab label="JavaScript" language="javascript" code={`import jwt from 'jsonwebtoken';
-import jwksClient from 'jwks-rsa';
+  <CodeTab label="JavaScript" language="javascript" code={`import { createRemoteJWKSet, jwtVerify } from 'jose';
 
-const client = jwksClient({
-  jwksUri: 'https://oauth.authorization.datagsm.kr/v1/oauth/jwk-set',
-});
-
-function getKey(header, callback) {
-  client.getSigningKey(header.kid, (err, key) => {
-    const signingKey = key.getPublicKey();
-    callback(null, signingKey);
-  });
-}
+const jwks = createRemoteJWKSet(
+  new URL('https://oauth.authorization.datagsm.kr/v1/oauth/jwks')
+);
 
 // JWT 검증
-jwt.verify(accessToken, getKey, { algorithms: ['RS256'] }, (err, decoded) => {
-  if (err) throw new Error('토큰 검증 실패: ' + err.message);
+const { payload } = await jwtVerify(accessToken, jwks, { algorithms: ['RS256'] });
 
-  // 권한 범위 확인
-  const scopes = decoded.scopes;
-  if (scopes.includes('a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile')) {
-    console.log('profile 권한 범위가 포함되어 있습니다.');
-  }
-});`} />
+// 권한 범위 확인
+if (payload.scopes.includes('a1b2c3d4-e5f6-7890-abcd-ef1234567890:profile')) {
+  console.log('profile 권한 범위가 포함되어 있습니다.');
+}`} />
   <CodeTab label="Python" language="python" code={`import jwt
 import requests
 
 # JWK Set에서 공개 키 가져오기
 jwks = requests.get(
-    'https://oauth.authorization.datagsm.kr/v1/oauth/jwk-set'
+    'https://oauth.authorization.datagsm.kr/v1/oauth/jwks'
 ).json()
 
 from jwt.algorithms import RSAAlgorithm
@@ -306,7 +287,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 
 JwkProvider provider = new UrlJwkProvider(
-    new URL("https://oauth.authorization.datagsm.kr/v1/oauth/jwk-set"));
+    new URL("https://oauth.authorization.datagsm.kr/v1/oauth/jwks"));
 
 // JWT 검증
 DecodedJWT jwt = JWT.decode(accessToken);
@@ -328,7 +309,7 @@ import java.net.URL
 import java.security.interfaces.RSAPublicKey
 
 val provider = UrlJwkProvider(
-    URL("https://oauth.authorization.datagsm.kr/v1/oauth/jwk-set"))
+    URL("https://oauth.authorization.datagsm.kr/v1/oauth/jwks"))
 
 // JWT 검증
 val jwt = JWT.decode(accessToken)

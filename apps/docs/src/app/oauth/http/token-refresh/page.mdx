@@ -20,7 +20,7 @@ POST /v1/oauth/token
 Refresh Token을 사용하여 새로운 Access Token과 Refresh Token을 발급받습니다.
 Access Token이 만료되었을 때(1시간 후) 사용자가 다시 로그인하지 않고도 새로운 Access Token을 받을 수 있습니다.
 
-Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Refresh Token도 함께 발급됩니다.
+Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Refresh Token도 함께 발급됩니다. 이 요청은 앱의 백엔드에서 보냅니다. 갱신 응답에는 `id_token`이 없습니다.
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
@@ -40,14 +40,17 @@ Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Re
 
 ### 요청 파라미터
 
-모든 파라미터는 JSON 형식으로 요청 본문(body)에 포함되어야 합니다.
+요청 본문은 `application/x-www-form-urlencoded` 또는 `application/json` 형식으로 보냅니다.
 
 | 파라미터 | 타입 | 필수 여부 | 설명 | 예시 |
 | --- | --- | --- | --- | --- |
 | `grant_type` | `String` | 필수 | 요청 타입 (`refresh_token` 고정) | `refresh_token` |
-| `refresh_token` | `String` | 필수 | 이전에 발급받은 Refresh Token | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `refresh_token` | `String` | 필수 | 이전에 발급받은 Refresh Token | `eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...` |
 | `client_id` | `String` | 필수 | DataGSM에서 발급받은 클라이언트 ID | `your-client-id` |
-| `client_secret` | `String` | 선택 | DataGSM에서 발급받은 클라이언트 시크릿 | `your-client-secret` |
+| `client_secret` | `String` | 선택 | 클라이언트 시크릿. 보내면 서버가 검증합니다. Basic 헤더로 보낼 수도 있습니다 | `your-client-secret` |
+| `scope` | `String` | 선택 | 저장된 범위 안에서 이번 Access Token의 범위를 좁힐 때 사용 (공백으로 구분) | `datagsm:account_read` |
+
+`scope`로 좁혀도 저장된 범위는 유지되므로 다음 갱신에서 원래 범위를 다시 받을 수 있습니다. 저장된 범위를 넘으면 `invalid_scope`입니다. 기존 Refresh Token은 발급 당시의 범위를 유지합니다. 범위를 넓히려면 사용자가 다시 로그인해야 합니다.
 
 ### 응답
 
@@ -55,11 +58,11 @@ Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Re
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "scope": "datagsm:self_read"
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
+  "scope": "datagsm:account_read datagsm:student_read"
 }
 ```
 
@@ -71,12 +74,18 @@ Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Re
 | `refresh_token` | `String` | 새로 발급된 Refresh Token (30일 유효) |
 | `scope` | `String` | 발급된 권한 범위 (공백으로 구분) |
 
+응답에는 `Cache-Control: no-store`, `Pragma: no-cache` 헤더가 포함됩니다. `id_token` 필드는 항상 `null`입니다.
+
 ### 오류 응답
 
-| 상태 코드 | 설명 | 원인 |
+| 상태 코드 | 오류 | 원인 |
 | --- | --- | --- |
-| `400 Bad Request` | 잘못된 요청 | 필수 파라미터 누락 또는 잘못된 형식, Refresh Token이 유효하지 않거나 만료됨 |
-| `401 Unauthorized` | 인증 실패 | Client ID가 존재하지 않거나 Client Secret이 올바르지 않음 |
+| `400 Bad Request` | `invalid_request` | `refresh_token`, `client_id` 누락, 클라이언트 인증 방식 중복, 파라미터 중복 |
+| `400 Bad Request` | `invalid_grant` | Refresh Token이 유효하지 않거나 만료됨, 이미 사용한 토큰, 다른 클라이언트의 토큰, 비밀번호 변경이나 회원 탈퇴로 폐기된 토큰 |
+| `400 Bad Request` | `invalid_scope` | 요청한 `scope`가 저장된 범위를 넘음 |
+| `401 Unauthorized` | `invalid_client` | 없는 클라이언트, `client_secret` 불일치 |
+| `404 Not Found` | - | 토큰의 사용자 계정을 찾을 수 없음 |
+| `429 Too Many Requests` | - | 클라이언트 요청 한도 초과 |
 
 ### 요청 예시
 
@@ -84,12 +93,9 @@ Refresh Token은 **30일의 유효기간**을 가지며, 갱신 시 새로운 Re
 
 ```bash
 curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "grant_type": "refresh_token",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "client_id": "your-client-id"
-  }'
+  -d "grant_type=refresh_token" \
+  -d "refresh_token=eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..." \
+  -d "client_id=your-client-id"
 ```
 
 ### 응답 예시
@@ -98,11 +104,11 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
   "token_type": "Bearer",
   "expires_in": 3600,
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-  "scope": "datagsm:self_read"
+  "refresh_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...",
+  "scope": "datagsm:account_read datagsm:student_read"
 }
 ```
 
@@ -126,7 +132,7 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
 
 ### 사용 예제
 
-다음은 여러 언어에서 토큰을 갱신하는 예제입니다.
+다음은 앱의 백엔드에서 토큰을 갱신하는 예제입니다. 새로 받은 Refresh Token은 이전 값을 덮어써서 저장합니다.
 
 <CodeTabs>
   <CodeTab label="JavaScript" language="javascript" code={`async function refreshAccessToken(refreshToken, clientId) {
@@ -160,13 +166,12 @@ curl -X POST "https://oauth.authorization.datagsm.kr/v1/oauth/token" \
   }
 }
 
-// 사용 예시
-const oldRefreshToken = localStorage.getItem('refreshToken');
-const tokens = await refreshAccessToken(oldRefreshToken, 'your-client-id');
+// 사용 예시 (Node.js 백엔드)
+const tokens = await refreshAccessToken(session.refreshToken, 'your-client-id');
 
 // 새 토큰 저장
-sessionStorage.setItem('accessToken', tokens.accessToken);
-localStorage.setItem('refreshToken', tokens.refreshToken);
+session.accessToken = tokens.accessToken;
+session.refreshToken = tokens.refreshToken;
 
 console.log('Access Token refreshed successfully');`} />
 
@@ -200,11 +205,9 @@ def refresh_access_token(refresh_token, client_id):
         raise
 
 # 사용 예시
-old_refresh_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+old_refresh_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
 tokens = refresh_access_token(old_refresh_token, 'your-client-id')
 
-print(f'New Access Token: {tokens["access_token"]}')
-print(f'New Refresh Token: {tokens["refresh_token"]}')
 print(f'Expires In: {tokens["expires_in"]} seconds')`} />
 
   <CodeTab label="Java" language="java" code={`import java.net.http.*;
@@ -265,11 +268,9 @@ public class OAuthRefreshService {
     }
 
     public static void main(String[] args) throws Exception {
-        String oldRefreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+        String oldRefreshToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9...";
         TokenResponse tokens = refreshAccessToken(oldRefreshToken, "your-client-id");
 
-        System.out.println("New Access Token: " + tokens.accessToken);
-        System.out.println("New Refresh Token: " + tokens.refreshToken);
         System.out.println("Expires In: " + tokens.expiresIn + " seconds");
     }
 }`} />
@@ -278,6 +279,7 @@ public class OAuthRefreshService {
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.URI
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -288,6 +290,7 @@ data class RefreshRequest(
     val client_id: String
 )
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 data class TokenResponse(
     @JsonProperty("access_token")
     val accessToken: String,
@@ -327,65 +330,42 @@ class OAuthRefreshService {
 // 사용 예시
 fun main() {
     val service = OAuthRefreshService()
-    val oldRefreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    val oldRefreshToken = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ii4uLiJ9..."
     val tokens = service.refreshAccessToken(oldRefreshToken, "your-client-id")
 
-    println("New Access Token: \${tokens.accessToken}")
-    println("New Refresh Token: \${tokens.refreshToken}")
     println("Expires In: \${tokens.expiresIn} seconds")
 }`} />
 </CodeTabs>
 
 ### 자동 토큰 갱신 구현
 
-Access Token이 만료되기 전에 자동으로 갱신하는 로직을 구현하는 것이 좋습니다.
+Access Token이 만료되기 전에 백엔드에서 갱신하는 로직을 구현하는 것이 좋습니다. 브라우저에서는 `/v1/oauth/token`을 직접 호출할 수 없으므로 토큰 관리는 백엔드가 맡습니다.
 
-#### JavaScript 예제 (타이머 기반)
+#### JavaScript 예제 (Node.js 백엔드)
 
 ```javascript
-class TokenManager {
-  constructor() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    this.refreshTimer = null;
+const REFRESH_MARGIN_MS = 5 * 60 * 1000; // 만료 5분 전
+
+async function getValidAccessToken(session) {
+  if (Date.now() < session.expiresAt - REFRESH_MARGIN_MS) {
+    return session.accessToken;
   }
 
-  setTokens(accessToken, refreshToken, expiresIn) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-
-    // Access Token 만료 5분 전에 자동 갱신
-    const refreshTime = (expiresIn - 300) * 1000; // 5분 = 300초
-    this.scheduleRefresh(refreshTime);
-  }
-
-  scheduleRefresh(delay) {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
-
-    this.refreshTimer = setTimeout(async () => {
-      try {
-        const tokens = await refreshAccessToken(this.refreshToken, 'your-client-id');
-        this.setTokens(tokens.accessToken, tokens.refreshToken, tokens.expiresIn);
-        console.log('Access Token refreshed automatically');
-      } catch (error) {
-        console.error('Failed to refresh token:', error);
-        // 갱신 실패 시 재로그인 유도
-        window.location.href = '/login';
-      }
-    }, delay);
-  }
-
-  getAccessToken() {
-    return this.accessToken;
+  try {
+    const tokens = await refreshAccessToken(session.refreshToken, 'your-client-id');
+    session.accessToken = tokens.accessToken;
+    session.refreshToken = tokens.refreshToken;
+    session.expiresAt = Date.now() + tokens.expiresIn * 1000;
+    return session.accessToken;
+  } catch (error) {
+    // 갱신 실패 시 세션을 지우고 재로그인을 유도합니다.
+    session.destroy();
+    throw error;
   }
 }
-
-// 사용 예시
-const tokenManager = new TokenManager();
-tokenManager.setTokens(accessToken, refreshToken, 3600);
 ```
+
+같은 세션의 갱신 요청은 하나씩 처리하세요. 이전 Refresh Token으로 동시에 요청하면 뒤의 요청이 재사용으로 판단됩니다.
 
 ### 보안 주의사항
 
@@ -399,11 +379,13 @@ tokenManager.setTokens(accessToken, refreshToken, 3600);
 
 - 토큰 갱신 시 새로운 Refresh Token도 함께 발급됩니다.
 - 이전 Refresh Token은 무효화되므로, 항상 새로 발급된 Refresh Token을 사용하세요.
+- 이전 Refresh Token을 다시 사용하면 저장된 Refresh Token도 삭제되어 `invalid_grant`로 거부됩니다. 이 경우 사용자가 다시 로그인해야 합니다.
+- 계정과 클라이언트 조합마다 유효한 Refresh Token은 하나입니다. 같은 사용자가 다른 기기에서 다시 로그인하면 이전 Refresh Token은 더 이상 쓸 수 없습니다.
 
 #### 만료 처리
 
-- Refresh Token이 만료되면 (`400 Bad Request`) 사용자는 다시 로그인해야 합니다.
-- 만료 30일 전에 사용자에게 재로그인을 안내하는 것을 권장합니다.
+- Refresh Token이 만료되면 (`400 invalid_grant`) 사용자는 다시 로그인해야 합니다.
+- 갱신 실패를 감지하면 앱 세션을 정리하고 로그인 화면으로 안내하세요.
 
 ### 다음 단계
 

@@ -53,9 +53,9 @@ sequenceDiagram
     U->>N: 1. 로그인 버튼 클릭
     N->>N: 2. code_verifier 생성 및 저장
     N->>N: 3. code_challenge 생성 (SHA-256)
-    N->>O: 4. 로그인 페이지로 리다이렉트<br/>(clientId, redirectUri, code_challenge)
+    N->>O: 4. 인가 페이지로 리다이렉트<br/>(client_id, redirect_uri, scope, state, code_challenge)
     U->>O: 5. 이메일/비밀번호 입력
-    O-->>N: 6. 콜백 페이지로 리다이렉트<br/>(code 포함)
+    O-->>N: 6. 콜백 페이지로 리다이렉트<br/>(code, state 포함)
     N->>S: 7. POST /api/auth/callback<br/>(code, code_verifier 전달)
     S->>O: 8. POST /v1/oauth/token<br/>(code, code_verifier)
     O->>O: 9. PKCE 검증 (code_verifier → SHA-256 → code_challenge 비교)
@@ -81,7 +81,7 @@ sequenceDiagram
 | **PKCE code_verifier 생성** | 43-128자 랜덤 문자열 생성 및 저장 |
 | **PKCE code_challenge 생성** | code_verifier를 SHA-256 해싱 |
 | **리다이렉트 처리** | DataGSM 로그인 페이지로 이동 및 콜백 받기 |
-| **Authorization Code 획득** | URL 파라미터에서 code 추출 |
+| **Authorization Code 획득** | state를 검증한 뒤 URL 파라미터에서 code 추출, `access_denied` 처리 |
 | **백엔드 API 호출** | Code와 code_verifier를 서버로 전달하고 JWT 받기 |
 | **토큰 관리** | JWT를 sessionStorage에 저장 및 관리 |
 | **인증 상태 관리** | 로그인 여부에 따른 UI 분기 처리 |
@@ -107,15 +107,14 @@ sequenceDiagram
 | **HTTPS 강제** | 전체 시스템 | 프로덕션에서 모든 통신은 HTTPS 사용 |
 | **State 파라미터** | Next.js | CSRF 공격 방지를 위한 랜덤 토큰 생성 및 검증 |
 | **code_verifier 보호** | Next.js | sessionStorage에 안전하게 저장 (일회성 사용) |
-| **토큰 분리** | 양쪽 | DataGSM Access Token은 서버만, 자체 JWT는 프론트엔드에서 관리 |
-| **HttpOnly Cookie** | Spring Boot | Refresh Token을 XSS로부터 보호 |
+| **토큰 분리** | 양쪽 | DataGSM 토큰은 서버에서만 다루고, 자체 JWT는 프론트엔드에서 관리 |
 | **JWT 검증** | Spring Boot | 모든 API 요청에서 JWT 서명 및 만료 검증 |
 
 ## Step 1: 프론트엔드 (Next.js)
 
 ### 로그인 페이지
 
-사용자가 로그인 버튼을 클릭하면 DataGSM OAuth 서버로 리다이렉트합니다.
+사용자가 로그인 버튼을 클릭하면 DataGSM OAuth 서버로 리다이렉트합니다. `scope`에는 필요한 권한을 명시하며, 요청하는 scope는 콘솔에서 클라이언트에 등록되어 있어야 합니다.
 
 <CodeTabs>
   <CodeTab label="pages/login.tsx" language="typescript" code={`import { useRouter } from 'next/router';
@@ -142,6 +141,8 @@ function base64UrlEncode(array: Uint8Array): string {
     .replace(/=/g, '');
 }
 
+const OAUTH_SCOPE = 'datagsm:account_read datagsm:student_read';
+
 const LoginPage = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -161,13 +162,14 @@ const LoginPage = () => {
     const codeChallenge = await generateCodeChallenge(codeVerifier);
 
     // 환경 변수에서 설정 가져오기
-    const clientId = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID;
-    const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
+    const clientId = process.env.NEXT_PUBLIC_DATAGSM_CLIENT_ID!;
+    const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI!;
 
     // DataGSM OAuth 인가 엔드포인트로 리다이렉트
     const authUrl = new URL('https://oauth.authorization.datagsm.kr/v1/oauth/authorize');
     authUrl.searchParams.append('client_id', clientId);
     authUrl.searchParams.append('redirect_uri', redirectUri);
+    authUrl.searchParams.append('scope', OAUTH_SCOPE);
     authUrl.searchParams.append('state', state);
     authUrl.searchParams.append('code_challenge', codeChallenge);
     authUrl.searchParams.append('code_challenge_method', 'S256');
@@ -224,41 +226,57 @@ export default LoginPage;`} />
 
 ### OAuth 콜백 페이지
 
-DataGSM 인증 후 리다이렉트되는 페이지에서 Authorization Code를 추출하고 백엔드로 전달합니다.
+DataGSM 인증 후 리다이렉트되는 페이지입니다. `state`를 먼저 검증하고, 사용자가 동의를 거부해 `error=access_denied`로 돌아온 경우를 처리한 뒤 Authorization Code를 백엔드로 전달합니다.
 
 <CodeTabs>
   <CodeTab label="pages/callback.tsx" language="typescript" code={`import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const CallbackPage = () => {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    // 개발 모드의 Strict Mode에서 effect가 두 번 실행되어도 한 번만 처리합니다.
+    if (!router.isReady || handledRef.current) {
+      return;
+    }
+    handledRef.current = true;
+
     const handleCallback = async () => {
       try {
-        // URL에서 code와 state 추출
-        const { code, state } = router.query;
+        // URL에서 code, state, error 추출
+        const { code, state, error: oauthError } = router.query;
+
+        const savedState = sessionStorage.getItem('oauth_state');
+        const codeVerifier = sessionStorage.getItem('code_verifier');
+
+        // State와 code_verifier 제거 (일회용)
+        sessionStorage.removeItem('oauth_state');
+        sessionStorage.removeItem('code_verifier');
+
+        // State 검증 (CSRF 방지). 오류 응답에도 state가 포함되므로 error보다 먼저 확인합니다.
+        if (!savedState || state !== savedState) {
+          throw new Error('State 파라미터가 일치하지 않습니다.');
+        }
+
+        // 동의를 거부하면 code 없이 error=access_denied로 돌아옵니다.
+        if (oauthError === 'access_denied') {
+          throw new Error('권한 요청을 거부했습니다. 로그인하려면 권한을 허용해 주세요.');
+        }
+
+        if (oauthError) {
+          throw new Error('로그인에 실패했습니다. 다시 시도해 주세요.');
+        }
 
         if (!code || typeof code !== 'string') {
           throw new Error('Authorization code가 없습니다.');
         }
 
-        // State 검증 (CSRF 방지)
-        const savedState = sessionStorage.getItem('oauth_state');
-        if (state !== savedState) {
-          throw new Error('State 파라미터가 일치하지 않습니다.');
-        }
-
-        // code_verifier 가져오기
-        const codeVerifier = sessionStorage.getItem('code_verifier');
         if (!codeVerifier) {
           throw new Error('code_verifier가 없습니다.');
         }
-
-        // State와 code_verifier 제거 (일회용)
-        sessionStorage.removeItem('oauth_state');
-        sessionStorage.removeItem('code_verifier');
 
         // 백엔드에 code와 code_verifier 전달하여 JWT 받기
         const response = await fetch('/api/auth/callback', {
@@ -270,7 +288,7 @@ const CallbackPage = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.message || '로그인에 실패했습니다.');
         }
 
@@ -293,9 +311,7 @@ const CallbackPage = () => {
       }
     };
 
-    if (router.isReady) {
-      handleCallback();
-    }
+    handleCallback();
   }, [router.isReady, router.query]);
 
   if (error) {
@@ -358,9 +374,11 @@ interface BackendResponse {
     id: number;
     email: string;
     name: string;
-    grade: number;
-    classNum: number;
-    number: number;
+    objectType: 'STUDENT' | 'TEACHER' | null;
+    grade: number | null;
+    classNum: number | null;
+    number: number | null;
+    profileImage: string | null;
   };
 }
 
@@ -393,8 +411,9 @@ export default async function handler(
       body: JSON.stringify({ code, codeVerifier }),
     });
 
+    // 429를 포함한 백엔드의 상태 코드를 그대로 전달합니다.
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       return res.status(response.status).json({
         message: errorData.message || '백엔드 인증 처리에 실패했습니다.',
       });
@@ -463,15 +482,11 @@ export default async function handler(
 
 ```mermaid
 graph TD
-    A[src/main/java/com/example/app/] --> B[config/]
-    A --> C[controller/]
+    A[src/main/java/com/example/app/] --> C[controller/]
     A --> D[service/]
     A --> E[dto/]
     A --> F[entity/]
     A --> G[repository/]
-
-    B --> B1[SecurityConfig.java<br/><i>Spring Security 설정</i>]
-    B --> B2[JwtConfig.java<br/><i>JWT 설정</i>]
 
     C --> C1[AuthController.java<br/><i>OAuth 인증 컨트롤러</i>]
 
@@ -481,14 +496,15 @@ graph TD
 
     E --> E1[OAuthCallbackRequest.java<br/><i>콜백 요청 DTO</i>]
     E --> E2[TokenResponse.java<br/><i>토큰 응답 DTO</i>]
-    E --> E3[UserInfoResponse.java<br/><i>사용자 데이터 DTO</i>]
+    E --> E3[DataGsmUserInfo.java<br/><i>userinfo 응답 DTO</i>]
+    E --> E4[AuthResponse.java<br/><i>인증 응답 DTO</i>]
+    E --> E5[UserInfoResponse.java<br/><i>사용자 데이터 DTO</i>]
 
     F --> F1[User.java<br/><i>사용자 엔티티</i>]
 
     G --> G1[UserRepository.java<br/><i>사용자 레포지토리</i>]
 
     style A fill:#e1f5ff
-    style B fill:#fff4e6
     style C fill:#e8f5e9
     style D fill:#f3e5f5
     style E fill:#fce4ec
@@ -507,9 +523,14 @@ import com.example.app.dto.OAuthCallbackRequest;
 import com.example.app.dto.AuthResponse;
 import com.example.app.service.OAuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Map;
+
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -524,7 +545,7 @@ public class AuthController {
      * @return JWT 토큰 및 사용자 데이터
      */
     @PostMapping("/oauth/callback")
-    public ResponseEntity<AuthResponse> handleOAuthCallback(
+    public ResponseEntity<?> handleOAuthCallback(
             @RequestBody OAuthCallbackRequest request) {
 
         try {
@@ -535,10 +556,14 @@ public class AuthController {
             );
 
             return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (ResponseStatusException e) {
+            // 429를 포함한 상태 코드와 안내 문구를 프론트엔드로 전달합니다.
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(Map.of("message", e.getReason()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            log.error("OAuth callback failed", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "로그인 처리 중 오류가 발생했습니다."));
         }
     }
 
@@ -597,12 +622,15 @@ OAuth 토큰 교환 및 사용자 데이터 조회를 담당하는 핵심 서비
 
 import com.example.app.dto.*;
 import com.example.app.entity.User;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -618,7 +646,8 @@ public class OAuthService {
     private final UserService userService;
     private final JwtService jwtService;
     private final HttpClient httpClient = HttpClient.newHttpClient();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     @Value("\${datagsm.oauth.token-url:https://oauth.authorization.datagsm.kr/v1/oauth/token}")
     private String tokenUrl;
@@ -684,10 +713,7 @@ public class OAuthService {
                 HttpResponse.BodyHandlers.ofString()
         );
 
-        if (response.statusCode() != 200) {
-            log.error("Failed to exchange token: {}", response.body());
-            throw new RuntimeException("Token exchange failed: " + response.body());
-        }
+        assertSuccess(response, "exchange token");
 
         // 응답 파싱
         return objectMapper.readValue(response.body(), TokenResponse.class);
@@ -708,12 +734,27 @@ public class OAuthService {
                 HttpResponse.BodyHandlers.ofString()
         );
 
-        if (response.statusCode() != 200) {
-            log.error("Failed to fetch user info: {}", response.body());
-            throw new RuntimeException("Failed to fetch user info: " + response.body());
-        }
+        assertSuccess(response, "fetch user info");
 
         return objectMapper.readValue(response.body(), DataGsmUserInfo.class);
+    }
+
+    /**
+     * DataGSM 응답 상태 확인
+     * 429는 요청 한도 초과이므로 다시 로그인하라고 안내하지 않고 잠시 후 재시도를 안내합니다.
+     */
+    private void assertSuccess(HttpResponse<String> response, String action) {
+        if (response.statusCode() == 200) {
+            return;
+        }
+
+        log.error("Failed to {}: status={}, body={}", action, response.statusCode(), response.body());
+
+        if (response.statusCode() == 429) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "요청이 많습니다. 잠시 후 다시 시도해 주세요.");
+        }
+
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인에 실패했습니다. 다시 시도해 주세요.");
     }
 
     /**
@@ -781,10 +822,11 @@ public class UserService {
         DataGsmUserInfo.StudentInfo s = userInfo.getStudent();
         User user = User.builder()
                 .email(userInfo.getEmail())
-                .name(s != null ? s.getName() : "")
-                .grade(s != null ? s.getGrade() : 0)
-                .classNum(s != null ? s.getClassNum() : 0)
-                .number(s != null ? s.getNumber() : 0)
+                .name(resolveName(userInfo))
+                .objectType(userInfo.getObjectType())
+                .grade(s != null ? s.getGrade() : null)
+                .classNum(s != null ? s.getClassNum() : null)
+                .number(s != null ? s.getNumber() : null)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -799,8 +841,9 @@ public class UserService {
      */
     private User updateUser(User user, DataGsmUserInfo userInfo) {
         DataGsmUserInfo.StudentInfo s = userInfo.getStudent();
+        user.setName(resolveName(userInfo));
+        user.setObjectType(userInfo.getObjectType());
         if (s != null) {
-            user.setName(s.getName());
             user.setGrade(s.getGrade());
             user.setClassNum(s.getClassNum());
             user.setNumber(s.getNumber());
@@ -810,6 +853,19 @@ public class UserService {
         User updated = userRepository.save(user);
         log.info("Updated user: {}", updated.getEmail());
         return updated;
+    }
+
+    /**
+     * objectType에 따라 표시 이름 결정
+     */
+    private String resolveName(DataGsmUserInfo userInfo) {
+        if ("STUDENT".equals(userInfo.getObjectType()) && userInfo.getStudent() != null) {
+            return userInfo.getStudent().getName();
+        }
+        if ("TEACHER".equals(userInfo.getObjectType()) && userInfo.getTeacher() != null) {
+            return userInfo.getTeacher().getName();
+        }
+        return userInfo.getEmail();
     }
 
     /**
@@ -846,7 +902,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -861,7 +916,7 @@ public class JwtService {
     @Value("\${jwt.expiration:3600000}") // 기본 1시간
     private Long expirationTime;
 
-    private Key getSigningKey() {
+    private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
@@ -919,7 +974,7 @@ public class JwtService {
      */
     private Claims extractAllClaims(String token) {
         return Jwts.parser()
-                .verifyWith((SecretKey) getSigningKey())
+                .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -936,16 +991,14 @@ public class JwtService {
 
 ### DTO 클래스들
 
-데이터 전송을 위한 DTO 클래스입니다.
+데이터 전송을 위한 DTO 클래스입니다. `TokenResponse`와 `DataGsmUserInfo`는 DataGSM 응답 형식에 맞춥니다. Java는 public 클래스를 파일마다 하나씩 두어야 하므로 파일을 나눕니다.
 
 <CodeTabs>
-  <CodeTab label="DTOs.java" language="java" code={`package com.example.app.dto;
+  <CodeTab label="OAuthCallbackRequest.java" language="java" code={`package com.example.app.dto;
 
-import com.example.app.entity.User;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
-// OAuth 콜백 요청
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -953,7 +1006,12 @@ import lombok.*;
 public class OAuthCallbackRequest {
     private String code;
     private String codeVerifier;
-}
+}`} />
+
+  <CodeTab label="TokenResponse.java" language="java" code={`package com.example.app.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
 // DataGSM 토큰 응답
 @Getter
@@ -961,17 +1019,39 @@ public class OAuthCallbackRequest {
 @NoArgsConstructor
 @AllArgsConstructor
 public class TokenResponse {
+    @JsonProperty("access_token")
     private String accessToken;
-    private String refreshToken;
-    private Integer expiresIn;
-}
 
-// DataGSM 사용자 데이터 (중첩 구조)
+    @JsonProperty("token_type")
+    private String tokenType;
+
+    @JsonProperty("expires_in")
+    private Long expiresIn;
+
+    @JsonProperty("refresh_token")
+    private String refreshToken;
+
+    private String scope;
+
+    // scope에 openid를 요청한 코드 교환에서만 값이 있습니다.
+    @JsonProperty("id_token")
+    private String idToken;
+}`} />
+
+  <CodeTab label="DataGsmUserInfo.java" language="java" code={`package com.example.app.dto;
+
+import lombok.*;
+
+
+import java.util.List;
+
+// DataGSM /userinfo 응답
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class DataGsmUserInfo {
+    private String sub;
     private Long id;
     private String email;
     private String role;
@@ -981,6 +1061,9 @@ public class DataGsmUserInfo {
     private Boolean isStudent;
     private StudentInfo student;
     private TeacherInfo teacher;
+    // club_read, project_read를 요청해야 채워지며 그렇지 않으면 빈 배열입니다.
+    private List<ClubSummary> clubs;
+    private List<ProjectSummary> projects;
 
     @Getter
     @Setter
@@ -989,10 +1072,22 @@ public class DataGsmUserInfo {
     public static class StudentInfo {
         private Long id;
         private String name;
+        private String sex;
+        private String email;
         private Integer grade;
         private Integer classNum;
         private Integer number;
+        private Integer studentNumber;
         private String major;
+        private String specialty;
+        private String role;
+        private Integer dormitoryFloor;
+        private Integer dormitoryRoom;
+        // club_read가 없으면 null입니다.
+        private ClubSummary majorClub;
+        private ClubSummary autonomousClub;
+        private String githubId;
+        private String githubUrl;
     }
 
     @Getter
@@ -1006,7 +1101,33 @@ public class DataGsmUserInfo {
         private String department;
         private String description;
     }
-}
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ClubSummary {
+        private Long id;
+        private String name;
+        private String type;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectSummary {
+        private Long id;
+        private String name;
+        private String status;
+        private ClubSummary club;
+    }
+}`} />
+
+  <CodeTab label="AuthResponse.java" language="java" code={`package com.example.app.dto;
+
+import lombok.*;
+
 
 // 인증 응답 (JWT + 사용자 데이터)
 @Getter
@@ -1017,7 +1138,12 @@ public class DataGsmUserInfo {
 public class AuthResponse {
     private String token;
     private UserInfoResponse user;
-}
+}`} />
+
+  <CodeTab label="UserInfoResponse.java" language="java" code={`package com.example.app.dto;
+
+import com.example.app.entity.User;
+import lombok.*;
 
 // 사용자 데이터 응답
 @Getter
@@ -1029,6 +1155,7 @@ public class UserInfoResponse {
     private Long id;
     private String email;
     private String name;
+    private String objectType;
     private Integer grade;
     private Integer classNum;
     private Integer number;
@@ -1039,6 +1166,7 @@ public class UserInfoResponse {
                 .id(user.getId())
                 .email(user.getEmail())
                 .name(user.getName())
+                .objectType(user.getObjectType())
                 .grade(user.getGrade())
                 .classNum(user.getClassNum())
                 .number(user.getNumber())
@@ -1078,6 +1206,8 @@ public class User {
 
     @Column(nullable = false)
     private String name;
+
+    private String objectType;
 
     private Integer grade;
 
@@ -1132,6 +1262,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
 ### Next.js 환경 변수
 
+`NEXT_PUBLIC_REDIRECT_URI`와 Spring Boot의 `OAUTH_REDIRECT_URI`는 콘솔에 등록한 리다이렉트 URI와 같은 값이어야 합니다.
+
 <CodeTabs>
   <CodeTab label=".env.local" language="bash" code={`# DataGSM OAuth 설정
 NEXT_PUBLIC_DATAGSM_CLIENT_ID=your-client-id-here
@@ -1145,39 +1277,39 @@ BACKEND_URL=http://localhost:8080`} />
 
 <CodeTabs>
   <CodeTab label="application.yml" language="yaml" code={`spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/myapp
-    username: root
-    password: password
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    datasource:
+      url: jdbc:mysql://localhost:3306/myapp
+      username: root
+      password: password
+      driver-class-name: com.mysql.cj.jdbc.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
+    jpa:
       hibernate:
-        format_sql: true
+        ddl-auto: update
+      show-sql: true
+      properties:
+        hibernate:
+          format_sql: true
 
-# DataGSM OAuth 설정
-datagsm:
-  oauth:
-    token-url: https://oauth.authorization.datagsm.kr/v1/oauth/token
-    userinfo-url: https://oauth.resource.datagsm.kr/userinfo
-    client-id: \${OAUTH_CLIENT_ID}
-    redirect-uri: \${OAUTH_REDIRECT_URI:http://localhost:3000/callback}
+  # DataGSM OAuth 설정
+  datagsm:
+    oauth:
+      token-url: https://oauth.authorization.datagsm.kr/v1/oauth/token
+      userinfo-url: https://oauth.resource.datagsm.kr/userinfo
+      client-id: \${OAUTH_CLIENT_ID}
+      redirect-uri: \${OAUTH_REDIRECT_URI:http://localhost:3000/callback}
 
-# JWT 설정
-jwt:
-  secret: \${JWT_SECRET:your-secret-key-minimum-256-bits-long}
-  expiration: 3600000  # 1시간 (밀리초)
+  # JWT 설정
+  jwt:
+    secret: \${JWT_SECRET:your-secret-key-minimum-256-bits-long}
+    expiration: 3600000  # 1시간 (밀리초)
 
-# CORS 설정
-cors:
-  allowed-origins: http://localhost:3000
-  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-  allowed-headers: "*"
-  allow-credentials: true`} />
+  # CORS 설정
+  cors:
+    allowed-origins: http://localhost:3000
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true`} />
 </CodeTabs>
 
 ### 의존성 설정
@@ -1373,7 +1505,7 @@ sequenceDiagram
     U->>N: 로그인 클릭
     N->>N: 1. State & code_verifier 생성 & 저장
     N->>N: 2. code_challenge 생성 (SHA-256)
-    N-->>U: 3. 리다이렉트<br/>(clientId, redirectUri, state, code_challenge)
+    N-->>U: 3. 리다이렉트<br/>(client_id, redirect_uri, scope, state, code_challenge)
     U->>O: 4. 로그인 페이지 표시
     U->>O: 5. 이메일/비밀번호 입력
     O-->>U: 6. 콜백 리다이렉트<br/>(code, state)
@@ -1381,9 +1513,9 @@ sequenceDiagram
     N->>N: 7. State 검증
     N->>N: 8. code_verifier 가져오기
     N->>S: 9. POST /api/auth/callback<br/>{ code, codeVerifier }
-    S->>O: 10. POST /v1/oauth/token<br/>{ code, codeVerifier }
+    S->>O: 10. POST /v1/oauth/token<br/>{ code, code_verifier }
     O->>O: 11. PKCE 검증
-    O-->>S: 12. { accessToken, refreshToken }
+    O-->>S: 12. { access_token, refresh_token, ... }
     S->>O: 13. GET /userinfo<br/>Authorization: Bearer token
     O-->>S: 14. UserInfo
     S->>D: 15. 사용자 동기화
@@ -1391,7 +1523,7 @@ sequenceDiagram
     S->>S: 17. JWT 생성
     S-->>N: 18. { token, user }
     N->>N: 19. JWT 저장 & code_verifier 삭제<br/>(sessionStorage)
-    N-->>U: 17. 메인 페이지로 이동
+    N-->>U: 20. 메인 페이지로 이동
 ```
 
 ### 에러 처리 플로우
@@ -1403,8 +1535,14 @@ graph LR
     B -->|State 불일치| C1[에러 메시지 표시]
     C1 --> D1[로그인 페이지로 이동]
 
+    B -->|access_denied| C6[거부 안내 표시]
+    C6 --> D6[로그인 페이지로 이동]
+
     B -->|Code 만료| C2[재로그인 요청]
     C2 --> D2[로그인 페이지로 이동]
+
+    B -->|429 요청 한도 초과| C7[재시도 안내 표시]
+    C7 --> D7[로그인 페이지로 이동]
 
     B -->|토큰 교환 실패| C3[로그 기록 & 알림]
     C3 --> D3[에러 페이지 표시]
@@ -1424,7 +1562,7 @@ graph LR
 
 | 기능 | 설명 | 우선순위 |
 | --- | --- | --- |
-| **Token Refresh** | Access Token 만료 시 자동 갱신 | 높음 |
+| **Token Refresh** | Access Token 만료 시 자동 갱신. Refresh Token은 회전 방식이므로 서버에 저장하고 응답의 새 값으로 교체 | 높음 |
 | **Remember Me** | 로그인 상태 유지 기능 | 중간 |
 | **소셜 로그인 통합** | 다른 OAuth 제공자 추가 | 낮음 |
 | **다중 기기 로그인** | 여러 기기에서 동시 로그인 지원 | 중간 |

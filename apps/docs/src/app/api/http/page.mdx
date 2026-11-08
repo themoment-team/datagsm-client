@@ -6,7 +6,7 @@ export const metadata = createDocsPageMetadata({ title: "HTTP OpenAPI", pathname
 
 ### 개요
 
-**DataGSM HTTP OpenAPI**는 학생, 동아리, 프로젝트, NEIS 데이터를 간단한 HTTP 요청을 통해 조회할 수 있는 RESTful API입니다.
+**DataGSM HTTP OpenAPI**는 학생, 동아리, 프로젝트, NEIS 데이터를 간단한 HTTP 요청을 통해 조회할 수 있는 RESTful API입니다. 관리자 권한 범위가 있는 API 키로는 학생, 동아리, 프로젝트 데이터를 변경할 수도 있습니다.
 
 표준 HTTP 프로토콜을 사용하므로 어떤 프로그래밍 언어나 플랫폼에서도 쉽게 연동할 수 있으며, JSON 형식으로 데이터를 주고받습니다.
 
@@ -27,11 +27,11 @@ https://openapi.datagsm.kr
 
 ### 공통 응답 구조
 
-모든 성공 응답은 다음과 같은 구조로 래핑되어 반환됩니다.
+데이터를 반환하는 성공 응답은 다음과 같은 구조로 래핑되어 반환됩니다.
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -40,12 +40,24 @@ https://openapi.datagsm.kr
 }
 ```
 
-| 필드        | 타입                 | 설명          |
-|-----------|--------------------|-------------|
-| `status`  | `String`           | HTTP 상태 메시지 |
-| `code`    | `Int`              | HTTP 상태 코드  |
-| `message` | `String`           | 응답 메시지      |
-| `data`    | `Object` / `Array` | 실제 응답 데이터   |
+| 필드        | 타입                 | 설명                      |
+|-----------|--------------------|-------------------------|
+| `status`  | `String`           | HTTP 상태 코드와 이름 (`200 OK`) |
+| `code`    | `Int`              | HTTP 상태 코드              |
+| `message` | `String`           | 응답 메시지                  |
+| `data`    | `Object` / `Array` | 실제 응답 데이터               |
+
+동아리 삭제, 프로젝트 삭제, 프로젝트 종료, 프로젝트 재개는 반환할 데이터가 없으므로 본문 없이 `204 No Content`로 응답합니다.
+
+오류 응답도 같은 구조이며 `data` 필드가 없습니다.
+
+```json
+{
+  "status": "404 NOT_FOUND",
+  "code": 404,
+  "message": "동아리를 찾을 수 없습니다."
+}
+```
 
 ### 인증 방식
 
@@ -55,18 +67,30 @@ https://openapi.datagsm.kr
 X-API-KEY: your-api-key-here
 ```
 
-API 키는 UUID 형식이며, 30일마다 갱신이 필요합니다. 만료되거나 유효하지 않은 키를 사용할 경우 `401 Unauthorized` 응답을 받게 됩니다.
+API 키는 UUID 형식이며, 일반 계정은 30일, 관리자 계정은 365일이 지나면 만료됩니다. 갱신 방법은 [OpenAPI 개요](/api)를 참고하세요. 만료되거나 유효하지 않은 키를 사용할 경우 `401 Unauthorized` 응답을 받게 됩니다.
 
 ### 사용 가능한 엔드포인트
 
-| 엔드포인트                     | 설명               | 필요 권한 범위       |
-|---------------------------|------------------|----------------|
-| `GET /v1/students`        | 학생 데이터 조회        | `STUDENT_READ` |
-| `GET /v1/clubs`           | 동아리 데이터 조회       | `CLUB_READ`    |
-| `GET /v1/projects`        | 프로젝트 데이터 조회      | `PROJECT_READ` |
-| `GET /v1/neis/meals`      | NEIS 급식 데이터 조회   | `NEIS_READ`    |
-| `GET /v1/neis/schedules`  | NEIS 학사일정 데이터 조회 | `NEIS_READ`    |
-| `GET /v1/neis/timetables` | NEIS 시간표 데이터 조회  | `NEIS_READ`    |
+| 엔드포인트                                       | 설명               | 필요 권한 범위        |
+|---------------------------------------------|------------------|-----------------|
+| `GET /v1/students`                          | 학생 데이터 조회        | `student:read`  |
+| `POST /v1/students`                         | 학생 생성            | `student:write` |
+| `PUT /v1/students/{studentId}`              | 학생 수정            | `student:write` |
+| `GET /v1/clubs`                             | 동아리 데이터 조회       | `club:read`     |
+| `POST /v1/clubs`                            | 동아리 생성           | `club:write`    |
+| `PUT /v1/clubs/{clubId}`                    | 동아리 수정           | `club:write`    |
+| `DELETE /v1/clubs/{clubId}`                 | 동아리 삭제           | `club:write`    |
+| `GET /v1/projects`                          | 프로젝트 데이터 조회      | `project:read`  |
+| `POST /v1/projects`                         | 프로젝트 생성          | `project:write` |
+| `PUT /v1/projects/{projectId}`              | 프로젝트 수정          | `project:write` |
+| `DELETE /v1/projects/{projectId}`           | 프로젝트 삭제          | `project:write` |
+| `POST /v1/projects/{projectId}/end`         | 프로젝트 종료          | `project:write` |
+| `POST /v1/projects/{projectId}/reactivate`  | 프로젝트 재개          | `project:write` |
+| `GET /v1/neis/meals`                        | NEIS 급식 데이터 조회   | `neis:read`     |
+| `GET /v1/neis/schedules`                    | NEIS 학사일정 데이터 조회 | `neis:read`     |
+| `GET /v1/neis/timetables`                   | NEIS 시간표 데이터 조회  | `neis:read`     |
+
+`student:*`, `club:*`, `project:*`, `neis:*` 권한 범위는 같은 데이터의 모든 엔드포인트에 사용할 수 있습니다. 쓰기 권한 범위와 `*` 권한 범위는 관리자 계정만 발급받을 수 있습니다.
 
 ### 요청 예시
 
@@ -81,55 +105,35 @@ curl -X GET "https://openapi.datagsm.kr/v1/students?grade=1&classNum=1" \
 
 API 요청 실패 시 다음과 같은 HTTP 상태 코드가 반환될 수 있습니다.
 
-| 상태 코드                       | 설명                  |
-|-----------------------------|---------------------|
-| `400 Bad Request`           | 잘못된 요청 파라미터         |
-| `401 Unauthorized`          | API 키가 유효하지 않거나 만료됨 |
-| `403 Forbidden`             | 권한 범위 부족            |
-| `429 Too Many Requests`     | 단위 시간에 너무 많은 요청량 발생 |
-| `500 Internal Server Error` | 서버 내부 오류 발생         |
+| 상태 코드                       | 설명                                |
+|-----------------------------|-----------------------------------|
+| `400 Bad Request`           | 잘못된 요청 파라미터 또는 본문                 |
+| `401 Unauthorized`          | API 키가 없거나 유효하지 않거나 만료됨           |
+| `403 Forbidden`             | 권한 범위 부족                          |
+| `404 Not Found`             | 대상 데이터를 찾을 수 없음 (쓰기 API)          |
+| `409 Conflict`              | 이름, 이메일, 학번 등이 이미 존재함 (쓰기 API)    |
+| `429 Too Many Requests`     | 단위 시간에 너무 많은 요청량 발생               |
+| `500 Internal Server Error` | 서버 내부 오류 발생                       |
 
 ### 캐싱 전략
 
 HTTP API를 효율적으로 사용하기 위해 적절한 캐싱 전략을 적용하는 것이 중요합니다. 자주 변경되지 않는 데이터는 클라이언트 측에서 캐싱하여 불필요한 API 호출을 줄일 수 있습니다.
 
-#### ETag를 활용한 캐싱
-
-HTTP 캐싱 헤더(`ETag`, `Cache-Control` 등)를 활용하여 데이터의 신선도를 관리할 수 있습니다.
-
-```javascript
-// JavaScript에서 ETag를 활용한 조건부 요청 예시
-async function fetchWithCache(url, apiKey, cachedETag) {
-  const headers = {
-    'X-API-KEY': apiKey,
-  };
-
-  if (cachedETag) {
-    headers['If-None-Match'] = cachedETag;
-  }
-
-  const response = await fetch(url, { headers });
-
-  if (response.status === 304) {
-    return { fromCache: true };
-  }
-
-  const newETag = response.headers.get('ETag');
-  const data = await response.json();
-
-  return { data, eTag: newETag, fromCache: false };
-}
-```
-
 ### Rate Limiting
 
-모든 API 키에는 요청량 제한(Rate Limit)이 적용됩니다. 제한을 초과할 경우 `429 Too Many Requests` 응답이 반환됩니다.
+모든 API 키에는 요청량 제한(Rate Limit)이 적용됩니다. 기본 한도는 60초에 100회입니다. 제한을 초과할 경우 `429 Too Many Requests` 응답이 반환됩니다.
+
+| 응답 헤더                   | 설명                        |
+|-------------------------|---------------------------|
+| `X-RateLimit-Limit`     | API 키의 요청 한도               |
+| `X-RateLimit-Remaining` | 남은 요청 횟수                  |
+| `Retry-After`           | 다시 요청할 때까지 기다릴 초 (`429` 응답) |
 
 효율적인 API 사용을 위해 다음 사항을 권장합니다:
 
 - **배치 요청**: 가능한 경우 여러 데이터를 한 번에 요청합니다.
 - **캐싱 활용**: 자주 사용하는 데이터는 로컬에 캐싱합니다.
-- **지수 백오프**: Rate Limit 초과 시 지수적으로 대기 시간을 늘려 재시도합니다.
+- **재시도 대기**: `429` 응답을 받으면 `Retry-After`에 적힌 시간만큼 기다린 뒤 재시도합니다.
 
 ### 다음 단계
 

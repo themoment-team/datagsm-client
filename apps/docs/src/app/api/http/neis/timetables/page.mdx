@@ -27,8 +27,11 @@ GET /v1/neis/timetables
 - `date`, `fromDate`, `toDate` 중 **하나 이상 반드시 지정**해야 합니다.
 - `date`: 특정 날짜의 시간표 데이터만 조회
 - `fromDate`와 `toDate`: 기간 범위 내의 시간표 데이터 조회
+- `fromDate`만 보내면 그 날짜부터 1년 뒤까지, `toDate`만 보내면 그 날짜의 1년 전부터 조회
 - `date`와 `fromDate`/`toDate`는 동시에 사용할 수 없습니다.
+- `fromDate`는 `toDate`보다 늦을 수 없습니다.
 - 최대 조회 기간은 365일입니다.
+- 결과 순서는 보장되지 않으므로 필요하면 `timetableDate`와 `period`로 정렬하십시오.
 
 ## 응답 형식
 
@@ -36,7 +39,7 @@ GET /v1/neis/timetables
 
 | 필드        | 타입       | 설명            | 예시    |
 |-----------|----------|---------------|-------|
-| `status`  | `String` | HTTP 상태 메시지   | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지   | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드    | `200` |
 | `message` | `String` | 응답 메시지        | `OK`  |
 | `data`    | `Object` | 시간표 응답 객체     | -     |
@@ -64,7 +67,9 @@ GET /v1/neis/timetables
 | `grade`         | `Int`       | 학년                    | `2`                      |
 | `classNum`      | `Int`       | 반                     | `3`                      |
 | `period`        | `Int`       | 교시                    | `1`                      |
-| `subject`       | `String?`   | 과목명 (없는 경우 `null`)    | `수학`                     |
+| `subject`       | `String?`   | 과목명. 수업이 없는 교시는 `공강` (없는 경우 `null`) | `수학`                     |
+
+시간표가 있는 날짜의 각 학급에는 1교시부터 7교시까지 모든 교시가 포함됩니다. NEIS 응답에 없는 교시는 `subject`가 `공강`으로 채워지므로, 교시 누락을 공강으로 판단하던 코드는 `subject` 값을 확인해야 합니다.
 
 ## 요청 예시
 
@@ -82,7 +87,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/neis/timetables?grade=2&classNum=3&fr
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {

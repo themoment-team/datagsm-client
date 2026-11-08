@@ -24,7 +24,11 @@ GET /v1/neis/meals
 
 - `date`: 특정 날짜의 급식 데이터만 조회
 - `fromDate`와 `toDate`: 기간 범위 내의 급식 데이터 조회
-- 파라미터를 생략하면 오늘 날짜 기준으로 조회
+- `fromDate`만 보내면 그 날짜부터 1년 뒤까지, `toDate`만 보내면 그 날짜의 1년 전부터 조회
+- `date`와 `fromDate`/`toDate`는 동시에 사용할 수 없습니다.
+- `fromDate`는 `toDate`보다 늦을 수 없고, 최대 조회 기간은 365일입니다.
+- 파라미터를 생략하면 저장된 전체 급식 데이터를 반환합니다.
+- 결과 순서는 보장되지 않으므로 필요하면 `mealDate`와 `mealType`으로 정렬하십시오.
 
 ## 응답 형식
 
@@ -32,7 +36,7 @@ GET /v1/neis/meals
 
 | 필드        | 타입       | 설명          | 예시    |
 |-----------|----------|-------------|-------|
-| `status`  | `String` | HTTP 상태 메시지 | `OK`  |
+| `status`  | `String` | HTTP 상태 메시지 | `200 OK` |
 | `code`    | `Int`    | HTTP 상태 코드  | `200` |
 | `message` | `String` | 응답 메시지      | `OK`  |
 | `data`    | `Object` | 급식 응답 객체    | -     |
@@ -56,11 +60,11 @@ GET /v1/neis/meals
 | `officeName`      | `String`        | 시도교육청명                                | `광주광역시교육청`                      |
 | `mealDate`        | `LocalDate`     | 급식 날짜                                 | `2025-12-15`                    |
 | `mealType`        | `MealType`      | 급식 타입(`BREAKFAST`, `LUNCH`, `DINNER`) | `LUNCH`                         |
-| `mealMenu`        | `List<String>`  | 급식 메뉴 목록                              | `["쌀밥", "김치찌개", "돈까스", "배추김치"]` |
+| `mealMenu`        | `List<String>`  | 급식 메뉴 목록. NEIS 원본의 알레르기 번호가 메뉴명에 포함될 수 있음 | `["쌀밥", "김치찌개", "돈까스", "배추김치"]` |
 | `mealAllergyInfo` | `List<String>?` | 알레르기 데이터 목록 (없는 경우 `null`)            | `["1", "2", "5", "6"]`          |
 | `mealCalories`    | `String?`       | 칼로리 데이터 (없는 경우 `null`)                | `650.8 Kcal`                    |
-| `originInfo`      | `String?`       | 원산지 데이터 (없는 경우 `null`)                | `쌀:국내산 돼지고기:국내산 배추김치:국내산`       |
-| `nutritionInfo`   | `String?`       | 영양 데이터 (없는 경우 `null`)                 | `단백질:25.0g 지방:15.0g 탄수화물:90.0g` |
+| `originInfo`      | `String?`       | 원산지 데이터. 항목은 줄바꿈으로 구분 (없는 경우 `null`)   | `쌀:국내산 돼지고기:국내산 배추김치:국내산`       |
+| `nutritionInfo`   | `String?`       | 영양 데이터. 항목은 줄바꿈으로 구분 (없는 경우 `null`)    | `단백질:25.0g 지방:15.0g 탄수화물:90.0g` |
 | `mealServeCount`  | `Int?`          | 급식 인원수 (없는 경우 `null`)                 | `450`                           |
 
 ## 요청 예시
@@ -79,7 +83,7 @@ curl -X GET "https://openapi.datagsm.kr/v1/neis/meals?fromDate=2025-12-01&toDate
 
 ```json
 {
-  "status": "OK",
+  "status": "200 OK",
   "code": 200,
   "message": "OK",
   "data": {
@@ -95,8 +99,8 @@ curl -X GET "https://openapi.datagsm.kr/v1/neis/meals?fromDate=2025-12-01&toDate
         "mealMenu": ["쌀밥", "김치찌개", "돈까스", "배추김치"],
         "mealAllergyInfo": ["1", "2", "5", "6"],
         "mealCalories": "650.8 Kcal",
-        "originInfo": "쌀:국내산 돼지고기:국내산 배추김치:국내산",
-        "nutritionInfo": "단백질:25.0g 지방:15.0g 탄수화물:90.0g",
+        "originInfo": "쌀:국내산\n돼지고기:국내산\n배추김치:국내산",
+        "nutritionInfo": "단백질:25.0g\n지방:15.0g\n탄수화물:90.0g",
         "mealServeCount": 450
       }
     ]

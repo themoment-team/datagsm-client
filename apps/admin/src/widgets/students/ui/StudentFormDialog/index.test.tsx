@@ -102,7 +102,7 @@ describe('StudentFormDialog 추가', () => {
     expect(requests.create).toEqual([]);
   });
 
-  it('입력한 학생을 등록하고 창을 닫는다', { timeout: 20_000 }, async () => {
+  it('입력한 학생을 등록하고 창을 닫는다', async () => {
     const requests = mockStudentApi();
     const { user } = await openCreateDialog();
     await fillRequired(user);
@@ -132,7 +132,7 @@ describe('StudentFormDialog 추가', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 
-  it('등록에 실패하면 안내하고 창을 그대로 둔다', { timeout: 20_000 }, async () => {
+  it('등록에 실패하면 안내하고 창을 그대로 둔다', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     mockStudentApi({ create: () => apiError(409, '중복') });
     const { user } = await openCreateDialog();

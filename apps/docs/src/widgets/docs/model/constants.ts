@@ -1,4 +1,4 @@
-import { BookOpen, Code2, Radio, User } from 'lucide-react';
+import { BookOpen, Code2, History, Radio, User } from 'lucide-react';
 
 import { DocsSection } from './types';
 
@@ -87,6 +87,14 @@ export const docsSections: DocsSection[] = [
     icon: User,
     children: [
       {
+        label: '권한 범위',
+        href: '/oauth/scopes',
+      },
+      {
+        label: 'OIDC 가이드',
+        href: '/oauth/oidc',
+      },
+      {
         label: 'PKCE 가이드',
         href: '/oauth/pkce',
       },
@@ -113,6 +121,10 @@ export const docsSections: DocsSection[] = [
           {
             label: '토큰 갱신',
             href: '/oauth/http/token-refresh',
+          },
+          {
+            label: 'Client Credentials',
+            href: '/oauth/http/client-credentials',
           },
           {
             label: '사용자 데이터 조회',
@@ -190,5 +202,10 @@ export const docsSections: DocsSection[] = [
         href: '/event/signature',
       },
     ],
+  },
+  {
+    label: 'Migration',
+    href: '/migration',
+    icon: History,
   },
 ];

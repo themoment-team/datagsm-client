@@ -7,6 +7,7 @@ import {
   createClub,
   createStudent,
   http,
+  pickControlledOption,
   renderWithProviders,
   screen,
   selectOption,
@@ -62,8 +63,9 @@ const dialog = () => screen.getByRole('dialog');
 const field = (label: string) => within(dialog()).getByLabelText(label);
 
 const pickStudent = async (user: User, comboboxLabel: string, optionText: string) => {
-  await user.click(field(comboboxLabel));
-  await user.click(await screen.findByRole('option', { name: optionText }));
+  const trigger = field(comboboxLabel);
+  await user.click(trigger);
+  await pickControlledOption(user, trigger, optionText);
 };
 
 const openCreateDialog = async () => {
@@ -74,7 +76,7 @@ const openCreateDialog = async () => {
 };
 
 describe('ClubFormDialog', () => {
-  it('운영 중인 동아리를 부장·팀원과 함께 등록한다', { timeout: 15_000 }, async () => {
+  it('운영 중인 동아리를 부장·팀원과 함께 등록한다', async () => {
     const requests = mockClubApi();
     const { user } = await openCreateDialog();
 
@@ -113,23 +115,19 @@ describe('ClubFormDialog', () => {
     expect(requests).toEqual([]);
   });
 
-  it(
-    '팀원 선택지에서 부장은 빼고, 이미 팀원인 학생을 부장으로 고르면 팀원에서 뺀다',
-    { timeout: 15_000 },
-    async () => {
-      mockClubApi();
-      const { user } = await openCreateDialog();
-      await pickStudent(user, '팀원', '2102 이팀원');
-      expect(field('팀원')).toHaveTextContent('1명 선택됨');
+  it('팀원 선택지에서 부장은 빼고, 이미 팀원인 학생을 부장으로 고르면 팀원에서 뺀다', async () => {
+    mockClubApi();
+    const { user } = await openCreateDialog();
+    await pickStudent(user, '팀원', '2102 이팀원');
+    expect(field('팀원')).toHaveTextContent('1명 선택됨');
 
-      await pickStudent(user, '부장', '2102 이팀원');
+    await pickStudent(user, '부장', '2102 이팀원');
 
-      expect(field('팀원')).toHaveTextContent('팀원을 선택하세요');
-      await user.click(field('팀원'));
-      const options = (await screen.findAllByRole('option')).map((option) => option.textContent);
-      expect(options).toEqual(['2101 김부장', '1203 박팀원']);
-    },
-  );
+    expect(field('팀원')).toHaveTextContent('팀원을 선택하세요');
+    await user.click(field('팀원'));
+    const options = (await screen.findAllByRole('option')).map((option) => option.textContent);
+    expect(options).toEqual(['2101 김부장', '1203 박팀원']);
+  });
 
   it('팀원 검색은 이름과 학번으로 거른다', async () => {
     mockClubApi();
@@ -143,33 +141,29 @@ describe('ClubFormDialog', () => {
     ]);
   });
 
-  it(
-    '폐지 상태로 바꾸면 부장·팀원 입력을 숨기고 비운 채 폐지연도와 함께 보낸다',
-    { timeout: 15_000 },
-    async () => {
-      const requests = mockClubApi();
-      const { user } = await openCreateDialog();
-      await user.type(field('동아리명'), '옛 동아리');
-      await selectOption(user, field('동아리 종류'), '자율');
-      await user.type(field('설립연도'), '2019');
-      await pickStudent(user, '부장', '2101 김부장');
+  it('폐지 상태로 바꾸면 부장·팀원 입력을 숨기고 비운 채 폐지연도와 함께 보낸다', async () => {
+    const requests = mockClubApi();
+    const { user } = await openCreateDialog();
+    await user.type(field('동아리명'), '옛 동아리');
+    await selectOption(user, field('동아리 종류'), '자율');
+    await user.type(field('설립연도'), '2019');
+    await pickStudent(user, '부장', '2101 김부장');
 
-      await selectOption(user, field('운영 상태'), '폐지');
-      expect(within(dialog()).queryByLabelText('부장')).not.toBeInTheDocument();
-      await user.type(field('폐지연도'), '2024');
-      await user.click(within(dialog()).getByRole('button', { name: '+ Add Club' }));
+    await selectOption(user, field('운영 상태'), '폐지');
+    expect(within(dialog()).queryByLabelText('부장')).not.toBeInTheDocument();
+    await user.type(field('폐지연도'), '2024');
+    await user.click(within(dialog()).getByRole('button', { name: '+ Add Club' }));
 
-      await screen.findByText('동아리 등록에 성공했습니다.');
-      expect(requests[0]?.body).toEqual({
-        name: '옛 동아리',
-        type: 'AUTONOMOUS_CLUB',
-        status: 'ABOLISHED',
-        foundedYear: 2019,
-        abolishedYear: 2024,
-        participantIds: [],
-      });
-    },
-  );
+    await screen.findByText('동아리 등록에 성공했습니다.');
+    expect(requests[0]?.body).toEqual({
+      name: '옛 동아리',
+      type: 'AUTONOMOUS_CLUB',
+      status: 'ABOLISHED',
+      foundedYear: 2019,
+      abolishedYear: 2024,
+      participantIds: [],
+    });
+  });
 
   describe('수정', () => {
     const club = createClub({

@@ -14,7 +14,7 @@ GET /v1/oauth/authorize
 
 ### 설명
 
-OAuth 인증 흐름의 진입점입니다. 클라이언트가 사용자를 이 엔드포인트로 리다이렉트하면, DataGSM OAuth 서버가 검증 후 DataGSM 로그인 페이지로 안내합니다. 사용자가 로그인에 성공하면 `redirect_uri`로 Authorization Code가 전달됩니다.
+OAuth 인증 흐름의 진입점입니다. 클라이언트가 사용자를 이 엔드포인트로 리다이렉트하면, DataGSM OAuth 서버가 요청을 검증한 뒤 SSO 세션과 동의 기록에 따라 로그인 화면, 동의 화면, 코드 발급 중 하나로 진행합니다. 인가가 끝나면 `redirect_uri`로 Authorization Code가 전달되고, 사용자가 동의를 거부하면 `error=access_denied`가 전달됩니다.
 
 <div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
@@ -39,20 +39,25 @@ OAuth 인증 흐름의 진입점입니다. 클라이언트가 사용자를 이 �
 | 파라미터                    | 타입       | 필수 여부     | 설명                                                | 예시                                            |
 |-------------------------|----------|-----------|---------------------------------------------------|-----------------------------------------------|
 | `client_id`             | `String` | 필수        | DataGSM에서 발급받은 클라이언트 ID                           | `your-client-id`                              |
-| `redirect_uri`          | `String` | 필수        | 인증 완료 후 code를 전달받을 URI (사전 등록 필요)                 | `https://your-app.com/callback`               |
+| `redirect_uri`          | `String` | 필수        | 인증 완료 후 code를 전달받을 URI. 등록값과 정확히 일치해야 함     | `https://your-app.com/callback`               |
 | `response_type`         | `String` | 선택        | 응답 타입 (`code` 고정, 기본값 `code`)                     | `code`                                        |
 | `state`                 | `String` | 선택 (권장)   | CSRF 공격 방지용 임의 문자열. 콜백 시 그대로 반환됨                  | `randomString123`                             |
 | `code_challenge`        | `String` | 선택 (PKCE) | PKCE Code Verifier를 SHA-256 해싱 후 Base64URL 인코딩한 값 | `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM` |
-| `code_challenge_method` | `String` | 선택 (PKCE) | Challenge 생성 방법 (`S256` 권장, `plain` 지원)           | `S256`                                        |
-| `scope`                 | `String` | 선택        | 요청할 OAuth Scope 목록 (공백으로 구분). 미지정 시 클라이언트에 등록된 권한 범위 전체가 부여됨 | `{applicationId}:{scopeName}` |
+| `code_challenge_method` | `String` | 조건부 필수 | `code_challenge`를 보내면 필수. `S256`을 사용합니다. 생략하거나 지원하지 않는 값이면 `invalid_request` | `S256`                                        |
+| `scope`                 | `String` | 선택 (명시 권장) | 요청할 권한 범위 목록 (공백으로 구분)                        | `datagsm:account_read datagsm:student_read`   |
+| `nonce`                 | `String` | 선택 (OIDC 권장) | `id_token`에 그대로 담기는 재전송 방지 값                   | `n-0S6_WzA2Mj`                                |
 
 ### Scope 사용 방식
 
-**모든 권한 범위는 `{applicationId}:{scopeName}` 형식입니다.** DataGSM 기본 권한 범위도 예외가 아니며, 사용자 정보 조회 권한은 `datagsm:self_read`입니다. 이 권한이 있어야 [사용자 데이터 조회](/oauth/http/userinfo) 엔드포인트에서 사용자 기본 정보와 학생 상세 데이터를 조회할 수 있습니다.
+필요한 권한 범위를 **명시**하십시오. 권한 범위는 `{applicationId}:{scopeName}` 형식이며, DataGSM 기본 권한 범위의 Application ID는 `datagsm`입니다. `openid`만 접두어가 없습니다. 각 범위의 의미는 [권한 범위](/oauth/scopes)를 참고하세요.
 
-**`scope` 파라미터는 생략하는 것을 권장합니다.** 생략하면 클라이언트에 등록된 권한 범위 전체가 부여되므로, Application ID를 애플리케이션 코드에 넣지 않아도 됩니다.
+| 요청 | 서버가 결정하는 범위 |
+|---|---|
+| 명시 | 요청한 값 그대로. `openid`는 등록 검사에서 제외됩니다 |
+| 생략 또는 빈 값 | 클라이언트 권한 범위 전체에서 `club_read`, `project_read`를 뺀 값. 남는 값이 없으면 `invalid_scope` |
+| `openid`만 요청 | `account_read`, `student_read` 중 클라이언트가 가진 값. 둘 다 없으면 `self_read`, 그것도 없으면 `invalid_scope` |
 
-명시적으로 전달할 경우 **클라이언트에 등록된 권한 범위의 부분집합**이어야 합니다. 등록되지 않은 값이 하나라도 포함되면 `400 invalid_scope`로 거부됩니다. 정확한 문자열은 클라이언트 등록 화면에서 확인할 수 있습니다.
+요청한 값 중 클라이언트에 등록되지 않은 값이 있으면 `invalid_scope`로 거부됩니다. 정확한 문자열은 클라이언트 등록 화면에서 확인할 수 있습니다.
 
 여러 권한 범위를 요청하는 경우 공백으로 구분하며, URL에서는 공백을 `%20`으로 인코딩합니다.
 
@@ -60,9 +65,18 @@ OAuth 인증 흐름의 진입점입니다. 클라이언트가 사용자를 이 �
 
 #### 성공 응답 (302 Found)
 
-DataGSM 로그인 페이지로 리다이렉트됩니다. 서버 내부적으로 인증 상태 토큰이 생성되어 로그인 페이지에 전달되며, 유효 시간은 **10분**입니다.
+요청 상태에 따라 다음 중 하나로 리다이렉트됩니다. 로그인 화면이나 동의 화면에서 처리할 수 있는 시간은 **10분**입니다.
 
-사용자가 로그인에 성공하면 아래 형태로 `redirect_uri`에 Authorization Code가 전달됩니다.
+| 상태 | 동작 |
+|---|---|
+| SSO 세션이 있고 요청 범위 전체에 동의 기록이 있음 | 화면 없이 바로 `redirect_uri`로 코드 발급 |
+| SSO 세션은 있으나 동의 기록이 없거나 새 범위가 포함됨 | 동의 화면 표시 |
+| SSO 세션이 없음 | 로그인 화면 표시. 비밀번호 로그인에 성공하면 요청 범위에 대한 동의가 함께 기록됩니다 |
+| 관리자의 정보 수정 요청이 남은 학생 | SSO 세션이 있어도 로그인 화면 표시. 요청된 정보를 입력해야 코드가 발급됩니다 |
+
+SSO 세션은 쿠키 기반이며 8시간 유지됩니다. `@gsm.hs.kr` 이메일만 로그인할 수 있습니다. `ACTIVE`가 아닌 계정(승인 대기 선생님 등)은 로그인이 `403`으로 거부됩니다.
+
+인가가 끝나면 아래 형태로 `redirect_uri`에 Authorization Code가 전달됩니다.
 
 ```
 https://your-app.com/callback?code={authorization_code}&state={state}
@@ -73,12 +87,32 @@ https://your-app.com/callback?code={authorization_code}&state={state}
 | `code`  | Authorization Code (5분 유효, 일회성)     |
 | `state` | 요청 시 전달한 `state` 값 (생략한 경우 포함되지 않음) |
 
+#### 동의 거부
+
+사용자가 동의를 거부하면 `code` 없이 다음 형태로 돌아옵니다. 콜백은 `code`가 없는 경우를 반드시 처리해야 합니다.
+
+```
+https://your-app.com/callback?error=access_denied&error_description=...&state={state}
+```
+
 ### 오류 응답
 
-| 상태 코드               | 설명       | 원인                                                                           |
-|---------------------|----------|------------------------------------------------------------------------------|
-| `400 Bad Request`   | 잘못된 요청   | `response_type`이 `code`가 아님, 등록되지 않은 `redirect_uri`, `code_challenge` 없이 `code_challenge_method`만 전달 |
-| `401 Unauthorized`  | 인증 실패    | 존재하지 않는 `client_id`                                                          |
+아래 오류는 `redirect_uri`로 돌아가지 않습니다. 브라우저에서는 DataGSM 오류 페이지로 표시되므로, 연동 중에는 요청 파라미터를 먼저 확인하세요.
+
+| 상태 코드 | 오류 | 원인 |
+|---|---|---|
+| `400 Bad Request` | - | `client_id` 또는 `redirect_uri` 누락 |
+| `400 Bad Request` | `invalid_request` | `response_type`이 `code`가 아님, 등록되지 않은 `redirect_uri`, `code_challenge`와 함께 보낸 `code_challenge_method`가 없거나 지원하지 않는 값 |
+| `400 Bad Request` | `invalid_scope` | 클라이언트에 등록되지 않은 scope 요청, 또는 기본으로 부여할 scope가 없음 |
+| `401 Unauthorized` | `invalid_client` | 존재하지 않는 `client_id` |
+| `429 Too Many Requests` | - | 클라이언트 요청 한도 초과 |
+
+<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">기존 연동 확인</div>
+  <div className="text-sm text-yellow-800 dark:text-yellow-200">
+    변경 전에는 동의 화면 없이 코드가 발급되었습니다. 변경 후에는 요청 범위가 넓어지면 SSO 세션 사용자에게 동의 화면이 표시되고, 거부하면 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">access_denied</code>로 돌아오며, 클라이언트에 등록하지 않은 scope는 <code className="mx-1 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-800 rounded">invalid_scope</code>로 거부됩니다. 기존 연동은 코드 없는 콜백에서 실패할 수 있습니다. 클라이언트에 scope를 등록하고 콜백에 오류 처리를 추가하세요. 전체 목록은 <a href="/migration" className="underline font-medium">변경 사항 및 마이그레이션</a>을 참고하세요.
+  </div>
+</div>
 
 ### 요청 예시
 
@@ -115,27 +149,9 @@ const params = new URLSearchParams({
   redirect_uri: 'https://your-app.com/callback',
   response_type: 'code',
   state,
-  scope: 'datagsm:self_read',
+  scope: 'datagsm:account_read datagsm:student_read',
   code_challenge: codeChallenge,
   code_challenge_method: 'S256',
-});
-
-window.location.href = `https://oauth.authorization.datagsm.kr/v1/oauth/authorize?${params}`;
-```
-
-#### URL 구성 (scope 생략)
-
-사용자 본인 정보만 조회하는 기본 흐름에서는 `scope` 파라미터를 생략할 수 있습니다.
-
-```javascript
-const state = crypto.randomUUID();
-sessionStorage.setItem('oauth_state', state);
-
-const params = new URLSearchParams({
-  client_id: 'your-client-id',
-  redirect_uri: 'https://your-app.com/callback',
-  response_type: 'code',
-  state,
 });
 
 window.location.href = `https://oauth.authorization.datagsm.kr/v1/oauth/authorize?${params}`;
@@ -159,9 +175,10 @@ window.location.href = `https://oauth.authorization.datagsm.kr/v1/oauth/authoriz
 #### 콜백 처리 예시
 
 ```javascript
-// redirect_uri 페이지에서 code와 state 수신
+// redirect_uri 페이지에서 결과 수신
 const params = new URLSearchParams(window.location.search);
 const code = params.get('code');
+const error = params.get('error');
 const returnedState = params.get('state');
 
 // state 검증 (CSRF 방지)
@@ -171,10 +188,22 @@ if (returnedState !== savedState) {
 }
 sessionStorage.removeItem('oauth_state');
 
-// code로 토큰 교환 진행
 const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
 sessionStorage.removeItem('oauth_code_verifier');
-// → POST /v1/oauth/token 으로 교환
+
+// 동의 거부 등으로 code가 없는 경우 처리
+if (error === 'access_denied') {
+  showMessage('로그인을 취소했습니다.');
+} else if (error || !code) {
+  showMessage('로그인에 실패했습니다.');
+} else {
+  // 토큰 교환은 앱의 백엔드가 수행합니다.
+  await fetch('/api/auth/datagsm/callback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, codeVerifier }),
+  });
+}
 ```
 
 ### 다음 단계

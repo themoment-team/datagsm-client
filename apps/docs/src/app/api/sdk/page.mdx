@@ -31,12 +31,12 @@ SDK는 강타입 언어의 장점을 활용하여 컴파일 타임에 오류를 
 
 ```java
 // ✅ SDK 사용 - 컴파일 타임에 타입 체크
-StudentResponse students = client.students().getStudents(
+StudentListResDto students = client.students().getStudents(
     new StudentApi.StudentRequest()
         .grade(1)
         .classNum(1)
 );
-Student firstStudent = students.getStudents().get(0);
+StudentResDto firstStudent = students.getStudents().get(0);
 String name = firstStudent.getName(); // 타입 안전하며 IDE 자동완성 지원
 
 // ❌ 직접 HTTP 호출 - 런타임 오류 가능성
@@ -53,15 +53,17 @@ SDK는 HTTP 상태 코드를 의미 있는 예외로 변환하여 제공합니�
 ```java
 // ✅ SDK 사용 - 구체적인 예외 타입으로 명확한 에러 처리
 try {
-    StudentResponse students = client.students().getStudents(request);
+    StudentListResDto students = client.students().getStudents(request);
 } catch (UnauthorizedException e) {
     // 401 - API 키 갱신 필요
     log.error("API key expired", e);
     renewApiKey();
+} catch (ConflictException e) {
+    // 409 - 이메일, 이름 등 중복 (쓰기 API)
+    log.warn("Duplicated resource", e);
 } catch (RateLimitException e) {
-    // 429 - Rate limit 초과, 재시도 로직
-    log.warn("Rate limit exceeded, retrying...", e);
-    retryAfter(e.getRetryAfter());
+    // 429 - Rate limit 초과, 잠시 후 재시도
+    log.warn("Rate limit exceeded", e);
 } catch (DataGsmException e) {
     // 기타 API 오류
     log.error("API error: {}", e.getMessage());
@@ -83,8 +85,8 @@ HTTP 클라이언트 설정, 헤더 관리, JSON 직렬화/역직렬화 등 반�
 
 ```java
 // ✅ SDK 사용 - 단 3줄로 API 호출 완료
-DataGsmClient client = DataGsmClient.builder("your-api-key").build();
-List<Meal> meals = client.neis().getMeals(
+DataGsmOpenApiClient client = DataGsmOpenApiClient.builder("your-api-key").build();
+MealResDto meals = client.neis().getMeals(
     new NeisApi.MealRequest()
         .date(LocalDate.now())
 );
@@ -98,7 +100,7 @@ HttpRequest request = HttpRequest.newBuilder()
     .build();
 HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 ObjectMapper mapper = new ObjectMapper();
-List<Meal> meals = mapper.readValue(response.body(), new TypeReference<List<Meal>>(){});
+JsonNode meals = mapper.readTree(response.body()).path("data").path("meals");
 // + 에러 처리, 리소스 정리 등 추가 코드 필요
 ```
 
@@ -108,24 +110,24 @@ SDK는 모든 엔드포인트에 대해 일관된 패턴을 제공하여 학습 
 
 ```java
 // 모든 API가 동일한 패턴을 따름
-StudentResponse students = client.students().getStudents(request);
-ClubResponse clubs = client.clubs().getClubs(request);
-ProjectResponse projects = client.projects().getProjects(request);
-List<Meal> meals = client.neis().getMeals(request);
+StudentListResDto students = client.students().getStudents(studentRequest);
+ClubListResDto clubs = client.clubs().getClubs(clubRequest);
+ProjectListResDto projects = client.projects().getProjects(projectRequest);
+MealResDto meals = client.neis().getMeals(mealRequest);
 ```
 
 ### 지원하는 언어별 SDK
 
-DataGSM OpenAPI는 다양한 프로그래밍 언어에 대한 공식 SDK를 제공합니다. 각 언어별 SDK는 해당 언어의 관습과 패턴을 따르며, 동일한 기능을 제공합니다.
+DataGSM OpenAPI는 Java/Kotlin, Python, JavaScript/TypeScript용 공식 SDK를 제공합니다. 각 SDK는 해당 언어의 관습과 패턴을 따르며, 학생, 동아리, 프로젝트의 조회와 쓰기, NEIS 조회를 지원합니다. .NET, Go는 비공식 패키지입니다.
 
-| 언어                        | 최소 버전       | 빌드 도구           | 주요 특징                                 | 기술 문서                                       |
-|---------------------------|-------------|-----------------|---------------------------------------|---------------------------------------------|
-| **Java**                  | JDK 13+     | Gradle, Maven   | 타입 안전성, AutoCloseable, 빌더 패턴          | [Java SDK 기술 문서](/api/sdk/java)             |
-| **Kotlin**                | 1.3.72+     | Gradle, Maven   | Java SDK와 완벽 호환, DSL 지원, Coroutine 통합 | [Java SDK 기술 문서](/api/sdk/java)             |
-| **Python**                | 3.8+        | pip             | 타입 힌팅, 컨텍스트 매니저, async/await 지원       | [Python SDK 기술 문서](/api/sdk/python)         |
-| **JavaScript/TypeScript** | Node.js 20+ | npm, yarn, pnpm | 완전한 TypeScript 지원, Promise 기반         | [JavaScript SDK 기술 문서](/api/sdk/javascript) |
-| **.NET**                  | .NET 8.0+   | NuGet           | 타입 안전성, IDisposable, async/await 지원   | [.NET SDK 기술 문서](/api/sdk/dotnet)           |
-| **Go**                    | Go 1.21+    | go get          | 타입 안전성, context 지원, 함수형 옵션 패턴        | [Go SDK 기술 문서](/api/sdk/go)                 |
+| 언어                        | 최신 버전   | 최소 버전       | 빌드 도구           | 주요 특징                                 | 기술 문서                                       |
+|---------------------------|---------|-------------|-----------------|---------------------------------------|---------------------------------------------|
+| **Java**                  | `3.0.1` | JDK 17+     | Gradle, Maven   | 타입 안전성, AutoCloseable, 빌더 패턴          | [Java SDK 기술 문서](/api/sdk/java)             |
+| **Kotlin**                | `3.0.1` | 2.3+        | Gradle, Maven   | Java SDK를 그대로 사용                      | [Java SDK 기술 문서](/api/sdk/java)             |
+| **Python**                | `2.0.0` | 3.9+        | pip, uv, Poetry | 타입 힌팅, Pydantic 모델, 컨텍스트 매니저 (동기 API) | [Python SDK 기술 문서](/api/sdk/python)         |
+| **JavaScript/TypeScript** | `2.0.0` | Node.js 20+ | npm, yarn, pnpm | 완전한 TypeScript 지원, Promise 기반         | [JavaScript SDK 기술 문서](/api/sdk/javascript) |
+| **.NET**                  | 비공식     | .NET 8.0+   | NuGet           | 타입 안전성, IDisposable, async/await 지원   | [.NET SDK 기술 문서](/api/sdk/dotnet)           |
+| **Go**                    | 비공식     | Go 1.21+    | go get          | 타입 안전성, context 지원, 함수형 옵션 패턴        | [Go SDK 기술 문서](/api/sdk/go)                 |
 
 <div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
   <div className="flex items-start gap-3">
@@ -135,7 +137,7 @@ DataGSM OpenAPI는 다양한 프로그래밍 언어에 대한 공식 SDK를 제�
         .NET SDK, Go SDK — 비공식 패키지
       </div>
       <div className="text-yellow-800 dark:text-yellow-200 text-sm">
-        .NET SDK와 Go SDK는 공식 지원 패키지가 아닌 커뮤니티 기여 비공식 패키지입니다. 기능 및 업데이트 지원이 공식 SDK와 다를 수 있으므로 사용 시 유의하시기 바랍니다.
+        .NET SDK와 Go SDK는 공식 지원 패키지가 아닌 커뮤니티 기여 비공식 패키지이며 최신 서버 명세가 반영되어 있지 않습니다. 기능 및 업데이트 지원이 공식 SDK와 다를 수 있으므로 사용 시 유의하시기 바랍니다.
       </div>
     </div>
   </div>
@@ -148,7 +150,7 @@ DataGSM OpenAPI는 다양한 프로그래밍 언어에 대한 공식 SDK를 제�
 | **타입 안전성** | ✅ 컴파일 타임에 타입 체크       | ❌ 런타임 에러 가능성 높음     |
 | **에러 처리**  | ✅ 구체적인 예외 타입 제공       | ⚠️ 수동으로 상태 코드 파싱 필요 |
 | **코드 간결성** | ✅ 간결하고 읽기 쉬운 코드       | ❌ 많은 보일러플레이트 코드     |
-| **유지보수성**  | ✅ API 변경 시 자동으로 반영    | ❌ 수동으로 업데이트 필요      |
+| **유지보수성**  | ✅ SDK 업데이트로 변경 사항 반영  | ❌ 수동으로 업데이트 필요      |
 | **학습 곡선**  | ✅ 문서화된 인터페이스와 IDE 지원  | ⚠️ API 스펙을 직접 학습    |
 | **리소스 관리** | ✅ 자동으로 리소스 정리         | ⚠️ 수동으로 관리 필요       |
 | **개발 속도**  | ✅ 빠른 개발 및 프로토타이핑      | ⚠️ 설정과 구현에 시간 소요    |
@@ -156,16 +158,18 @@ DataGSM OpenAPI는 다양한 프로그래밍 언어에 대한 공식 SDK를 제�
 
 ### 주요 기능
 
-SDK는 DataGSM API의 모든 기능을 지원합니다:
+공식 SDK는 DataGSM OpenAPI의 조회와 쓰기 기능을 지원합니다. 아래 표기는 Java, JavaScript 기준이며 Python은 `client.students`처럼 속성으로 접근합니다.
 
-| 기능              | 설명                             | 지원 API              |
-|-----------------|--------------------------------|---------------------|
-| **학생 데이터 조회**   | 재학생 데이터를 학년, 반, 번호, 학과 등으로 조회  | `client.students()` |
-| **동아리 데이터 조회**  | 전공동아리, 창체동아리 데이터 조회            | `client.clubs()`    |
-| **프로젝트 데이터 조회** | 학생들의 프로젝트 및 포트폴리오 데이터 조회       | `client.projects()` |
-| **NEIS 데이터 조회** | 급식, 학사일정, 시간표 등 나이스 시스템 데이터 조회 | `client.neis()`     |
-| **페이지네이션**      | 대용량 데이터를 효율적으로 처리하는 페이징 지원     | 모든 API              |
-| **필터링**         | 다양한 조건으로 데이터를 필터링              | 모든 API              |
+| 기능               | 설명                                | 지원 API              |
+|------------------|-----------------------------------|---------------------|
+| **학생 데이터**       | 학년, 반, 번호, 학과 등으로 조회, 생성, 수정      | `client.students()` |
+| **동아리 데이터**      | 전공동아리, 창체동아리 조회, 생성, 수정, 삭제       | `client.clubs()`    |
+| **프로젝트 데이터**     | 프로젝트 조회, 생성, 수정, 삭제, 종료, 재개       | `client.projects()` |
+| **NEIS 데이터 조회** | 급식, 학사일정, 시간표 등 나이스 시스템 데이터 조회    | `client.neis()`     |
+| **페이지네이션**       | 대용량 데이터를 효율적으로 처리하는 페이징 지원        | 학생, 동아리, 프로젝트 API   |
+| **필터링**          | 다양한 조건으로 데이터를 필터링                 | 모든 조회 API           |
+
+쓰기 API를 쓰려면 API 키에 `student:write`, `club:write`, `project:write` 같은 권한 범위가 있어야 합니다. 이 범위는 관리자 계정만 발급할 수 있습니다.
 
 ### 시작하기
 
@@ -189,10 +193,11 @@ SDK를 설치하고 시작하려면:
 ### 추가 리소스
 
 - **HTTP API 기술 문서**: SDK 없이 직접 REST API를 호출하려면 [HTTP API 기술 문서](/api/http)를 참고하세요.
+- **버전 변경**: SDK를 올릴 때 필요한 작업은 [변경 사항 및 마이그레이션](/migration)을 참고하세요.
 - **GitHub 저장소**:
   - [Java SDK](https://github.com/themoment-team/datagsm-openapi-sdk-java)
   - [Python SDK](https://github.com/themoment-team/datagsm-openapi-sdk-python)
   - [JavaScript SDK](https://github.com/themoment-team/datagsm-openapi-sdk-javascript)
-  - [.NET SDK](https://github.com/themoment-team/datagsm-openapi-sdk-dotnet)
+  - [.NET SDK](https://github.com/Sean-mn/datagsm-openapi-sdk-dotnet)
   - [Go SDK](https://github.com/jihoonwjj/datagsm-openapi-sdk-go)
 - **이슈 및 피드백**: 버그 리포트나 기능 요청은 각 SDK의 GitHub Issues를 이용해주세요.

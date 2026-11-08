@@ -233,6 +233,20 @@ describe('OAuthAuthorizeForm', () => {
       expect(screen.getByRole('button', { name: 'SIGN IN' })).toBeEnabled();
     });
 
+    it('이동할 주소가 http(s)가 아니면 이동하지 않고 안내한다', async () => {
+      mockSession();
+      mockAuthorize(() => HttpResponse.json({ redirect_url: 'javascript:alert(1)' }));
+      const user = setup();
+
+      await signIn(user);
+
+      expect(
+        await screen.findByText('로그인 응답이 올바르지 않습니다. 다시 시도해주세요.'),
+      ).toBeInTheDocument();
+      expect(window.location.href).toBe('http://localhost:3000/oauth/authorize');
+      expect(screen.getByRole('button', { name: 'SIGN IN' })).toBeEnabled();
+    });
+
     it.each([
       [401, '이메일 또는 비밀번호가 일치하지 않습니다.'],
       [403, '승인 대기 중인 계정입니다. 관리자 승인 후 로그인할 수 있습니다.'],

@@ -8,6 +8,7 @@ import {
   createProject,
   createStudent,
   http,
+  pickControlledOption,
   renderWithProviders,
   screen,
   selectOption,
@@ -95,8 +96,9 @@ const categoryCheckbox = (name: string) =>
   within(within(dialog()).getByRole('group', { name: '카테고리' })).getByRole('checkbox', { name });
 
 const addMember = async (user: User, optionText: string) => {
-  await user.click(within(dialog()).getByRole('combobox', { name: '' }));
-  await user.click(await screen.findByRole('option', { name: optionText }));
+  const trigger = within(dialog()).getByRole('combobox', { name: '' });
+  await user.click(trigger);
+  await pickControlledOption(user, trigger, optionText);
 };
 
 describe('ProjectFormDialog 추가', () => {
@@ -107,7 +109,7 @@ describe('ProjectFormDialog 추가', () => {
     return view;
   };
 
-  it('입력한 프로젝트를 동아리 없이 null로 보내 등록한다', { timeout: 15_000 }, async () => {
+  it('입력한 프로젝트를 동아리 없이 null로 보내 등록한다', async () => {
     const requests = mockProjectApi();
     const { user } = await openCreateDialog();
 
