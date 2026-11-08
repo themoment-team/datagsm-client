@@ -18,7 +18,7 @@
     "axios": "catalog:",
     "galmuri": "^2.40.3",
     "lucide-react": "^0.546.0",
-    "mermaid": "^11.12.2",
+    "mermaid": "^12.2.0",
     "next": "catalog:",
     "react": "19.2.1",
     "react-dom": "19.2.1",

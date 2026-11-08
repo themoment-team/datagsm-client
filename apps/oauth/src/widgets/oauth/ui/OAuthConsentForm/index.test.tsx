@@ -132,6 +132,20 @@ describe('OAuthConsentForm', () => {
       },
     );
 
+    it('받은 주소가 http(s)가 아니면 이동하지 않고 안내한다', async () => {
+      mockSession();
+      mockConsent(() => HttpResponse.json({ redirectUrl: 'javascript:alert(1)' }));
+      const { user } = await renderLoaded();
+
+      await user.click(screen.getByRole('button', { name: '승인' }));
+
+      expect(
+        await screen.findByText('응답이 올바르지 않습니다. 다시 시도해주세요.'),
+      ).toBeInTheDocument();
+      expect(window.location.href).toBe('http://localhost:3004/oauth/consent');
+      expect(screen.getByRole('button', { name: '승인' })).toBeEnabled();
+    });
+
     it.each([
       [400, '인증 요청이 만료되었습니다. 서비스에서 다시 로그인을 시도해주세요.'],
       [401, '인증 세션이 만료되었습니다. 서비스에서 다시 로그인을 시도해주세요.'],

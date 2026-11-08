@@ -46,6 +46,7 @@ import {
 import { useEmailVerification, useSignUp } from '@/widgets/signup';
 
 import { PRIVACY_POLICY } from '../../constants/privacyPolicy';
+import { renderBoldText } from '../../lib/renderBoldText';
 
 const ERROR_MESSAGE_CLASS = "text-destructive text-xs leading-4 before:mr-1 before:content-['>']";
 const VERIFICATION_CODE_LENGTH = 8;
@@ -550,26 +551,23 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                     <h1
                       key={index}
                       className={cn('text-foreground mb-1 text-base font-semibold leading-[1.45]')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('# ', '') }}
-                    />
+                    >
+                      {renderBoldText(line.replace('# ', ''))}
+                    </h1>
                   );
                 }
                 if (line.startsWith('## ')) {
                   return (
-                    <h2
-                      key={index}
-                      className={cn('text-foreground mb-1 mt-4 text-sm font-medium')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('## ', '') }}
-                    />
+                    <h2 key={index} className={cn('text-foreground mb-1 mt-4 text-sm font-medium')}>
+                      {renderBoldText(line.replace('## ', ''))}
+                    </h2>
                   );
                 }
                 if (line.startsWith('### ')) {
                   return (
-                    <h3
-                      key={index}
-                      className={cn('text-foreground mt-2 text-sm font-medium')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('### ', '') }}
-                    />
+                    <h3 key={index} className={cn('text-foreground mt-2 text-sm font-medium')}>
+                      {renderBoldText(line.replace('### ', ''))}
+                    </h3>
                   );
                 }
                 const trimmedLine = line.trimStart();
@@ -579,25 +577,22 @@ const SignUpForm = ({ objectType = 'STUDENT' }: SignUpFormProps) => {
                     <li
                       key={index}
                       className={cn('list-disc leading-[1.6]', isNested ? 'ml-10' : 'ml-5')}
-                      dangerouslySetInnerHTML={{ __html: trimmedLine.substring(2) }}
-                    />
+                    >
+                      {renderBoldText(trimmedLine.substring(2))}
+                    </li>
                   );
                 }
                 if (line.startsWith('  > ')) {
                   return (
-                    <li
-                      key={index}
-                      className={cn('ml-10 list-disc leading-[1.6]')}
-                      dangerouslySetInnerHTML={{ __html: line.replace('  > ', '') }}
-                    />
+                    <li key={index} className={cn('ml-10 list-disc leading-[1.6]')}>
+                      {renderBoldText(line.replace('  > ', ''))}
+                    </li>
                   );
                 }
                 return (
-                  <p
-                    key={index}
-                    className={cn('leading-[1.6]')}
-                    dangerouslySetInnerHTML={{ __html: line }}
-                  />
+                  <p key={index} className={cn('leading-[1.6]')}>
+                    {renderBoldText(line)}
+                  </p>
                 );
               })}
             </div>
