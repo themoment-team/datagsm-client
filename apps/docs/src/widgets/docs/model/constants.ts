@@ -167,6 +167,10 @@ export const docsSections: DocsSection[] = [
             href: '/oauth/sdk/java',
           },
           {
+            label: 'Go SDK',
+            href: '/oauth/sdk/go',
+          },
+          {
             label: 'SDK 버저닝 컨벤션',
             href: '/oauth/sdk/versioning',
           },
@@ -200,6 +204,10 @@ export const docsSections: DocsSection[] = [
       {
         label: '서명 검증 가이드',
         href: '/event/signature',
+      },
+      {
+        label: 'Go SDK',
+        href: '/event/sdk/go',
       },
     ],
   },

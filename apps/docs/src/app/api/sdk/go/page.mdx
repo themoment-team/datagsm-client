@@ -1,66 +1,44 @@
-import { AlertTriangle } from 'lucide-react'
+import { Handshake } from 'lucide-react';
 
 import { createDocsPageMetadata } from '@/shared/lib/metadata';
+import { GoSDKContacts } from '@/widgets/docs/ui/GoSDKContacts';
 
 export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/api/sdk/go" })
 
 # DataGSM OpenAPI SDK for Go
 
-<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
+<div className="border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 p-4 rounded my-6">
   <div className="flex items-start gap-3">
-    <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
+    <Handshake className="h-5 w-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
     <div>
-      <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
-        Go SDK — 비공식 패키지
+      <div className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+        파트너 SDK
       </div>
-      <div className="text-yellow-800 dark:text-yellow-200 text-sm">
-        Go SDK는 공식 지원 패키지가 아닌 커뮤니티 기여 비공식 패키지입니다. 기능 및 업데이트 지원이 공식 SDK와 다를 수 있으므로 사용 시 유의하시기 바랍니다.
+      <div className="text-blue-800 dark:text-blue-200 text-sm">
+        더모먼트팀에서 제공하거나 보장하는 SDK가 아닙니다. 관련 문의는 파트너 측에 해 주세요.
       </div>
+      <GoSDKContacts />
     </div>
-  </div>
-</div>
-
-<div className="border-l-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded my-4">
-  <div className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">최신 서버 명세 미반영</div>
-  <div className="text-sm text-yellow-800 dark:text-yellow-200">
-    이 문서와 Go SDK에는 최신 서버 명세가 반영되어 있지 않습니다. 쓰기 API, 프로젝트 카테고리, 최신 응답 필드는 <a href="/api/http" className="underline font-medium">HTTP API 문서</a>와 <a href="/migration" className="underline font-medium">변경 사항 및 마이그레이션</a>을 기준으로 확인하십시오.
   </div>
 </div>
 
 ### 개요
 
-**DataGSM OpenAPI SDK for Go**는 DataGSM API를 Go 애플리케이션에서 쉽고 안전하게 사용할 수 있도록 설계된 비공식 커뮤니티 기여 SDK입니다.
+[DataGSM SDK for Go](https://github.com/tmp-it-play/datagsm-sdk-go)는 DataGSM 파트너 SDK입니다. 이 문서는 `v0.2.0`의 OpenAPI 조회·쓰기 기능을 설명합니다. 같은 모듈에서 [OAuth·OIDC](/oauth/sdk/go)와 [Event](/event/sdk/go)도 사용할 수 있습니다.
 
-복잡한 HTTP 요청을 직접 작성할 필요 없이, 타입 안전한 인터페이스를 통해 학생, 동아리, 프로젝트, NEIS(급식, 학사일정, 시간표) 데이터에 효율적으로 접근할 수 있습니다.
-
-### 주요 특징
-
-| 특징                | 설명                                                                  |
-|:------------------|:--------------------------------------------------------------------|
-| **타입 안전성**        | Go의 정적 타입 시스템을 활용하여 컴파일 타임에 오류를 검출하고 런타임 에러를 방지합니다.               |
-| **함수형 옵션 패턴**     | `WithBaseURL`, `WithTimeout`, `WithHTTPClient` 등 유연한 클라이언트 설정을 지원합니다. |
-| **context 지원**    | 모든 API 호출에 `context.Context`를 지원하여 타임아웃 및 취소 제어가 가능합니다.            |
-| **구체적인 에러 처리**    | `*APIError` 타입으로 HTTP 상태 코드별 명확한 에러 핸들링을 지원합니다.                    |
-| **자동 리소스 관리**     | `defer client.Close()` 패턴으로 유휴 HTTP 연결을 자동으로 정리합니다.                 |
-| **Ptr 헬퍼**        | 선택적 필드에 인라인 포인터 생성을 지원하는 제네릭 헬퍼 함수를 제공합니다.                        |
-
-### 시스템 요구사항
-
-| 항목      | 최소 버전    | 권장 버전    |
-|:--------|:---------|:---------|
-| **Go** | 1.21 이상 | 최신 버전   |
+Go **1.25 이상**이 필요하며 외부 런타임 의존성은 없습니다. HTTP 호출에는 표준 라이브러리 `net/http`를 사용하고, 모든 요청은 `context.Context`로 취소하거나 제한 시간을 지정할 수 있습니다.
 
 ## 설치
 
 ```bash
-go get github.com/jihoonwjj/datagsm-openapi-sdk-go
+go get github.com/tmp-it-play/datagsm-sdk-go@v0.2.0
 ```
+
+`0.x`에서는 minor 버전 변경에도 호출 방식이 바뀔 수 있습니다. 버전별 변경 내용은 [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)에서 확인하세요.
 
 ## 빠른 시작
 
-### 1. 클라이언트 초기화
-
-`NewClient`로 클라이언트를 생성합니다. API 키는 필수 파라미터입니다.
+[API 키](/api)를 발급하고 `DATAGSM_API_KEY` 환경 변수에 저장합니다. 학생 조회에는 `student:read` 또는 `student:*` 권한이 필요합니다.
 
 ```go
 package main
@@ -69,293 +47,253 @@ import (
     "context"
     "fmt"
     "log"
+    "os"
+    "time"
 
-    datagsm "github.com/jihoonwjj/datagsm-openapi-sdk-go"
+    datagsm "github.com/tmp-it-play/datagsm-sdk-go"
+    "github.com/tmp-it-play/datagsm-sdk-go/openapi"
 )
 
 func main() {
-    client, err := datagsm.NewClient("your-api-key")
+    client, err := openapi.NewClient(openapi.Config{
+        APIKey: os.Getenv("DATAGSM_API_KEY"),
+    })
     if err != nil {
         log.Fatal(err)
     }
     defer client.Close()
 
-    ctx := context.Background()
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
 
-    resp, err := client.Students().List(ctx, datagsm.StudentQuery{
+    page, err := client.Students.List(ctx, openapi.StudentQuery{
         Grade: datagsm.Ptr(1),
-        Page:  0,
-        Size:  20,
+        Size: 20,
+        SortBy: datagsm.StudentSortByName,
     })
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Printf("학생 수: %d명\n", resp.TotalElements)
-    for _, s := range resp.Students {
-        fmt.Printf("  %s (%d학년 %d반)\n", s.Name, s.Grade, s.ClassNum)
+    fmt.Printf("학생 수: %d명, 전체 페이지: %d\n", page.TotalElements, page.TotalPages)
+    for _, student := range page.Students {
+        fmt.Println(student.ID, student.Name)
     }
 }
 ```
 
-상세 설정이 필요한 경우 함수형 옵션을 사용하세요.
+### 클라이언트 설정
 
-```go
-import "time"
+| `openapi.Config` 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `APIKey` | `string` | 필수. 서버 환경 변수나 시크릿 저장소에서 읽기 |
+| `BaseURL` | `string` | 기본값 `https://openapi.datagsm.kr` |
+| `HTTPClient` | `*http.Client` | 선택. 생략하면 제한 시간 30초인 클라이언트 사용 |
 
-client, err := datagsm.NewClient("your-api-key",
-    datagsm.WithBaseURL("https://openapi.datagsm.kr"), // 기본값
-    datagsm.WithTimeout(10 * time.Second),             // 기본값: 30초
-    datagsm.WithHTTPClient(myHTTPClient),              // 커스텀 http.Client 주입
-)
-```
-
-### 2. API 호출 예제
-
-#### 학생 데이터 조회
-
-```go
-// 학생 목록 조회 (2학년, AI 전공)
-resp, err := client.Students().List(ctx, datagsm.StudentQuery{
-    Grade:   datagsm.Ptr(2),
-    Major:   datagsm.Ptr(datagsm.MajorAI),
-    SortBy:  datagsm.StudentSortByName,
-    SortDir: datagsm.SortDirASC,
-    Page:    0,
-    Size:    50,
-})
-
-// 학생 단건 조회
-student, err := client.Students().Get(ctx, 123)
-```
-
-#### 급식 데이터 조회
-
-```go
-// 오늘 급식
-today := time.Now()
-meals, err := client.NEIS().Meals(ctx, datagsm.MealQuery{Date: &today})
-
-// 결과 출력
-for _, meal := range meals {
-    fmt.Printf("[%s]\n", meal.MealType)
-    for _, menu := range meal.MealMenu {
-        fmt.Printf("  - %s\n", menu)
-    }
-}
-```
+`HTTPClient`를 직접 전달하면 그 클라이언트의 제한 시간을 사용합니다. 클라이언트는 재사용하고 애플리케이션 종료 시 `Close()`로 유휴 연결을 정리하세요. HTTP 리다이렉트와 자동 재시도는 수행하지 않습니다.
 
 ## API 레퍼런스
 
+요청 타입은 `openapi`, 학생·동아리·프로젝트 응답 모델과 열거형은 `datagsm` 패키지에서 가져옵니다. 아래 예제의 `client`와 `ctx`는 위에서 만든 값을 사용하며, 오류를 반환하는 함수 안에서 호출합니다.
+
+### 조회 공통 규칙
+
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `Page` | `int` | 0부터 시작 |
+| `Size` | `int` | 1–1000. `0`이면 서버 기본값 사용 |
+| `SortBy` | 도메인별 정렬 타입 | 학생 `datagsm.StudentSortBy`, 동아리 `datagsm.ClubSortBy`, 프로젝트 `datagsm.ProjectSortBy` |
+| `SortDirection` | `datagsm.SortDirection` | `datagsm.SortDirASC` 또는 `datagsm.SortDirDESC`. 생략하면 서버 기본값 사용 |
+
+선택적 필터는 포인터입니다. `nil`이면 보내지 않고, `datagsm.Ptr(false)`처럼 명시하면 그 값을 보냅니다. ID는 `int64`이므로 `datagsm.Ptr(int64(1))`로 지정합니다.
+
+목록 응답은 `Students`, `Clubs`, `Projects`와 `TotalElements`, `TotalPages`를 가집니다. ID로 찾을 때도 목록 메서드에 ID 필터를 넘기고, 빈 목록인지 확인하세요.
+
 ### 학생 API
 
-**`client.Students()`** — 학생 데이터 조회
+| 메서드 | 반환 타입 | 설명 |
+| --- | --- | --- |
+| `client.Students.List(ctx, query)` | `(*openapi.StudentPage, error)` | 조건에 맞는 학생 조회 |
+| `client.Students.Create(ctx, request)` | `(*datagsm.Student, error)` | 학생 생성 |
+| `client.Students.Update(ctx, id, request)` | `(*datagsm.Student, error)` | 학생 정보 교체 |
 
-| 메서드               | 설명            | 반환 타입                              |
-|:------------------|:--------------|:-----------------------------------|
-| `List(ctx, query)` | 조건에 맞는 학생 목록 조회 | `(*StudentResponse, error)` |
-| `Get(ctx, id)`    | 학생 단건 조회      | `(*Student, error)`                |
+`openapi.StudentQuery`는 공통 페이지·정렬 필드와 다음 필드를 받습니다.
 
-#### StudentQuery 파라미터
+| 필드 | 타입 | 설명 |
+| --- | --- | --- |
+| `StudentID` | `*int64` | 학생 ID |
+| `Name`, `Email`, `Specialty`, `GitHubID` | `*string` | 이름, 이메일, 전공, GitHub ID |
+| `Grade`, `ClassNum`, `Number`, `DormitoryRoom` | `*int` | 학년, 반, 번호, 기숙사 호실 |
+| `Sex`, `Role`, `Major` | `*datagsm.Sex`, `*datagsm.StudentRole`, `*datagsm.Major` | 성별, 역할, 학과 |
+| `IncludeGraduates`, `IncludeWithdrawn`, `OnlyEnrolled` | `*bool` | 졸업생 포함, 자퇴생 포함, 재학생만 조회 |
 
-| 파라미터               | 타입               | 설명        |
-|:-------------------|:-----------------|:----------|
-| `StudentID`        | `*int`           | 학생 ID     |
-| `Name`             | `*string`        | 이름        |
-| `Email`            | `*string`        | 이메일       |
-| `Grade`            | `*int`           | 학년        |
-| `ClassNum`         | `*int`           | 반         |
-| `Number`           | `*int`           | 번호        |
-| `Sex`              | `*Sex`           | 성별        |
-| `Role`             | `*StudentRole`   | 학생 역할     |
-| `DormitoryRoom`    | `*int`           | 기숙사 호실    |
-| `Specialty`        | `*string`        | 특기 분야     |
-| `Major`            | `*Major`         | 전공        |
-| `GithubID`         | `*string`        | GitHub ID |
-| `IncludeGraduates` | `bool`           | 졸업생 포함 여부 |
-| `IncludeWithdrawn` | `bool`           | 자퇴생 포함 여부 |
-| `OnlyEnrolled`     | `bool`           | 재학생만 조회   |
-| `Page`             | `int`            | 페이지 번호    |
-| `Size`             | `int`            | 페이지 크기    |
-| `SortBy`           | `StudentSortBy`  | 정렬 기준     |
-| `SortDir`          | `SortDirection`  | 정렬 방향     |
-
-### 동아리 API
-
-**`client.Clubs()`** — 동아리 데이터 조회
-
-| 메서드               | 설명              | 반환 타입                           |
-|:------------------|:----------------|:--------------------------------|
-| `List(ctx, query)` | 조건에 맞는 동아리 목록 조회 | `(*ClubResponse, error)` |
-| `Get(ctx, id)`    | 동아리 상세 조회       | `(*ClubDetail, error)`          |
-
-#### ClubQuery 파라미터
-
-| 파라미터                          | 타입          | 설명              |
-|:------------------------------|:------------|:----------------|
-| `ClubID`                      | `*int`      | 동아리 ID          |
-| `ClubName`                    | `*string`   | 동아리 이름          |
-| `ClubType`                    | `*ClubType` | 동아리 유형          |
-| `Status`                      | `*ClubStatus` | 동아리 상태        |
-| `FoundedYear`                 | `*int`      | 설립 연도           |
-| `Page`                        | `int`       | 페이지 번호          |
-| `Size`                        | `int`       | 페이지 크기          |
-| `IncludeLeaderInParticipants` | `bool`      | 참여자 목록에 부장 포함   |
-| `SortBy`                      | `ClubSortBy` | 정렬 기준          |
-| `SortDir`                     | `SortDirection` | 정렬 방향       |
-
-### 프로젝트 API
-
-**`client.Projects()`** — 프로젝트 데이터 조회
-
-| 메서드               | 설명               | 반환 타입                              |
-|:------------------|:-----------------|:-----------------------------------|
-| `List(ctx, query)` | 조건에 맞는 프로젝트 목록 조회 | `(*ProjectResponse, error)` |
-| `Get(ctx, id)`    | 프로젝트 단건 조회       | `(*Project, error)`                |
-
-### NEIS API
-
-**`client.NEIS()`** — 급식·학사일정·시간표 조회
-
-| 메서드                      | 설명         | 반환 타입                      |
-|:-------------------------|:-----------|:---------------------------|
-| `Meals(ctx, query)`      | 급식 데이터 조회  | `([]Meal, error)`          |
-| `Schedules(ctx, query)`  | 학사일정 조회    | `([]Schedule, error)`      |
-| `Timetables(ctx, query)` | 시간표 데이터 조회 | `([]Timetable, error)`     |
-
-#### NEIS 쿼리 파라미터
-
-| 타입               | 파라미터       | 설명         |
-|:-----------------|:-----------|:-----------|
-| `MealQuery`      | `Date`     | `*time.Time` — 조회 날짜 |
-| `MealQuery`      | `FromDate` | `*time.Time` — 조회 시작 날짜 |
-| `MealQuery`      | `ToDate`   | `*time.Time` — 조회 종료 날짜 |
-| `ScheduleQuery`  | `Date`     | `*time.Time` — 조회 날짜 |
-| `ScheduleQuery`  | `FromDate` | `*time.Time` — 조회 시작 날짜 |
-| `ScheduleQuery`  | `ToDate`   | `*time.Time` — 조회 종료 날짜 |
-| `TimetableQuery` | `Grade`    | `int` — 학년 (필수) |
-| `TimetableQuery` | `ClassNum` | `int` — 반 (필수) |
-| `TimetableQuery` | `Date`     | `*time.Time` — 조회 날짜 |
-| `TimetableQuery` | `FromDate` | `*time.Time` — 조회 시작 날짜 |
-| `TimetableQuery` | `ToDate`   | `*time.Time` — 조회 종료 날짜 |
+학생은 DataGSM 계정이 연결되어야 조회됩니다. 졸업생·자퇴생은 기본 조회 대상에서 제외되므로 필요한 포함 조건을 지정하세요. 응답의 `Grade`, `ClassNum`, `Number`, `StudentNumber`, `Major` 등은 포인터이므로 사용 전에 `nil`을 확인합니다.
 
 ```go
-// 학사일정 조회
-from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.Local)
-to   := time.Date(2026, 3, 31, 0, 0, 0, 0, time.Local)
-schedules, err := client.NEIS().Schedules(ctx, datagsm.ScheduleQuery{
-    FromDate: &from,
-    ToDate:   &to,
+page, err := client.Students.List(ctx, openapi.StudentQuery{
+    StudentID: datagsm.Ptr(int64(123)),
+    IncludeGraduates: datagsm.Ptr(true),
+    IncludeWithdrawn: datagsm.Ptr(true),
 })
-
-// 시간표 조회 (Grade, ClassNum 필수)
-timetables, err := client.NEIS().Timetables(ctx, datagsm.TimetableQuery{
-    Grade:    2,
-    ClassNum: 3,
-    Date:     datagsm.Ptr(time.Now()),
-})
-```
-
-## 에러 처리
-
-SDK는 `*APIError` 타입으로 HTTP 오류를 반환합니다. `errors.As`를 사용하여 상태 코드를 확인하세요.
-
-### 에러 코드
-
-| 상태 코드 | 의미                   |
-|:--------|:---------------------|
-| 400     | 잘못된 요청 파라미터          |
-| 401     | 유효하지 않거나 만료된 API 키   |
-| 403     | 권한 부족                |
-| 429     | 요청 속도 제한 초과          |
-| 5xx     | 서버 오류                |
-
-### 에러 처리 예제
-
-```go
-import "errors"
-
-resp, err := client.Students().List(ctx, query)
 if err != nil {
-    var apiErr *datagsm.APIError
-    if errors.As(err, &apiErr) {
-        switch apiErr.StatusCode {
-        case 401:
-            fmt.Println("API 키가 유효하지 않거나 만료되었습니다")
-        case 403:
-            fmt.Println("권한이 없습니다. API 키의 권한 범위를 확인하세요")
-        case 429:
-            fmt.Println("요청 속도 제한 초과. 잠시 후 재시도하세요")
-        default:
-            fmt.Printf("API 오류 %d: %s\n", apiErr.StatusCode, apiErr.Message)
-        }
-    } else {
-        fmt.Println("네트워크 오류:", err)
+    return err
+}
+for _, student := range page.Students {
+    if student.StudentNumber != nil {
+        fmt.Println(*student.StudentNumber)
     }
 }
 ```
 
-## Ptr 헬퍼
-
-선택적 필드는 포인터 타입(`*int`, `*string` 등)을 사용합니다. `Ptr` 헬퍼로 인라인 포인터를 간결하게 생성할 수 있습니다.
+`CreateStudentRequest`는 `Name`, `Sex`, `Email`을 받으며 재학생은 `Grade`, `ClassNum`, `Number`도 필요합니다.
 
 ```go
-datagsm.Ptr(1)       // *int
-datagsm.Ptr("hello") // *string
-datagsm.Ptr(true)    // *bool
+student, err := client.Students.Create(ctx, openapi.CreateStudentRequest{
+    Name: "홍길동",
+    Sex: datagsm.SexMan,
+    Email: "student@gsm.hs.kr",
+    Grade: datagsm.Ptr(1),
+    ClassNum: datagsm.Ptr(1),
+    Number: datagsm.Ptr(1),
+})
+if err != nil {
+    return err
+}
+fmt.Println(student.ID)
 ```
 
-## 보안 가이드
+`UpdateStudentRequest`는 `Name`, `Sex`, `Email`, `Grade`, `ClassNum`, `Number`, `Role`이 필수입니다. `DormitoryRoomNumber`, `MajorClubID`, `AutonomousClubID`, `Specialty`, `GitHubID`를 생략하면 기존 값이 비워집니다. 졸업생·자퇴생은 수정할 수 없고, 이 메서드로 졸업·자퇴 처리도 할 수 없습니다. 필드별 조건은 [학생 HTTP API](/api/http/student)를 참고하세요.
 
-API 키는 환경 변수로 관리하고 소스 코드에 직접 포함하지 마세요.
+### 동아리 API
 
-```bash
-# .env
-DATAGSM_API_KEY=your_secret_api_key
-```
+| 메서드 | 반환 타입 | 설명 |
+| --- | --- | --- |
+| `client.Clubs.List(ctx, query)` | `(*openapi.ClubPage, error)` | 조건에 맞는 동아리 조회 |
+| `client.Clubs.Create(ctx, request)` | `(*datagsm.Club, error)` | 동아리 생성 |
+| `client.Clubs.Update(ctx, id, request)` | `(*datagsm.Club, error)` | 동아리 정보·구성원 교체 |
+| `client.Clubs.Delete(ctx, id)` | `error` | 동아리 영구 삭제 |
+
+`openapi.ClubQuery`는 공통 필드와 `ClubID *int64`, `ClubName *string`, `ClubType *datagsm.ClubType`, `ClubStatus *datagsm.ClubStatus`, `FoundedYear *int`, `IncludeLeaderInParticipants *bool`을 받습니다. 운영 상태 필터는 `ClubStatus`입니다.
 
 ```go
-import "os"
-
-client, err := datagsm.NewClient(os.Getenv("DATAGSM_API_KEY"))
+page, err := client.Clubs.List(ctx, openapi.ClubQuery{
+    ClubStatus: datagsm.Ptr(datagsm.ClubStatusActive),
+    IncludeLeaderInParticipants: datagsm.Ptr(true),
+})
+if err != nil {
+    return err
+}
+fmt.Println(page.TotalElements)
 ```
 
-## 문제 해결
+생성·수정은 `openapi.ClubRequest`를 사용합니다. `Name`, `Type`, `FoundedYear`, `Status`와 부장 `LeaderID`, 부원 `ParticipantIDs`, 폐부 연도 `AbolishedYear`를 지정합니다. `ParticipantIDs`가 `nil`이면 빈 배열을 보냅니다. 수정 시 유지할 부장과 부원도 모두 보내야 합니다. 상태별 제약은 [동아리 HTTP API](/api/http/club)를 참고하세요.
 
-### 자주 발생하는 문제
+### 프로젝트 API
 
-#### 401 Unauthorized 오류
+| 메서드 | 반환 타입 | 설명 |
+| --- | --- | --- |
+| `client.Projects.List(ctx, query)` | `(*openapi.ProjectPage, error)` | 조건에 맞는 프로젝트 조회 |
+| `client.Projects.Create(ctx, request)` | `(*datagsm.Project, error)` | 프로젝트 생성 |
+| `client.Projects.Update(ctx, id, request)` | `(*datagsm.Project, error)` | 프로젝트 정보 수정 |
+| `client.Projects.End(ctx, id, endYear)` | `error` | 프로젝트 종료 |
+| `client.Projects.Reactivate(ctx, id)` | `error` | 종료된 프로젝트 재활성화 |
+| `client.Projects.Delete(ctx, id)` | `error` | 프로젝트 영구 삭제 |
 
-**원인**: API 키가 유효하지 않거나 만료됨
+`openapi.ProjectQuery`는 공통 필드와 `ProjectID *int64`, `ProjectName *string`, `ClubID *int64`, `Status *datagsm.ProjectStatus`, `Category *datagsm.ProjectCategory`를 받습니다. 기본 조회 대상은 `ACTIVE`이며 종료된 프로젝트는 `Status: datagsm.Ptr(datagsm.ProjectStatusEnded)`로 조회합니다.
 
-**해결 방법**:
+```go
+project, err := client.Projects.Create(ctx, openapi.ProjectRequest{
+    Name: "학교 서비스",
+    Description: "학생을 위한 서비스",
+    StartYear: 2026,
+    ParticipantIDs: []int64{1, 2},
+    Categories: []datagsm.ProjectCategory{datagsm.ProjectCategoryTeam},
+})
+if err != nil {
+    return err
+}
+fmt.Println(project.ID)
+```
 
-- API 키가 올바르게 설정되었는지 확인
-- API 키가 만료되지 않았는지 확인
-- 필요시 새로운 API 키 발급
+생성·수정은 `openapi.ProjectRequest`를 사용합니다. `Name`, `Description`, `StartYear`, `ParticipantIDs`와 유지할 값을 함께 보내세요. `ParticipantIDs`가 `nil`이면 빈 배열을 보냅니다.
 
-#### 403 Forbidden 오류
+| 수정 필드 | 생략하거나 `nil`일 때 | 비우려면 |
+| --- | --- | --- |
+| `Categories` | 기존 값 유지 | `[]datagsm.ProjectCategory{}` |
+| `IconKey`, `DeploymentURL` | 기존 값 유지 | `datagsm.Ptr("")` |
+| `Repositories`, `TechStacks` | 빈 목록으로 변경 | 빈 슬라이스 또는 생략 |
+| `ClubID` | 연결 해제 | `nil` |
+| `ParticipantIDs` | 빈 목록으로 변경 | 빈 슬라이스 또는 `nil` |
 
-**원인**: 요청한 API에 대한 권한 범위 부족
+`Update`에는 `Status`, `EndYear`를 넣지 않습니다. 상태 변경은 `End`와 `Reactivate`를 사용하세요. 생성 시 종료 상태를 지정하려면 `Status: datagsm.ProjectStatusEnded`와 `EndYear`가 필요합니다. 상세 조건은 [프로젝트 HTTP API](/api/http/project)를 참고하세요.
 
-**해결 방법**:
+### 쓰기 권한
 
-- API 키의 권한 범위 확인
-- 필요한 권한 범위가 부여되었는지 확인
-- 권한 범위 추가가 필요한 경우 관리자에게 문의
+쓰기에는 `student:write`, `club:write`, `project:write` 또는 해당 도메인의 와일드카드 권한을 가진 API 키가 필요합니다. 이 권한 범위는 관리자 계정만 발급받을 수 있습니다. 이름 길이, 역할별 조건, 참조 대상 등의 서버 검증 오류는 `*datagsm.APIError`로 반환됩니다.
 
-#### 타임아웃 오류
+### NEIS API
 
-**원인**: 네트워크 연결 불안정 또는 서버 응답 지연
+| 메서드 | 쿼리 타입 | 반환 타입 |
+| --- | --- | --- |
+| `client.NEIS.Meals(ctx, query)` | `openapi.DateQuery` | `([]openapi.Meal, error)` |
+| `client.NEIS.Schedules(ctx, query)` | `openapi.DateQuery` | `([]openapi.Schedule, error)` |
+| `client.NEIS.Timetables(ctx, query)` | `openapi.TimetableQuery` | `([]openapi.Timetable, error)` |
 
-**해결 방법**:
+날짜는 `YYYY-MM-DD` 문자열입니다. `Date` 또는 `FromDate`·`ToDate` 범위를 지정하며 두 방식을 섞을 수 없습니다. 양 끝을 지정한 범위는 최대 365일입니다. 한쪽 날짜만 지정했을 때의 범위는 [NEIS 공통 규칙](/api/http/neis)을 따릅니다.
 
-- 네트워크 상태 확인
-- `WithTimeout` 옵션으로 타임아웃 값을 늘려 재시도 (기본값: 30초)
-- 서버 상태 확인
+급식·학사일정에 `DateQuery{}`를 보내면 저장된 전체 데이터를 조회합니다. 시간표는 `Grade`(1–3), `ClassNum`(1–4)과 날짜 또는 범위가 필수입니다.
+
+```go
+meals, err := client.NEIS.Meals(ctx, openapi.DateQuery{Date: "2026-11-05"})
+if err != nil {
+    return err
+}
+fmt.Println(len(meals))
+
+schedules, err := client.NEIS.Schedules(ctx, openapi.DateQuery{
+    FromDate: "2026-11-01", ToDate: "2026-11-30",
+})
+if err != nil {
+    return err
+}
+fmt.Println(len(schedules))
+
+timetables, err := client.NEIS.Timetables(ctx, openapi.TimetableQuery{
+    Grade: 1, ClassNum: 2, Date: "2026-11-05",
+})
+if err != nil {
+    return err
+}
+fmt.Println(len(timetables))
+```
+
+SDK는 응답의 `data.meals`, `data.schedules`, `data.timetables`에서 목록을 꺼내 반환합니다. 응답 날짜와 `AcademicYear`, `ScheduleID`는 문자열이고 `Semester`는 `*string`입니다. 같은 날 학사일정이 여러 개일 수 있으며 공강 교시는 시간표 목록에 포함되지 않습니다.
+
+## 오류 처리
+
+HTTP 오류는 `errors.As`로 `*datagsm.APIError`를 확인합니다. 입력 검증, 요청 취소, 네트워크 오류 등은 일반 `error`로 반환됩니다.
+
+```go
+var apiErr *datagsm.APIError
+if errors.As(err, &apiErr) {
+    switch apiErr.StatusCode {
+    case 401:
+        fmt.Println("API 키가 유효하지 않거나 만료되었습니다")
+    case 403:
+        fmt.Println("API 키의 권한 범위를 확인하세요")
+    case 429:
+        fmt.Println("요청 한도 초과:", apiErr.RetryAfter)
+    default:
+        fmt.Println(apiErr.StatusCode, apiErr.Message)
+    }
+}
+```
+
+위 예제에는 표준 라이브러리 `errors`를 import합니다. `RetryAfter`는 서버의 `Retry-After` 헤더 원문입니다. 쓰기 요청이 실패했을 때는 서버에 반영되었는지 확인한 뒤 재시도하세요.
 
 ## 추가 리소스
 
-- **GitHub 저장소**: [DataGSM OpenAPI SDK Go](https://github.com/jihoonwjj/datagsm-openapi-sdk-go)
-- **이슈 트래커**: [GitHub Issues](https://github.com/jihoonwjj/datagsm-openapi-sdk-go/issues)
-
-문의사항이나 버그 리포트는 GitHub Issues를 통해 제출해 주세요.
+- [OAuth·OIDC Go SDK](/oauth/sdk/go)
+- [Event Go SDK](/event/sdk/go)
+- [전체 타입 레퍼런스](https://pkg.go.dev/github.com/tmp-it-play/datagsm-sdk-go@v0.2.0)
+- [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)
+- [GitHub Issues](https://github.com/tmp-it-play/datagsm-sdk-go/issues)

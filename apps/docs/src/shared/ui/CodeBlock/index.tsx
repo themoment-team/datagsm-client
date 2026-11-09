@@ -1,6 +1,7 @@
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
 import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash';
 import css from 'react-syntax-highlighter/dist/esm/languages/prism/css';
+import go from 'react-syntax-highlighter/dist/esm/languages/prism/go';
 import groovy from 'react-syntax-highlighter/dist/esm/languages/prism/groovy';
 import http from 'react-syntax-highlighter/dist/esm/languages/prism/http';
 import java from 'react-syntax-highlighter/dist/esm/languages/prism/java';
@@ -18,6 +19,8 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 SyntaxHighlighter.registerLanguage('bash', bash);
 SyntaxHighlighter.registerLanguage('css', css);
+SyntaxHighlighter.registerLanguage('go', go);
+SyntaxHighlighter.alias('go', 'golang');
 SyntaxHighlighter.registerLanguage('html', markup);
 SyntaxHighlighter.registerLanguage('http', http);
 SyntaxHighlighter.registerLanguage('java', java);
