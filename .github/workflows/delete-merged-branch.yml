@@ -1,0 +1,55 @@
+name: Delete Merged Branch
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  delete-branch:
+    name: Delete Merged Branch
+    # 머지된 PR이면서 같은 저장소에서 올라온 브랜치만 지운다 (fork 브랜치는 권한이 없다).
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete head branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # Git Flow 장기 브랜치와, main·develop 양쪽에 머지해야 하는 release·hotfix 브랜치는 남긴다.
+          case "$BRANCH" in
+            main | develop | release/* | hotfix/*)
+              echo "삭제 제외 브랜치라 남겨둡니다: $BRANCH"
+              exit 0
+              ;;
+          esac
+
+          # 이 브랜치를 head나 base로 쓰는 열린 PR이 있으면 지우지 않는다.
+          # base 브랜치를 API로 지우면 그 위에 쌓인 PR이 자동으로 닫히기 때문이다.
+          # 목록 조회가 실패하면 열린 PR이 없다고 보지 않고 job을 멈춘다.
+          open_prs=$(gh pr list --repo "$REPO" --state open --limit 200 \
+            --json number,headRefName,baseRefName)
+          related_prs=$(echo "$open_prs" | jq -r --arg branch "$BRANCH" \
+            '[.[] | select(.headRefName == $branch or .baseRefName == $branch) | "#\(.number)"] | join(", ")')
+
+          if [ -n "$related_prs" ]; then
+            echo "열린 PR($related_prs)이 이 브랜치를 쓰고 있어 남겨둡니다: $BRANCH"
+            exit 0
+          fi
+
+          if output=$(gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH" 2>&1); then
+            echo "브랜치를 삭제했습니다: $BRANCH"
+          elif echo "$output" | grep -q "Reference does not exist"; then
+            echo "이미 삭제된 브랜치입니다: $BRANCH"
+          else
+            echo "브랜치 삭제에 실패했습니다: $BRANCH"
+            echo "$output"
+            exit 1
+          fi
