@@ -24,14 +24,14 @@ export const metadata = createDocsPageMetadata({ title: "Go SDK", pathname: "/ap
 
 ### 개요
 
-[DataGSM SDK for Go](https://github.com/tmp-it-play/datagsm-sdk-go)는 DataGSM 파트너 SDK입니다. 이 문서는 `v0.2.0`의 OpenAPI 조회·쓰기 기능을 설명합니다. 같은 모듈에서 [OAuth·OIDC](/oauth/sdk/go)와 [Event](/event/sdk/go)도 사용할 수 있습니다.
+[DataGSM SDK for Go](https://github.com/tmp-it-play/datagsm-sdk-go)는 DataGSM 파트너 SDK입니다. 이 문서는 `v0.3.0`의 OpenAPI 조회·쓰기 기능을 설명합니다. 같은 모듈에서 [OAuth·OIDC](/oauth/sdk/go)와 [Event](/event/sdk/go)도 사용할 수 있습니다.
 
 Go **1.25 이상**이 필요하며 외부 런타임 의존성은 없습니다. HTTP 호출에는 표준 라이브러리 `net/http`를 사용하고, 모든 요청은 `context.Context`로 취소하거나 제한 시간을 지정할 수 있습니다.
 
 ## 설치
 
 ```bash
-go get github.com/tmp-it-play/datagsm-sdk-go@v0.2.0
+go get github.com/tmp-it-play/datagsm-sdk-go@v0.3.0
 ```
 
 `0.x`에서는 minor 버전 변경에도 호출 방식이 바뀔 수 있습니다. 버전별 변경 내용은 [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)에서 확인하세요.
@@ -294,6 +294,6 @@ if errors.As(err, &apiErr) {
 
 - [OAuth·OIDC Go SDK](/oauth/sdk/go)
 - [Event Go SDK](/event/sdk/go)
-- [전체 타입 레퍼런스](https://pkg.go.dev/github.com/tmp-it-play/datagsm-sdk-go@v0.2.0)
+- [전체 타입 레퍼런스](https://pkg.go.dev/github.com/tmp-it-play/datagsm-sdk-go@v0.3.0)
 - [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)
 - [GitHub Issues](https://github.com/tmp-it-play/datagsm-sdk-go/issues)
