@@ -106,4 +106,4 @@ DataGSM 서버와 SDK의 명세가 크게 바뀌었습니다. 기존 연동이 �
 
 ### 파트너 SDK
 
-[Go SDK](/api/sdk/go) v0.2.0은 OpenAPI 조회·쓰기와 [OAuth·OIDC](/oauth/sdk/go), [Event](/event/sdk/go)를 지원합니다. Go 1.25 이상이 필요하며 모듈 경로는 `github.com/tmp-it-play/datagsm-sdk-go`입니다. 버전별 변경 내용은 [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)에서 확인하세요.
+[Go SDK](/api/sdk/go) v0.3.0은 OpenAPI 조회·쓰기와 [OAuth·OIDC](/oauth/sdk/go), [Event](/event/sdk/go)를 지원합니다. Go 1.25 이상이 필요하며 모듈 경로는 `github.com/tmp-it-play/datagsm-sdk-go`입니다. v0.3.0부터 JWT 시간 검증에 기본 5초의 허용오차를 적용합니다. 이전처럼 허용오차 없이 검증하려면 `oauth.Config`의 `ClockSkew`에 음수를 지정하세요. 버전별 변경 내용은 [GitHub Releases](https://github.com/tmp-it-play/datagsm-sdk-go/releases)에서 확인하세요.
