@@ -27,3 +27,4 @@ overrides:
   codex/hooks/ts-check: true
 
 language: ko
+base_branch: develop
