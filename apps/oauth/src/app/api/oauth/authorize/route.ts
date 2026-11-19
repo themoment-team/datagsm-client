@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { passThroughUpstream } from '@/shared/lib';
+import { internalErrorResponse, passThroughUpstream } from '@/shared/lib';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,10 +43,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
-    return NextResponse.json(
-      { error: 'server_error', error_description: errorMessage },
-      { status: 500 },
-    );
+    return internalErrorResponse(error, 'POST /api/oauth/authorize');
   }
 }

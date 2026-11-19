@@ -96,18 +96,24 @@ describe('POST /api/oauth/authorize', () => {
   });
 
   it('요청 본문이 JSON이 아니면 500 server_error를 돌려준다', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const response = await POST(postRequest('not-json'));
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toMatchObject({ error: 'server_error' });
   });
 
-  it('서버에 연결하지 못하면 500 server_error를 돌려준다', async () => {
+  it('서버에 연결하지 못하면 원본 오류 문구 없이 500 server_error를 돌려준다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     server.use(http.post(UPSTREAM_URL, () => HttpResponse.error()));
 
     const response = await POST(postRequest({}));
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({ error: 'server_error' });
+    const body = await response.json();
+    expect(body.error).toBe('server_error');
+    expect(body.error_description).not.toMatch(/fetch|oauth\.test/i);
+    expect(consoleError).toHaveBeenCalled();
   });
 });

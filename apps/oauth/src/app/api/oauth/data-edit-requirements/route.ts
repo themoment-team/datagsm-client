@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { passThroughUpstream } from '@/shared/lib';
+import { internalErrorResponse, passThroughUpstream } from '@/shared/lib';
 
 /**
  * 정보 수정이 필요해 로그인이 막힌 계정의, 입력받아야 할 필드 목록을 조회한다.
@@ -29,10 +29,6 @@ export async function POST(request: NextRequest) {
 
     return passThroughUpstream(response);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
-    return NextResponse.json(
-      { error: 'server_error', error_description: errorMessage },
-      { status: 500 },
-    );
+    return internalErrorResponse(error, 'POST /api/oauth/data-edit-requirements');
   }
 }

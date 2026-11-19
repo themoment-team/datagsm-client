@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { passThroughUpstream } from './upstream';
+import { internalErrorResponse, passThroughUpstream } from './upstream';
 
 describe('passThroughUpstream', () => {
   it('JSON 본문과 상태 코드를 그대로 넘긴다', async () => {
@@ -37,5 +37,20 @@ describe('passThroughUpstream', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ fields: ['NAME'] });
+  });
+});
+
+describe('internalErrorResponse', () => {
+  it('원본 오류 문구는 응답에 싣지 않고 서버 로그로만 남긴다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const error = new TypeError('fetch failed: connect ECONNREFUSED 10.0.0.5:8080');
+
+    const response = internalErrorResponse(error, 'POST /api/test');
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe('server_error');
+    expect(body.error_description).not.toContain('ECONNREFUSED');
+    expect(consoleError).toHaveBeenCalledWith('[POST /api/test]', error);
   });
 });

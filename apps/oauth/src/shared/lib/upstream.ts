@@ -21,3 +21,19 @@ export const passThroughUpstream = async (response: Response) => {
     );
   }
 };
+
+const INTERNAL_ERROR_DESCRIPTION = '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.';
+
+/**
+ * route handler가 예기치 못한 예외로 끝났을 때의 응답.
+ *
+ * fetch 실패 메시지에는 내부 주소나 런타임 문구가 섞일 수 있어 클라이언트에는 고정 문구만 보내고,
+ * 원본 오류는 서버 로그에만 남긴다.
+ */
+export const internalErrorResponse = (error: unknown, context: string) => {
+  console.error(`[${context}]`, error);
+  return NextResponse.json(
+    { error: 'server_error', error_description: INTERNAL_ERROR_DESCRIPTION },
+    { status: 500 },
+  );
+};
