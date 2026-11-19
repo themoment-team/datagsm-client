@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 import { internalErrorResponse, passThroughUpstream } from '@/shared/lib';
 
@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
     const oauthBaseUrl = process.env.NEXT_PUBLIC_OAUTH_BASE_URL;
 
     if (!oauthBaseUrl) {
-      return NextResponse.json(
-        { error: 'server_error', error_description: 'OAuth 서버 URL이 설정되지 않았습니다.' },
-        { status: 500 },
+      return internalErrorResponse(
+        new Error('NEXT_PUBLIC_OAUTH_BASE_URL 환경 변수가 설정되지 않았습니다.'),
+        'POST /api/oauth/data-edit-requirements',
       );
     }
 

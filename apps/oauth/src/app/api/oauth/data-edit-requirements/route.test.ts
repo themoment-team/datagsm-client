@@ -4,6 +4,8 @@ import { NextRequest } from 'next/server';
 import { HttpResponse, http, server } from '@repo/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { INTERNAL_ERROR_DESCRIPTION } from '@/shared/lib';
+
 import { POST } from './route';
 
 const OAUTH_BASE_URL = 'https://oauth.test';
@@ -57,15 +59,21 @@ describe('POST /api/oauth/data-edit-requirements', () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toBe('server_error');
-    expect(body.error_description).not.toMatch(/fetch|oauth\.test/i);
-    expect(consoleError).toHaveBeenCalled();
+    expect(body.error_description).toBe(INTERNAL_ERROR_DESCRIPTION);
+    expect(consoleError).toHaveBeenCalledWith(expect.any(String), expect.any(TypeError));
   });
 
-  it('OAuth 서버 URL 환경 변수가 없으면 500을 돌려준다', async () => {
+  it('OAuth 서버 URL 환경 변수가 없으면 원인을 서버 로그에 남긴 뒤 500을 돌려준다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.stubEnv('NEXT_PUBLIC_OAUTH_BASE_URL', '');
 
     const response = await POST(postRequest({}));
 
     expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'server_error',
+      error_description: INTERNAL_ERROR_DESCRIPTION,
+    });
+    expect(String(consoleError.mock.calls[0]?.[1])).toContain('NEXT_PUBLIC_OAUTH_BASE_URL');
   });
 });
